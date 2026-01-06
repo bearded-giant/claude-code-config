@@ -51,9 +51,9 @@ DISCOVERY_PATTERNS = [
     (r'\b(?:entry\s*point|main|bootstrap|init)\b.{10,100}', 'entry'),
 ]
 
-# topic extraction keywords (weighted)
+# topic extraction keywords
 TOPIC_KEYWORDS = {
-    'auth': ['auth', 'login', 'jwt', 'token', 'session', 'password', 'credential'],
+    'auth': ['auth', 'login', 'jwt', 'token', 'password', 'credential', 'oauth', 'permissions'],
     'api': ['api', 'endpoint', 'route', 'rest', 'graphql', 'request', 'response'],
     'database': ['database', 'sql', 'query', 'migration', 'model', 'schema', 'table'],
     'test': ['test', 'spec', 'pytest', 'jest', 'coverage', 'mock', 'fixture'],
@@ -65,7 +65,11 @@ TOPIC_KEYWORDS = {
     'perf': ['performance', 'optimize', 'speed', 'slow', 'fast', 'cache'],
     'ui': ['ui', 'frontend', 'component', 'style', 'css', 'render', 'display'],
     'deploy': ['deploy', 'ci', 'cd', 'pipeline', 'docker', 'kubernetes'],
+    'workspace': ['workspace', 'scratch', 'hook', 'session', 'claude', 'mcp', 'plugin'],
 }
+
+# bonus weight given to workspace-defined topic
+WORKSPACE_TOPIC_WEIGHT = 5
 
 
 def read_transcript(transcript_path: str) -> List[dict]:
@@ -182,9 +186,49 @@ def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
     }
 
 
-def extract_session_topic(user_prompts: List[str], assistant_content: str) -> str:
+def extract_workspace_topic(scratch_dir: Path) -> Optional[str]:
+    """
+    Extract topic hint from WORKSPACE.md Purpose section.
+    Returns matching topic keyword if found, None otherwise.
+    """
+    workspace_file = scratch_dir / "WORKSPACE.md"
+    if not workspace_file.exists():
+        return None
+
+    try:
+        content = workspace_file.read_text().lower()
+
+        # look for purpose section content
+        purpose_match = re.search(r'## purpose\s*\n(.+?)(?=\n##|\Z)', content, re.DOTALL)
+        if not purpose_match:
+            return None
+
+        purpose_text = purpose_match.group(1).strip()
+
+        # skip if just placeholder comment
+        if purpose_text.startswith('<!--') or not purpose_text:
+            return None
+
+        # check for topic keywords in purpose
+        for topic, keywords in TOPIC_KEYWORDS.items():
+            for keyword in keywords:
+                if re.search(r'\b' + keyword + r'\w*\b', purpose_text):
+                    return topic
+
+    except Exception:
+        pass
+
+    return None
+
+
+def extract_session_topic(
+    user_prompts: List[str],
+    assistant_content: str,
+    workspace_topic: Optional[str] = None
+) -> str:
     """
     Extract a topic/theme from the session by analyzing content.
+    If workspace has a topic defined, it gets bonus weight.
     Returns a short topic tag like 'auth', 'api', 'refactor'.
     """
     # combine all text for analysis
@@ -197,11 +241,19 @@ def extract_session_topic(user_prompts: List[str], assistant_content: str) -> st
             count = len(re.findall(r'\b' + keyword + r'\w*\b', all_text))
             topic_scores[topic] += count
 
+    # apply workspace topic bonus if defined
+    if workspace_topic and workspace_topic in topic_scores:
+        topic_scores[workspace_topic] += WORKSPACE_TOPIC_WEIGHT
+
     # get top topic
     if topic_scores:
         top_topic = max(topic_scores.items(), key=lambda x: x[1])
         if top_topic[1] > 2:  # minimum threshold
             return top_topic[0]
+
+    # fallback to workspace topic if available
+    if workspace_topic:
+        return workspace_topic
 
     return 'general'
 
@@ -602,8 +654,9 @@ def main():
         if not assistant_content and not user_prompts:
             return
 
-        # derive topic and brief
-        topic = extract_session_topic(user_prompts, assistant_content)
+        # derive topic and brief (with workspace hint if available)
+        workspace_topic = extract_workspace_topic(scratch_dir)
+        topic = extract_session_topic(user_prompts, assistant_content, workspace_topic)
         brief = extract_session_brief(user_prompts, topic)
 
         # extract discoveries and plans
