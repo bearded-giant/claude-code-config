@@ -31,7 +31,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Path to workspace-lib.sh - adjust if needed
-WORKSPACE_LIB = Path.home() / "dev/script-hodge-podge/git-things/workspace-lib.sh"
+WORKSPACE_LIB = Path.home() / "dev/script-hodge-podge/workspace/workspace-lib.sh"
 
 
 def bootstrap_workspace(cwd: str) -> bool:
@@ -61,6 +61,43 @@ def bootstrap_workspace(cwd: str) -> bool:
         return False
 
 
+def read_recent_sessions(scratch_dir: Path, limit: int = 3) -> list:
+    """
+    Read recent session summaries for context injection.
+    Returns list of (filename, topic, brief) tuples.
+    """
+    sessions_dir = scratch_dir / "history" / "sessions"
+    if not sessions_dir.exists():
+        return []
+
+    sessions = []
+    try:
+        # get session files sorted by name (newest first due to timestamp prefix)
+        session_files = sorted(sessions_dir.glob("*.md"), reverse=True)
+
+        for session_file in session_files[:limit]:
+            try:
+                content = session_file.read_text()
+                # extract topic and brief from file
+                topic = "general"
+                brief = ""
+
+                for line in content.split('\n'):
+                    if line.startswith('Topic:'):
+                        topic = line.replace('Topic:', '').strip()
+                    elif line.startswith('Brief:'):
+                        brief = line.replace('Brief:', '').strip()
+                        break
+
+                sessions.append((session_file.name, topic, brief))
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    return sessions
+
+
 def read_workspace_context(cwd: str) -> dict:
     """
     Read workspace context files.
@@ -72,13 +109,14 @@ def read_workspace_context(cwd: str) -> dict:
         "discoveries": None,
         "tree": None,
         "current_plan": None,
+        "recent_sessions": None,
         "bootstrapped": False
     }
 
     if not scratch_dir.exists():
         return context
 
-    # Read WORKSPACE.md
+    # read WORKSPACE.md
     workspace_file = scratch_dir / "WORKSPACE.md"
     if workspace_file.exists():
         try:
@@ -86,35 +124,40 @@ def read_workspace_context(cwd: str) -> dict:
         except Exception:
             pass
 
-    # Read discoveries
+    # read discoveries
     discoveries_file = scratch_dir / "context" / "discoveries.md"
     if discoveries_file.exists():
         try:
             content = discoveries_file.read_text()
-            # Get last 20 discoveries (most recent context)
+            # get last 20 discoveries (most recent context)
             lines = content.strip().split("\n")
             context["discoveries"] = "\n".join(lines[-20:])
         except Exception:
             pass
 
-    # Read tree (truncated)
+    # read tree (truncated)
     tree_file = scratch_dir / "context" / "tree.md"
     if tree_file.exists():
         try:
             content = tree_file.read_text()
-            # Truncate to first 100 lines
+            # truncate to first 100 lines
             lines = content.split("\n")[:100]
             context["tree"] = "\n".join(lines)
         except Exception:
             pass
 
-    # Read current plan if exists
+    # read current plan if exists
     plan_file = scratch_dir / "plans" / "current.md"
     if plan_file.exists():
         try:
             context["current_plan"] = plan_file.read_text()[:1500]
         except Exception:
             pass
+
+    # read recent sessions
+    recent = read_recent_sessions(scratch_dir)
+    if recent:
+        context["recent_sessions"] = recent
 
     return context
 
@@ -137,6 +180,15 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
         parts.append(context["workspace_md"])
         parts.append("")
 
+    if context.get("recent_sessions"):
+        parts.append("=== RECENT SESSIONS ===")
+        for filename, topic, brief in context["recent_sessions"]:
+            # extract date from filename (YYYYMMDD_HHMMSS_id.md)
+            date_part = filename[:8] if len(filename) > 8 else filename
+            formatted_date = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}" if len(date_part) == 8 else date_part
+            parts.append(f"- {formatted_date} [{topic}]: {brief}")
+        parts.append("")
+
     if context.get("current_plan"):
         parts.append("=== ACTIVE PLAN ===")
         parts.append(context["current_plan"])
@@ -148,7 +200,6 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
         parts.append("")
 
     if parts:
-        # Add usage reminder
         parts.append("---")
         parts.append("Remember: Save findings to scratch/context/discoveries.md, plans to scratch/plans/")
 
