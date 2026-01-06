@@ -1,0 +1,29 @@
+# session data - ignore contents, keep structure
+projects/*
+!projects/.gitkeep
+*.jsonl
+
+# scratch - keep structure and WORKSPACE.md template
+scratch/*/*
+!scratch/*/.gitkeep
+!scratch/WORKSPACE.md
+
+todos/*
+!todos/.gitkeep
+
+shell-snapshots/*
+!shell-snapshots/.gitkeep
+
+statsig/*
+!statsig/.gitkeep
+
+# system files
+.DS_Store
+.claude/
+
+# backup files
+*.bak
+settings.json.*.bak
+
+# local settings (users should create their own)
+settings.local.json

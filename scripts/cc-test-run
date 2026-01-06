@@ -1,0 +1,21 @@
+#!/bin/bash
+# test-runner.sh - clean test run with container lifecycle management
+# stops any leftover cc test containers, runs pytest, cleans up after
+
+set -e
+
+# stop all customcheckout-related test containers (from any worktree)
+cleanup_containers() {
+    docker ps -q --filter "name=db-1" --filter "name=redis-test-1" --filter "name=mysql8db-1" 2>/dev/null | xargs -r docker stop 2>/dev/null || true
+    docker compose down --remove-orphans 2>/dev/null || true
+    docker network prune -f 2>/dev/null || true
+}
+
+echo "cleaning up leftover test containers..."
+cleanup_containers
+
+# ensure cleanup on exit (ctrl-c, errors, or normal completion)
+trap cleanup_containers EXIT
+
+echo "running tests..."
+docker compose run --rm test pytest -srA --disable-warnings "$@"

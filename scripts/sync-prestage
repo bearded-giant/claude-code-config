@@ -1,0 +1,33 @@
+#!/bin/bash
+# sync-prestage.sh - sync files to prestage server
+# usage: sync-prestage.sh <file_or_dir> [remote_path]
+
+set -e
+
+if [ -z "$1" ]; then
+    echo "usage: sync-prestage.sh <file_or_dir> [remote_path]"
+    echo "  file_or_dir: local path to sync"
+    echo "  remote_path: optional remote destination (defaults to ~/customcheckout/)"
+    exit 1
+fi
+
+LOCAL_PATH="$1"
+REMOTE_BASE="${2:-customcheckout}"
+
+if [ ! -e "$LOCAL_PATH" ]; then
+    echo "error: $LOCAL_PATH does not exist"
+    exit 1
+fi
+
+# if path is relative to a customcheckout worktree, preserve structure
+if [[ "$LOCAL_PATH" == *"customcheckout"* ]] || [[ "$PWD" == *"cc-wt"* ]]; then
+    # extract path relative to project root
+    REL_PATH=$(echo "$LOCAL_PATH" | sed -E 's|.*/cc-wt/[^/]+/||; s|.*/customcheckout[^/]*/||')
+    REMOTE_PATH="~/${REMOTE_BASE}/${REL_PATH}"
+else
+    REMOTE_PATH="~/${REMOTE_BASE}/$(basename "$LOCAL_PATH")"
+fi
+
+echo "syncing: $LOCAL_PATH -> prestage:$REMOTE_PATH"
+scp -r "$LOCAL_PATH" "prestage:$REMOTE_PATH"
+echo "done"

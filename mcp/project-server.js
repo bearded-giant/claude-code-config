@@ -1,0 +1,1 @@
+/Users/bryan/dev/giant-ai/mcp/project-server.js

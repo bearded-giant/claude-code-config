@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "Bash(bash -lc:*)",
+      "Task",
+      "TodoWrite",
+      "Bash(scp:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(chmod)",
+      "WebFetch(domain:alexop.dev)",
+      "mcp__filesystem__read_multiple_files",
+      "mcp__filesystem__read_file",
+      "mcp__filesystem__read_text_file",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__search_files",
+      "mcp__filesystem__get_file_info",
+      "mcp__server-memory__read_graph",
+      "mcp__server-memory__search_nodes",
+      "mcp__server-memory__open_nodes",
+      "mcp__server-memory__create_entities",
+      "mcp__server-memory__create_relations",
+      "mcp__server-memory__add_observations",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.anthropic.com)"
+    ],
+    "ask": [
+      "Bash(git:push)"
+    ]
+  },
+  "model": "opus",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/workspace_session_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_session_start.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_inject.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_curate_transcript.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/workspace_session_end.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_curate.py"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "commit-commands@claude-code-plugins": true,
+    "feature-dev@claude-code-plugins": true,
+    "pyright-lsp@claude-plugins-official": true
+  },
+  "spinnerTipsEnabled": false,
+  "alwaysThinkingEnabled": true,
+  "feedbackSurveyState": {
+    "lastShownTime": 1754071973699
+  },
+  "mcpServers": {
+    "gitlab-mr-generator": {
+      "command": "python3",
+      "args": [
+        "/Users/bryan/dev/python/gitlab-mr-generator-mcp/mcp_gitlab_mr_server.py"
+      ]
+    },
+    "recharge": {
+      "command": "node",
+      "args": [
+        "/Users/bryan/dev/recharge-mcp-server/index.js"
+      ]
+    }
+  }
+}
