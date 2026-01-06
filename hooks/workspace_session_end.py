@@ -6,6 +6,8 @@ Hook: SessionEnd
 Extracts session summary, discoveries, and plans from transcript.
 Creates individual session files for grep-ability and git history.
 
+If scratch/ doesn't exist, auto-initializes workspace structure first.
+
 Input (JSON on stdin):
 {
     "session_id": "...",
@@ -19,6 +21,12 @@ Output files:
 - scratch/context/discoveries.md  (appended)
 - scratch/plans/current.md  (updated if plans found)
 
+Auto-init creates (if scratch/ missing):
+- scratch/{context,plans,history,filebox,prompts,research,reviews}/
+- scratch/history/sessions/
+- scratch/WORKSPACE.md
+- scratch/.gitkeep
+
 NOTE: Uses only Python standard library (no external dependencies)
 """
 
@@ -26,6 +34,7 @@ import sys
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple, Dict, Set, Optional
@@ -499,6 +508,67 @@ def save_plans(scratch_dir: Path, plans: List[str]) -> bool:
         return False
 
 
+def workspace_init(cwd: Path) -> Path:
+    """
+    Initialize workspace structure if scratch/ doesn't exist.
+    Mirrors workspace-lib.sh workspace_init function.
+    Returns the scratch_dir path.
+    """
+    scratch_dir = cwd / "scratch"
+    name = cwd.name
+
+    # create subdirectories
+    subdirs = ['context', 'plans', 'history', 'filebox', 'prompts', 'research', 'reviews']
+    for subdir in subdirs:
+        (scratch_dir / subdir).mkdir(parents=True, exist_ok=True)
+
+    # create sessions subdir for session files
+    (scratch_dir / "history" / "sessions").mkdir(parents=True, exist_ok=True)
+
+    # create WORKSPACE.md if it doesn't exist
+    workspace_file = scratch_dir / "WORKSPACE.md"
+    if not workspace_file.exists():
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        # try to get git branch
+        branch = "main"
+        try:
+            result = subprocess.run(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                cwd=str(cwd),
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                branch = result.stdout.strip()
+        except Exception:
+            pass
+
+        content = f"""# Workspace: {name}
+Started: {today}
+Branch: {branch}
+Status: [ ] In Progress  [ ] Complete
+
+## Purpose
+<!-- auto-initialized by session end hook -->
+
+## Discoveries
+<!-- learnings about the codebase relevant to this work -->
+
+## Notes
+<!-- session notes, decisions, context -->
+"""
+        workspace_file.write_text(content)
+
+    # create .gitkeep in scratch root
+    gitkeep = scratch_dir / ".gitkeep"
+    if not gitkeep.exists():
+        gitkeep.touch()
+
+    return scratch_dir
+
+
 def main():
     """Main hook entry point."""
     try:
@@ -508,10 +578,13 @@ def main():
         cwd = input_data.get("cwd", os.getcwd())
         transcript_path = input_data.get("transcript_path", "")
 
-        scratch_dir = Path(cwd) / "scratch"
+        cwd_path = Path(cwd)
+        scratch_dir = cwd_path / "scratch"
 
+        # auto-init workspace if scratch doesn't exist
         if not scratch_dir.exists():
-            return
+            scratch_dir = workspace_init(cwd_path)
+            print(f"Workspace: initialized scratch/ in {cwd_path.name}", file=sys.stderr)
 
         if not transcript_path:
             return
