@@ -1,6 +1,7 @@
 ---
 allowed-tools:
   - Read
+  - Write
   - Task
   - Glob
   - Grep
@@ -176,39 +177,76 @@ If continuing, focus workers on aspects blocking convergence.
 
 ## Phase 6: Final Output
 
-```
-Swarm Analysis Complete
+### Output Directory Routing
 
-## Summary
+| Task Type | Directory | Filename Pattern |
+|-----------|-----------|------------------|
+| ANALYSIS | scratch/research/ | {topic}_analysis.md |
+| REVIEW | scratch/reviews/ | {subject}_review.md |
+| COMPARISON | scratch/research/ | {options}_comparison.md |
+| CUSTOM | scratch/research/ | {topic}_findings.md |
+
+Derive filename from task keywords (snake_case, max 40 chars).
+
+### Write Output File
+
+Use Write tool to create the output file with this structure:
+
+```markdown
+# Swarm [Type]: [Topic]
+
 Task: [original]
-Type: [REVIEW/ANALYSIS/COMPARISON/CUSTOM]
+Date: [timestamp]
 Iterations: [N]
 Workers: [count] | Gemini calls: [count] | Codex calls: [count]
 
 ## Verdict: [PASS/PARTIAL/FAIL]
+
 Confidence: [X]%
+
+## Summary
 
 [2-3 paragraph synthesis]
 
 ## Per-Aspect Results
+
 ### [Aspect]: [VERDICT] ([confidence]%)
+
 - [key finding]
 - [key finding]
 
 ## Issues
+
 ### Critical
+
 - [issue] -> [recommendation]
 
 ### High
+
 - [issue] -> [recommendation]
 
 ## Recommendations
+
 1. [action]
 2. [action]
 
 ## Convergence
+
 Type: [type]
 Final metrics: [key metrics]
+
+## Files Examined
+
+- [file:line] - [relevance]
+```
+
+### Confirm to User
+
+After writing the file, output brief confirmation:
+
+```
+Swarm complete: scratch/research/{filename}.md
+Verdict: [PASS/PARTIAL/FAIL] | Confidence: [X]% | Iterations: [N]
 ```
 
 ## Constraints
@@ -217,7 +255,7 @@ Final metrics: [key metrics]
 - Min 2 iterations before convergence check
 - Orchestrator does NOT analyze (delegate everything)
 - Workers spawned IN PARALLEL (single message, multiple Task calls)
-- Output to conversation only (no files)
+- Output to scratch/ files (see Phase 6 for directory routing)
 
 ## Error Handling
 

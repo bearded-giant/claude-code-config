@@ -108,6 +108,13 @@ Don't use for:
 /swarm verify the accuracy of docs/architecture.md
 ```
 
+**Detailed research prompts:**
+```
+/swarm investigate how an attacker could intercept signup requests at admin/login and manipulate POST /co/authenticate to POST /dbconnections/signup to create unauthorized OAuth accounts. Examine auth flow, request handling, and validation. Include file:line references for any vulnerable code paths.
+```
+
+Full prompts with context work - swarm parses keywords and delegates to workers.
+
 ## Tips
 
 ### 1. Be Specific About Scope
@@ -171,14 +178,23 @@ If convergence seems stuck, the output will tell you which threshold is blocking
    - Consults Codex via PAL clink for validation
    - Calculates convergence metrics
 4. If not converged: workers re-spawn focusing on gaps
-5. Final synthesis output to conversation
+5. Final synthesis written to scratch/ file (routed by task type)
+
+## Output Routing
+
+| Task Type | Directory |
+|-----------|-----------|
+| ANALYSIS | scratch/research/{topic}_analysis.md |
+| REVIEW | scratch/reviews/{subject}_review.md |
+| COMPARISON | scratch/research/{options}_comparison.md |
+| CUSTOM | scratch/research/{topic}_findings.md |
 
 ## Limits
 
 - **Max 5 iterations** (cost control)
 - **Min 2 iterations** before convergence check
 - **3-8 workers** per iteration
-- **Output to conversation only** (no files created)
+- **Output to scratch/ files** (routed by task type)
 
 ## Troubleshooting
 
