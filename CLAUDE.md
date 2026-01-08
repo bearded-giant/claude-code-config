@@ -32,12 +32,12 @@ Never speculate about code you have not opened. If the user references a specifi
 <stow_dotfiles_rules>
 This system uses GNU stow for dotfiles management.
 
-- All dotfiles are managed in ~/dotfiles/ and symlinked using GNU stow
-- NEVER edit files in ~/.config, ~/.claude, or other home directory locations directly
-- Always edit the source files in ~/dotfiles/
+- Most dotfiles are managed in ~/dotfiles/ and symlinked using GNU stow
+- NEVER edit files in ~/.config or other home directory locations directly
+- Always edit the source files in their respective repositories
 - Structure: ~/dotfiles/{package}/.config/{app}/ or ~/dotfiles/{package}/.{config-file}
 - Examples:
-  - Claude config: ~/dotfiles/claude-code/.claude/ (symlinked to ~/.claude)
+  - Claude config: ~/dev/claude-code-config/ (symlinked to ~/.claude via stow)
   - Wezterm config: ~/dotfiles/wezterm/.config/wezterm/ (symlinked to ~/.config/wezterm)
   - Shell config: ~/dotfiles/shell/.bashrc (symlinked to ~/.bashrc)
     </stow_dotfiles_rules>

@@ -99,19 +99,5 @@
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
-  },
-  "mcpServers": {
-    "gitlab-mr-generator": {
-      "command": "python3",
-      "args": [
-        "/Users/bryan/dev/python/gitlab-mr-generator-mcp/mcp_gitlab_mr_server.py"
-      ]
-    },
-    "recharge": {
-      "command": "node",
-      "args": [
-        "/Users/bryan/dev/recharge-mcp-server/index.js"
-      ]
-    }
   }
 }
