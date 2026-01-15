@@ -29,10 +29,16 @@
       "mcp__server-memory__create_relations",
       "mcp__server-memory__add_observations",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:docs.claude-mem.ai)",
+      "WebFetch(domain:github.com)"
     ],
     "ask": [
       "Bash(git:push)"
+    ],
+    "defaultMode": "dontAsk",
+    "additionalDirectories": [
+      "/Users/bryan/dev/script-hodge-podge/"
     ]
   },
   "model": "opus",

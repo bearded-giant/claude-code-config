@@ -98,6 +98,20 @@ def read_recent_sessions(scratch_dir: Path, limit: int = 3) -> list:
     return sessions
 
 
+def read_feature_index(scratch_dir: Path) -> str:
+    """
+    Read features index for session context.
+    Returns index content or None.
+    """
+    index_file = scratch_dir / "features" / "_index.md"
+    if index_file.exists():
+        try:
+            return index_file.read_text()[:2000]
+        except Exception:
+            pass
+    return None
+
+
 def read_workspace_context(cwd: str) -> dict:
     """
     Read workspace context files.
@@ -110,6 +124,7 @@ def read_workspace_context(cwd: str) -> dict:
         "tree": None,
         "current_plan": None,
         "recent_sessions": None,
+        "feature_index": None,
         "bootstrapped": False
     }
 
@@ -159,6 +174,9 @@ def read_workspace_context(cwd: str) -> dict:
     if recent:
         context["recent_sessions"] = recent
 
+    # read feature index
+    context["feature_index"] = read_feature_index(scratch_dir)
+
     return context
 
 
@@ -178,6 +196,11 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
     if context.get("workspace_md"):
         parts.append("=== WORKSPACE CONTEXT ===")
         parts.append(context["workspace_md"])
+        parts.append("")
+
+    if context.get("feature_index"):
+        parts.append("=== FEATURES ===")
+        parts.append(context["feature_index"])
         parts.append("")
 
     if context.get("recent_sessions"):
