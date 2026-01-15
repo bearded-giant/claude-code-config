@@ -50,6 +50,14 @@ features/
 - `/new-feature <name>` - scaffold feature folder
 - `/feature-facts <name>` - quick lookup
 - `/qa-report [feature]` - generate validation report
+
+**IMPORTANT - "Create a plan" disambiguation:**
+When user says "create a plan" or similar, ALWAYS ask:
+> Is this a **feature** (persistent, spans sessions) or **session work** (transient, current task only)?
+- Feature → use `/new-feature` → writes to `features/{name}/spec.md`
+- Session work → write to `plans/current.md`
+
+Do not assume. User may forget which context they're in.
 </feature_management>
 
 <investigate_before_answering>
