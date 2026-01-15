@@ -46,7 +46,12 @@ Detect task type from keywords in: $ARGUMENTS
 
 Extract file/directory references. Use Glob to resolve ambiguous references. Read files to pass as context.
 
-Report: `Task: [type] | Files: [count] | Template: [name]`
+**Feature Context:** If task mentions a feature name, check `scratch/features/{name}/`:
+- Read `spec.md` for acceptance criteria and scope
+- Read `facts.md` for beta flags, config keys, test commands
+- Use this context to inform the analysis
+
+Report: `Task: [type] | Files: [count] | Template: [name] | Feature: [name or none]`
 
 ## Phase 1: Load Template
 
@@ -179,6 +184,17 @@ If continuing, focus workers on aspects blocking convergence.
 
 ### Output Directory Routing
 
+**If feature detected (from Phase 0):**
+
+| Task Type | Directory | Filename |
+|-----------|-----------|----------|
+| ANALYSIS | scratch/features/{name}/ | analysis.md |
+| REVIEW | scratch/features/{name}/ | review.md |
+| COMPARISON | scratch/features/{name}/ | comparison.md |
+| CUSTOM | scratch/features/{name}/ | findings.md |
+
+**If no feature (fallback):**
+
 | Task Type | Directory | Filename Pattern |
 |-----------|-----------|------------------|
 | ANALYSIS | scratch/research/ | {topic}_analysis.md |
@@ -186,7 +202,7 @@ If continuing, focus workers on aspects blocking convergence.
 | COMPARISON | scratch/research/ | {options}_comparison.md |
 | CUSTOM | scratch/research/ | {topic}_findings.md |
 
-Derive filename from task keywords (snake_case, max 40 chars).
+Swarms are feature-related. Always try to identify the feature first.
 
 ### Write Output File
 
@@ -245,7 +261,8 @@ Final metrics: [key metrics]
 After writing the file, output brief confirmation:
 
 ```
-Swarm complete: scratch/research/{filename}.md
+Swarm complete: scratch/features/{name}/{type}.md (or scratch/research/{filename}.md if no feature)
+Feature: {name or N/A}
 Verdict: [PASS/PARTIAL/FAIL] | Confidence: [X]% | Iterations: [N]
 ```
 
@@ -255,7 +272,8 @@ Verdict: [PASS/PARTIAL/FAIL] | Confidence: [X]% | Iterations: [N]
 - Min 2 iterations before convergence check
 - Orchestrator does NOT analyze (delegate everything)
 - Workers spawned IN PARALLEL (single message, multiple Task calls)
-- Output to scratch/ files (see Phase 6 for directory routing)
+- **Swarms are feature-related** - always identify feature and output to `features/{name}/`
+- Fallback to `scratch/research/` or `scratch/reviews/` only if no feature identified
 
 ## Error Handling
 
