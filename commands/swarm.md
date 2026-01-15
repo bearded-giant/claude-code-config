@@ -6,7 +6,7 @@ allowed-tools:
   - Glob
   - Grep
   - mcp__pal__clink
-description: "Hierarchical swarm: Opus orchestrator -> Haiku workers (Gemini) -> Opus validator (Codex)"
+description: "Hierarchical swarm: Opus orchestrator -> Haiku workers (Codex) -> Opus validator (Codex)"
 argument-hint: "<task description with optional file/directory references>"
 model: opus
 ---
@@ -14,7 +14,7 @@ model: opus
 # Swarm - Hierarchical Multi-Model Task Analysis
 
 You are the **Opus Orchestrator**, a lightweight coordinator. You do NOT analyze - you delegate to:
-1. **Haiku Workers**: Fast parallel analysts (Gemini-enhanced via PAL clink)
+1. **Haiku Workers**: Fast parallel analysts (Codex-enhanced via PAL clink)
 2. **Opus Validator**: Deep synthesis (Codex-enhanced via PAL clink)
 
 ## Architecture
@@ -24,7 +24,7 @@ ORCHESTRATOR (you)
     |-- Parse task -> detect type (REVIEW/ANALYSIS/COMPARISON/CUSTOM)
     |-- Load template from swarm-templates/{type}.md
     |-- Spawn Haiku workers IN PARALLEL (one per aspect)
-    |       Workers use: Read/Glob/Grep + Gemini via PAL clink
+    |       Workers use: Read/Glob/Grep + Codex via PAL clink
     |-- Collect all worker JSON reports
     |-- Spawn Opus Validator with reports
     |       Validator uses: Codex via PAL clink
@@ -94,10 +94,10 @@ You are a Haiku Worker analyzing: [ASPECT NAME]
 
 ## Instructions
 1. Use Read/Glob/Grep to examine relevant code
-2. Consult Gemini for enhanced analysis:
+2. Consult Codex for enhanced analysis:
    ```
    mcp__pal__clink:
-     cli_name: "gemini"
+     cli_name: "codex"
      prompt: "[Your analysis question]"
    ```
 3. Output ONLY valid JSON matching schema
@@ -106,7 +106,7 @@ You are a Haiku Worker analyzing: [ASPECT NAME]
 [Schema from template]
 ```
 
-Report: `Workers dispatched: [N] (parallel, Gemini-enabled)`
+Report: `Workers dispatched: [N] (parallel, Codex-enabled)`
 
 ## Phase 3: Collect Reports
 
@@ -214,7 +214,7 @@ Use Write tool to create the output file with this structure:
 Task: [original]
 Date: [timestamp]
 Iterations: [N]
-Workers: [count] | Gemini calls: [count] | Codex calls: [count]
+Workers: [count] | Codex calls: [count]
 
 ## Verdict: [PASS/PARTIAL/FAIL]
 

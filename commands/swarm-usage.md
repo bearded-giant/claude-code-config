@@ -2,7 +2,7 @@
 
 ## What It Is
 
-A hierarchical multi-model analysis system that parallelizes task work across Haiku workers, enhanced with Gemini and Codex via PAL MCP. Uses iterative convergence to ensure thorough analysis.
+A hierarchical multi-model analysis system that parallelizes task work across Haiku workers, enhanced with Codex via PAL MCP. Uses iterative convergence to ensure thorough analysis.
 
 **Architecture:**
 ```
@@ -12,7 +12,7 @@ You invoke /swarm
 Opus Orchestrator (coordinator only - no analysis)
     |
     |-- Spawns 3-8 Haiku workers IN PARALLEL
-    |     Each worker: explores code + consults Gemini
+    |     Each worker: explores code + consults Codex
     |
     v
 Opus Validator (synthesis)
@@ -172,7 +172,7 @@ If convergence seems stuck, the output will tell you which threshold is blocking
 1. **Orchestrator** (Opus) parses your task, detects type, loads template
 2. **Workers** (Haiku x 3-8) spawn in parallel, each analyzing one aspect
    - Workers can Read/Glob/Grep code
-   - Workers consult Gemini via PAL clink for enhanced reasoning
+   - Workers consult Codex via PAL clink for enhanced reasoning
 3. **Validator** (Opus) synthesizes all worker reports
    - Resolves conflicts between workers
    - Consults Codex via PAL clink for validation
@@ -211,7 +211,7 @@ If convergence seems stuck, the output will tell you which threshold is blocking
 - Narrow the scope
 - Use fewer aspects (orchestrator adjusts based on task)
 
-**PAL/Gemini/Codex errors:**
+**PAL/Codex errors:**
 - Swarm continues without enhancement
 - Check PAL MCP is configured correctly
 

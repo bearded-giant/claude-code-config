@@ -89,8 +89,8 @@ Questions:
   "issues": [
     {"severity": "critical|high|medium|low", "description": "issue", "recommendation": "fix"}
   ],
-  "gemini_consulted": true|false,
-  "gemini_insight": "if consulted, key insight"
+  "codex_consulted": true|false,
+  "codex_insight": "if consulted, key insight"
 }
 ```
 

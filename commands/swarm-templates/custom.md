@@ -89,8 +89,8 @@ Example aspect generation:
     "ROOTCAUSE": {"hypothesis": "string", "confidence": 0.0, "eliminated": []},
     "CONFIDENCE": {"explained": 0, "ambiguous": 0}
   },
-  "gemini_consulted": true|false,
-  "gemini_insight": "if consulted, key insight"
+  "codex_consulted": true|false,
+  "codex_insight": "if consulted, key insight"
 }
 ```
 

@@ -90,8 +90,8 @@ Questions:
   "option_a_cons": ["con1", "con2"],
   "option_b_pros": ["pro1", "pro2"],
   "option_b_cons": ["con1", "con2"],
-  "gemini_consulted": true|false,
-  "gemini_insight": "if consulted, key insight"
+  "codex_consulted": true|false,
+  "codex_insight": "if consulted, key insight"
 }
 ```
 

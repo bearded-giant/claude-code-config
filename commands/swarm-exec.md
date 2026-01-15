@@ -27,7 +27,7 @@ ORCHESTRATOR (you)
     |-- Parse plan -> extract work units
     |-- Create git branch (safety)
     |-- Spawn Haiku workers IN PARALLEL
-    |       Workers: Read/Edit/Write + Gemini via PAL
+    |       Workers: Read/Edit/Write + Codex via PAL
     |-- Collect change reports
     |-- Spawn Opus Validator
     |       Validator: Review changes + run tests + Codex
@@ -141,9 +141,9 @@ You are a Haiku Execution Worker. Implement the assigned work unit.
 1. Read existing code to understand patterns
 2. Use Edit for modifications, Write for new files
 3. Follow existing conventions (naming, structure, style)
-4. Consult Gemini for complex decisions:
+4. Consult Codex for complex decisions:
    mcp__pal__clink:
-     cli_name: "gemini"
+     cli_name: "codex"
      prompt: "[Implementation question]"
 5. Report what you changed
 
@@ -156,7 +156,7 @@ You are a Haiku Execution Worker. Implement the assigned work unit.
   "changes_summary": "what was done",
   "tests_added": ["test names if any"],
   "issues_encountered": ["any problems"],
-  "gemini_consulted": true|false,
+  "codex_consulted": true|false,
   "needs_followup": ["if partial, what remains"]
 }
 ```

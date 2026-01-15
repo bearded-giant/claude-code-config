@@ -51,7 +51,7 @@ Workers should:
 - Read existing code first (understand patterns)
 - Make minimal changes (no scope creep)
 - Follow existing conventions
-- Use Gemini for complex decisions
+- Use Codex for complex decisions
 - Report clearly what changed
 
 Workers must NOT:

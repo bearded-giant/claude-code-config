@@ -13,7 +13,7 @@ You invoke /swarm-exec with a plan
 Opus Orchestrator
     |-- Creates git branch (safety)
     |-- Spawns Haiku workers IN PARALLEL
-    |     Workers: Edit/Write code + consult Gemini
+    |     Workers: Edit/Write code + consult Codex
     |
     v
 Opus Validator
