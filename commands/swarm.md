@@ -6,36 +6,65 @@ allowed-tools:
   - Glob
   - Grep
   - mcp__pal__clink
-description: "Hierarchical swarm: Opus orchestrator -> Haiku workers (Codex) -> Opus validator (Codex)"
-argument-hint: "<task description with optional file/directory references>"
+description: "Hierarchical swarm: configurable workers + validator with optional consultation"
+argument-hint: "[--worker=haiku|codex] [--consult=haiku|codex] <task description>"
 model: opus
 ---
 
 # Swarm - Hierarchical Multi-Model Task Analysis
 
-You are the **Opus Orchestrator**, a lightweight coordinator. You do NOT analyze - you delegate to:
-1. **Haiku Workers**: Fast parallel analysts (Codex-enhanced via PAL clink)
-2. **Opus Validator**: Deep synthesis (Codex-enhanced via PAL clink)
+You are the **Opus Orchestrator**, a lightweight coordinator. You do NOT analyze - you delegate to workers and a validator.
+
+## Argument Parsing
+
+Parse flags from: $ARGUMENTS
+
+**Supported flags:**
+- `--worker=MODEL` - Worker model: `haiku` (default) or `codex`
+- `--consult=MODEL` - Consultation model: `haiku`, `codex`, or `none` (default: none)
+- `--save-workers` - Save worker JSON outputs to swarm directory (default: true)
+
+**Shorthand syntax:**
+- `codex` at start → `--worker=codex`
+- `codex+haiku` → `--worker=codex --consult=haiku`
+- `haiku+codex` → `--worker=haiku --consult=codex`
+
+**Examples:**
+```
+/swarm analyze auth flow                           # haiku workers, no consult
+/swarm --worker=codex analyze auth flow            # codex workers, no consult
+/swarm codex analyze auth flow                     # codex workers (shorthand)
+/swarm --worker=codex --consult=haiku analyze...   # codex workers, consult haiku
+/swarm codex+haiku analyze auth flow               # codex workers, consult haiku (shorthand)
+```
+
+After parsing, report:
+```
+Config: worker=[MODEL] | consult=[MODEL|none] | save-workers=[true|false]
+```
+
+Remove flags from task description before proceeding.
 
 ## Architecture
 
 ```
 ORCHESTRATOR (you)
+    |-- Parse flags -> set WORKER_MODEL, CONSULT_MODEL
     |-- Parse task -> detect type (REVIEW/ANALYSIS/COMPARISON/CUSTOM)
     |-- Load template from swarm-templates/{type}.md
-    |-- Spawn Haiku workers IN PARALLEL (one per aspect)
-    |       Workers use: Read/Glob/Grep + Codex via PAL clink
+    |-- Spawn workers IN PARALLEL (one per aspect)
+    |       Workers use: Read/Glob/Grep + optional consultation
     |-- Collect all worker JSON reports
     |-- Spawn Opus Validator with reports
-    |       Validator uses: Codex via PAL clink
+    |       Validator uses: optional consultation for conflict resolution
     |-- Check convergence (template-specific)
     |-- If not converged and < 5 iterations: GOTO spawn workers
-    |-- Output synthesis to conversation
+    |-- Output synthesis + worker artifacts to swarm directory
 ```
 
 ## Phase 0: Parse Task
 
-Detect task type from keywords in: $ARGUMENTS
+Detect task type from keywords in task (after removing flags):
 
 | Type | Keywords | Template |
 |------|----------|----------|
@@ -66,53 +95,81 @@ Adjust aspects based on actual task (remove irrelevant, add specific).
 
 Report: `Aspects: [list] | Convergence: [type]`
 
-## Phase 2: Spawn Haiku Workers (PARALLEL)
+## Phase 2: Spawn Workers (PARALLEL)
 
-**CRITICAL**: Spawn ALL workers in ONE message using multiple Task tool calls.
+**CRITICAL**: Spawn ALL workers in ONE message using multiple tool calls.
 
-For each aspect, spawn:
+### If WORKER_MODEL = "haiku" (default)
+
+Use Task tool for parallel spawning:
 ```
 Task tool:
   subagent_type: "general-purpose"
   model: "haiku"
-  prompt: [see worker prompt below]
+  prompt: [worker prompt]
 ```
+
+### If WORKER_MODEL = "codex"
+
+Use PAL clink for each worker (sequential, but company pays):
+```
+mcp__pal__clink:
+  cli_name: "codex"
+  prompt: [worker prompt]
+```
+
+Note: Codex workers run sequentially (clink limitation), but cost shifts to company.
 
 ### Worker Prompt Template
 
 ```
-You are a Haiku Worker analyzing: [ASPECT NAME]
+You are a [WORKER_MODEL] Worker analyzing: [ASPECT NAME]
 
 ## Your Focus
 [Aspect description and questions from template]
 
 ## Task Context
-[Original task: $ARGUMENTS]
+[Original task description]
 
 ## Files to Examine
 [File contents or instructions to use Read/Glob/Grep]
 
 ## Instructions
 1. Use Read/Glob/Grep to examine relevant code
-2. Consult Codex for enhanced analysis:
+[IF CONSULT_MODEL is set:]
+2. Consult [CONSULT_MODEL] for enhanced analysis when needed:
    ```
    mcp__pal__clink:
-     cli_name: "codex"
+     cli_name: "[CONSULT_MODEL]"
      prompt: "[Your analysis question]"
    ```
+   Use consultation for: complex logic, ambiguous patterns, validation of findings
+[ENDIF]
 3. Output ONLY valid JSON matching schema
 
 ## Output Schema
-[Schema from template]
+[Schema from template - include consult fields:]
+{
+  "aspect": "...",
+  "verdict": "good|acceptable|concerning|poor",
+  "confidence": 0.0-1.0,
+  "score": 1-10,
+  "key_findings": [...],
+  "evidence": [...],
+  "issues": [...],
+  "consulted": true|false,
+  "consult_model": "[CONSULT_MODEL or null]",
+  "consult_insight": "key insight from consultation if used"
+}
 ```
 
-Report: `Workers dispatched: [N] (parallel, Codex-enabled)`
+Report: `Workers dispatched: [N] ([WORKER_MODEL], consult=[CONSULT_MODEL|none])`
 
 ## Phase 3: Collect Reports
 
 Wait for all workers. Parse JSON responses.
 
-Report summary of each worker's verdict/confidence.
+Report summary of each worker's verdict/confidence and whether consultation was used.
 
 ## Phase 4: Spawn Opus Validator
 
@@ -138,10 +195,13 @@ Previous metrics: [if iteration > 1]
 
 ## Your Tasks
 1. Aggregate findings by aspect
-2. Resolve conflicts (use Codex via PAL clink if needed):
+2. Resolve conflicts
+[IF CONSULT_MODEL is set:]
+   For complex conflicts, consult [CONSULT_MODEL]:
    mcp__pal__clink:
-     cli_name: "codex"
+     cli_name: "[CONSULT_MODEL]"
      prompt: "Resolve conflict: [description]"
+[ENDIF]
 3. Validate critical issues
 4. Calculate convergence metrics per template
 5. Determine: CONVERGED | NOT_CONVERGED | CONVERGED_TIE
@@ -182,88 +242,47 @@ If continuing, focus workers on aspects blocking convergence.
 
 ## Phase 6: Final Output
 
-### Output Directory Routing
+### Create Swarm Output Directory
 
-**If feature detected (from Phase 0):**
+Directory name: `swarm-{descriptive-topic}` (e.g., `swarm-workspace-lib-patterns`)
 
-| Task Type | Directory | Filename |
-|-----------|-----------|----------|
-| ANALYSIS | scratch/features/{name}/ | analysis.md |
-| REVIEW | scratch/features/{name}/ | review.md |
-| COMPARISON | scratch/features/{name}/ | comparison.md |
-| CUSTOM | scratch/features/{name}/ | findings.md |
+Location:
+- If feature detected: `scratch/features/{name}/swarm-{topic}/`
+- Otherwise: `scratch/research/swarm-{topic}/`
 
-**If no feature (fallback):**
+### Write All Artifacts
 
-| Task Type | Directory | Filename Pattern |
-|-----------|-----------|------------------|
-| ANALYSIS | scratch/research/ | {topic}_analysis.md |
-| REVIEW | scratch/reviews/ | {subject}_review.md |
-| COMPARISON | scratch/research/ | {options}_comparison.md |
-| CUSTOM | scratch/research/ | {topic}_findings.md |
+1. **Worker outputs** (if --save-workers=true, which is default):
+   - `worker-{aspect}.json` for each worker
 
-Swarms are feature-related. Always try to identify the feature first.
+2. **Validator synthesis**:
+   - `validator-synthesis.json`
 
-### Write Output File
+3. **README.md** with manifest:
+   ```markdown
+   # Swarm: [Topic]
 
-Use Write tool to create the output file with this structure:
+   Generated: [timestamp]
+   Config: worker=[MODEL] | consult=[MODEL|none]
 
-```markdown
-# Swarm [Type]: [Topic]
+   ## Files
+   | File | Description |
+   |------|-------------|
+   | worker-*.json | Worker outputs |
+   | validator-synthesis.json | Aggregated findings |
+   | analysis.md | Human-readable report |
+   ```
 
-Task: [original]
-Date: [timestamp]
-Iterations: [N]
-Workers: [count] | Codex calls: [count]
-
-## Verdict: [PASS/PARTIAL/FAIL]
-
-Confidence: [X]%
-
-## Summary
-
-[2-3 paragraph synthesis]
-
-## Per-Aspect Results
-
-### [Aspect]: [VERDICT] ([confidence]%)
-
-- [key finding]
-- [key finding]
-
-## Issues
-
-### Critical
-
-- [issue] -> [recommendation]
-
-### High
-
-- [issue] -> [recommendation]
-
-## Recommendations
-
-1. [action]
-2. [action]
-
-## Convergence
-
-Type: [type]
-Final metrics: [key metrics]
-
-## Files Examined
-
-- [file:line] - [relevance]
-```
+4. **Final analysis** (human-readable):
+   - `analysis.md` (or `review.md`, `comparison.md` based on type)
 
 ### Confirm to User
 
-After writing the file, output brief confirmation:
-
 ```
-Swarm complete: scratch/features/{name}/{type}.md (or scratch/research/{filename}.md if no feature)
-Feature: {name or N/A}
+Swarm complete: [output directory path]
+Config: worker=[MODEL] | consult=[MODEL|none]
 Verdict: [PASS/PARTIAL/FAIL] | Confidence: [X]% | Iterations: [N]
+Consultations: [count] calls to [CONSULT_MODEL]
 ```
 
 ## Constraints
@@ -272,14 +291,37 @@ Verdict: [PASS/PARTIAL/FAIL] | Confidence: [X]% | Iterations: [N]
 - Min 2 iterations before convergence check
 - Orchestrator does NOT analyze (delegate everything)
 - Workers spawned IN PARALLEL (single message, multiple Task calls)
-- **Swarms are feature-related** - always identify feature and output to `features/{name}/`
-- Fallback to `scratch/research/` or `scratch/reviews/` only if no feature identified
+- **Always save worker artifacts** for retention
+- **Swarms are feature-related** - always try to identify feature first
 
 ## Error Handling
 
 - No files found: Use task description as context
 - Template not found: Fall back to custom.md
 - Worker fails: Retry once, then escalate to Sonnet
+- Consultation fails: Continue without consultation, log warning
 - Max iterations without convergence: Report blocking thresholds, recommend manual review
+
+## Model Reference
+
+| Model | Via | Cost | Speed | Parallel |
+|-------|-----|------|-------|----------|
+| haiku | Task tool | Your $ | Fast | Yes (6 workers at once) |
+| codex | PAL clink | Company $ | Medium | No (sequential) |
+
+**Trade-offs:**
+- `--worker=haiku`: Fast parallel execution, you pay
+- `--worker=codex`: Sequential but company pays, deeper analysis
+
+**Consultation patterns:**
+- `haiku` workers + `codex` consult: Fast parallel + deep validation (mixed cost)
+- `codex` workers + `haiku` consult: Deep analysis + quick sanity checks (mostly company)
+- `codex` workers + no consult: Pure codex, all company cost, sequential
+- `haiku` workers + no consult: Pure haiku, all your cost, parallel
+
+**Cost optimization:**
+- For quick analyses: `haiku` workers, no consult
+- For thorough analyses on your dime: `haiku+codex` (parallel + spot consults)
+- For company to pay: `codex` workers (accepts sequential trade-off)
 
 Task: $ARGUMENTS
