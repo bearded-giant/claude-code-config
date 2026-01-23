@@ -36,7 +36,7 @@
     "ask": [
       "Bash(git:push)"
     ],
-    "defaultMode": "dontAsk",
+    "defaultMode": "default",
     "additionalDirectories": [
       "/Users/bryan/dev/script-hodge-podge/"
     ]
@@ -53,16 +53,6 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/memory_session_start.py"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_inject.py"
           }
         ]
       }
@@ -90,6 +80,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_inject.py"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -97,9 +97,10 @@
     "command": "node ~/.claude/hooks/statusline.js"
   },
   "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true,
+    "subtask": true,
     "commit-commands@claude-code-plugins": true,
-    "feature-dev@claude-code-plugins": true,
-    "pyright-lsp@claude-plugins-official": true
+    "feature-dev@claude-code-plugins": true
   },
   "spinnerTipsEnabled": false,
   "alwaysThinkingEnabled": true,

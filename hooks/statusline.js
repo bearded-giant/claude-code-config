@@ -1,9 +1,27 @@
 #!/usr/bin/env node
-// shows: model | current task | directory | context usage
+// shows: model | directory | branch | context usage
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+
+function getGitBranch(dir) {
+  try {
+    let current = dir;
+    while (current !== '/') {
+      const gitHead = path.join(current, '.git', 'HEAD');
+      if (fs.existsSync(gitHead)) {
+        const content = fs.readFileSync(gitHead, 'utf8').trim();
+        if (content.startsWith('ref: refs/heads/')) {
+          return content.slice(16);
+        }
+        return content.slice(0, 7); // detached HEAD - show short sha
+      }
+      current = path.dirname(current);
+    }
+  } catch (e) {}
+  return null;
+}
 
 // Read JSON from stdin
 let input = '';
@@ -14,6 +32,7 @@ process.stdin.on('end', () => {
     const data = JSON.parse(input);
     const model = data.model?.display_name || 'Claude';
     const dir = data.workspace?.current_dir || process.cwd();
+    const branch = getGitBranch(dir);
     const remaining = data.context_window?.remaining_percentage;
 
     // Context window display (shows USED percentage)
@@ -41,7 +60,8 @@ process.stdin.on('end', () => {
     // Output
     const homeDir = os.homedir();
     const displayPath = dir.startsWith(homeDir) ? '~' + dir.slice(homeDir.length) : dir;
-    process.stdout.write(`\x1b[2m${model}\x1b[0m │ \x1b[2m${displayPath}\x1b[0m │${ctx}`);
+    const branchPart = branch ? ` │ \x1b[36m${branch}\x1b[0m` : '';
+    process.stdout.write(`\x1b[2m${model}\x1b[0m │ \x1b[2m${displayPath}\x1b[0m${branchPart} │${ctx}`);
   } catch (e) {
     // Silent fail - don't break statusline on parse errors
   }
