@@ -16,6 +16,12 @@
 | `/scratch-archive` | Archive scratch/ to ~/scratch_archive/ |
 | `/rules` | Re-inject workspace and output rules mid-session |
 
+## Search & Analysis
+
+| Skill | Purpose |
+|-------|---------|
+| `/categorize-search [csv]` | Categorize `gl search code` CSV results via parallel haiku workers |
+
 ## Git & Code
 
 | Skill | Purpose |

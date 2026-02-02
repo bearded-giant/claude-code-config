@@ -35,25 +35,26 @@ process.stdin.on('end', () => {
     const branch = getGitBranch(dir);
     const remaining = data.context_window?.remaining_percentage;
 
-    // Context window display (shows USED percentage)
+    // Context window display (shows % until compaction)
     let ctx = '';
     if (remaining != null) {
-      const rem = Math.round(remaining);
-      const used = 100 - rem;
+      const compactThreshold = 78; // compaction triggers around 78% usage
+      const used = 100 - Math.round(remaining);
+      const untilCompact = Math.max(0, compactThreshold - used);
 
-      // Build progress bar (10 segments)
-      const filled = Math.floor(used / 10);
+      // Bar shows usage toward threshold (full bar = at threshold)
+      const filled = Math.min(10, Math.round((used / compactThreshold) * 10));
       const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
 
-      // Color based on usage
-      if (used < 50) {
-        ctx = ` \x1b[32m${bar} ${used}%\x1b[0m`;
-      } else if (used < 65) {
-        ctx = ` \x1b[33m${bar} ${used}%\x1b[0m`;
-      } else if (used < 80) {
-        ctx = ` \x1b[38;5;208m${bar} ${used}%\x1b[0m`;
+      // Color based on room until compact
+      if (untilCompact > 50) {
+        ctx = ` \x1b[32m${bar} ${untilCompact}%\x1b[0m`;
+      } else if (untilCompact > 35) {
+        ctx = ` \x1b[33m${bar} ${untilCompact}%\x1b[0m`;
+      } else if (untilCompact > 20) {
+        ctx = ` \x1b[38;5;208m${bar} ${untilCompact}%\x1b[0m`;
       } else {
-        ctx = ` \x1b[5;31m💀 ${bar} ${used}%\x1b[0m`;
+        ctx = ` \x1b[5;31m${bar} ${untilCompact}%\x1b[0m`;
       }
     }
 
