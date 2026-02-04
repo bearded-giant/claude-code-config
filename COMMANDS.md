@@ -1,24 +1,58 @@
 # Claude Code Commands
 
+## History & Session Discovery
+
+### Workspace History (current project)
+
+| Command | Purpose |
+|---------|---------|
+| `/ws-history` | Show recent sessions from scratch/history/ |
+| `/ws-history {n}` | Show last n sessions |
+| `/ws-history {id}` | Show full session details |
+| `/ws-history-search {query}` | Search session files for keywords |
+
+```bash
+/ws-history
+/ws-history 20
+/ws-history abc123
+/ws-history-search foo-service
+```
+
+### Global Session History (all projects)
+
+| Command | Purpose |
+|---------|---------|
+| `/session-history` | List recent JSONL sessions |
+| `/session-history {project}` | Filter by project name |
+| `/session-search {query}` | Search conversation content |
+| `/session-search {query} {project}` | Search within project |
+
+```bash
+/session-history
+/session-history my-project
+/session-search "bar validation"
+/session-search "baz config" my-project
+```
+
+---
+
 ## Architecture Workflow
 
 For complex refactors and stack migrations:
 
 ```
-/arch-discover {system}     → understand existing system
-/arch-brainstorm {decision} → analyze options, get recommendations
-/scope {project}            → create phased implementation plan
+/arch-discover {system}     -> understand existing system
+/arch-brainstorm {decision} -> analyze options, get recommendations
+/scope {project}            -> create phased implementation plan
 ```
-
-Each command reads context from the previous. Can also be used standalone.
 
 ### /arch-discover
 
 Map an existing system before refactoring.
 
 ```
-/arch-discover auth system
-/arch-discover payment processing flow
+/arch-discover foo-service
+/arch-discover bar processing flow
 ```
 
 Output: `scratch/context/architecture.md`
@@ -28,8 +62,8 @@ Output: `scratch/context/architecture.md`
 Two-phase architecture decision support. Analyzes constraints, asks clarifying questions, then recommends approach.
 
 ```
-/arch-brainstorm migrating to async workers
-/arch-brainstorm replacing legacy ORM
+/arch-brainstorm migrating foo to async
+/arch-brainstorm replacing bar-orm
 ```
 
 Output: `scratch/plans/{topic}_analysis.md`
@@ -39,11 +73,56 @@ Output: `scratch/plans/{topic}_analysis.md`
 Create phased scope document for large refactors.
 
 ```
-/scope auth-service-migration
-/scope checkout-redesign
+/scope foo-service-migration
+/scope bar-redesign
 ```
 
 Output: `scratch/plans/{project}_scope.md`
+
+---
+
+## Swarm Commands
+
+### /swarm (Analysis)
+
+Spawns 3-8 Haiku workers in parallel for deep analysis. Opus validates.
+
+```
+/swarm analyze src/foo/ for migration risks
+/swarm review design.md against requirements.md
+/swarm compare redis vs memcached for sessions
+```
+
+See `/swarm-usage` for full documentation.
+
+### /swarm-exec (Execution)
+
+Parallel implementation with validation. Creates safety branch, never commits.
+
+```
+/swarm-exec scratch/plans/add-foo-api.md
+```
+
+See `/swarm-exec-usage` for full documentation.
+
+---
+
+## Feature Management
+
+| Command | Purpose |
+|---------|---------|
+| `/new-feature {name}` | Create feature folder with templates |
+| `/list-features` | Display feature registry |
+| `/feature-facts {name}` | Quick lookup of feature details |
+| `/complete-feature {name}` | Mark feature complete, update index |
+| `/qa-report {name}` | Generate QA validation report |
+
+```
+/new-feature foo-integration
+/list-features
+/feature-facts foo-integration
+/complete-feature foo-integration
+```
 
 ---
 
@@ -57,10 +136,34 @@ Output: `scratch/plans/{project}_scope.md`
 | `/scratch-archive` | Archive to ~/scratch_archive/ |
 | `/rules` | Re-inject output rules |
 
-## Other
+---
+
+## Code Quality
+
+| Command | Purpose |
+|---------|---------|
+| `/ts-check` | Run TypeScript lint, typecheck, tests |
+| `/py-check` | Run Python formatting and tests |
+| `/no-comments {files}` | Strip superfluous comments |
+
+```
+/ts-check
+/py-check
+/no-comments src/foo.py src/bar.py
+```
+
+---
+
+## Search & Analysis
+
+| Command | Purpose |
+|---------|---------|
+| `/categorize-search {csv}` | Categorize `gl search code` results |
+
+---
+
+## Git & CI
 
 | Command | Purpose |
 |---------|---------|
 | `/create-mr` | Generate GitLab MR description |
-| `/no-comments` | Strip superfluous comments from files |
-| `/c4-diagrams` | Generate C4 architecture diagrams |

@@ -1,33 +1,78 @@
 # Claude Code Skills
 
+## History & Discovery
+
+| Skill | Purpose |
+|-------|---------|
+| `/ws-history` | Show recent workspace sessions |
+| `/ws-history-search {query}` | Search workspace session files |
+| `/session-history` | List JSONL sessions across projects |
+| `/session-search {query}` | Search conversation content globally |
+
 ## Architecture
 
 | Skill | Purpose |
 |-------|---------|
-| `/c4-diagrams` | Generate C4 architecture diagrams (Context, Container levels) in Mermaid |
+| `/arch-discover` | Map existing system before refactoring |
+| `/arch-brainstorm` | Two-phase architecture decision support |
+| `/scope` | Create phased scope documents |
+| `/c4-diagrams` | Generate C4 architecture diagrams in Mermaid |
+
+## Swarm
+
+| Skill | Purpose |
+|-------|---------|
+| `/swarm` | Hierarchical multi-model analysis |
+| `/swarm-usage` | Full swarm documentation |
+| `/swarm-exec` | Parallel execution with validation |
+| `/swarm-exec-usage` | Full swarm-exec documentation |
+
+## Feature Management
+
+| Skill | Purpose |
+|-------|---------|
+| `/new-feature {name}` | Create feature folder with templates |
+| `/list-features` | Display feature registry |
+| `/feature-facts {name}` | Quick lookup of feature details |
+| `/complete-feature {name}` | Mark feature complete |
+| `/qa-report {name}` | Generate QA validation report |
 
 ## Workspace
 
 | Skill | Purpose |
 |-------|---------|
-| `/ws-init` | Bootstrap scratch/ structure in current directory |
+| `/ws-init` | Bootstrap scratch/ structure |
 | `/ws-note {text}` | Add timestamped note to WORKSPACE.md |
-| `/ws-edit` | Open WORKSPACE.md in default editor |
+| `/ws-edit` | Open WORKSPACE.md |
 | `/scratch-archive` | Archive scratch/ to ~/scratch_archive/ |
-| `/rules` | Re-inject workspace and output rules mid-session |
+| `/rules` | Re-inject output rules mid-session |
+
+## Code Quality
+
+| Skill | Purpose |
+|-------|---------|
+| `/ts-check` | TypeScript lint, typecheck, tests |
+| `/py-check` | Python formatting and tests |
+| `/no-comments {files}` | Strip superfluous comments |
 
 ## Search & Analysis
 
 | Skill | Purpose |
 |-------|---------|
-| `/categorize-search [csv]` | Categorize `gl search code` CSV results via parallel haiku workers |
+| `/categorize-search {csv}` | Categorize `gl search code` results |
 
-## Git & Code
+## Git & CI
 
 | Skill | Purpose |
 |-------|---------|
-| `/create-mr` | Generate GitLab MR description from branch commits |
-| `/no-comments {files}` | Strip superfluous comments from specified files |
+| `/create-mr` | Generate GitLab MR description |
+
+## Development
+
+| Skill | Purpose |
+|-------|---------|
+| `/mcp-builder` | Build MCP servers in TypeScript or Python |
+| `/keybindings-help` | Customize keyboard shortcuts |
 
 ## Plugins: commit-commands
 
@@ -41,10 +86,4 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/feature-dev` | Guided feature development with codebase understanding |
-
-## Development
-
-| Skill | Purpose |
-|-------|---------|
-| `/mcp-builder` | Build MCP servers in TypeScript or Python |
+| `/feature-dev` | Guided feature development |

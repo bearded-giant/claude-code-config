@@ -1,6 +1,6 @@
-# Workspace: .claude
+# Workspace: claude-code-config
 Started: 2025-12-24
-Branch: master
+Branch: main
 Status: [ ] In Progress  [ ] Complete
 
 ## Purpose

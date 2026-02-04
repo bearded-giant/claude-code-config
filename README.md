@@ -33,6 +33,15 @@ stow claude-code
 
 ## Key Commands
 
+### History & Discovery
+
+| Command | Purpose |
+|---------|---------|
+| `/ws-history` | Show recent workspace sessions |
+| `/ws-history-search` | Search workspace session files |
+| `/session-history` | List JSONL sessions across projects |
+| `/session-search` | Search conversation content globally |
+
 ### Analysis (Read-Only)
 
 | Command | Purpose |
