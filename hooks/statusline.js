@@ -38,12 +38,15 @@ process.stdin.on('end', () => {
     // Context window display (shows % until compaction)
     let ctx = '';
     if (remaining != null) {
-      const compactThreshold = 78; // compaction triggers around 78% usage
-      const used = 100 - Math.round(remaining);
-      const untilCompact = Math.max(0, compactThreshold - used);
+      // compaction fires around 5% remaining
+      const compactAt = 5;
+      const pct = Math.round(remaining);
+      const untilCompact = Math.max(0, pct - compactAt);
 
-      // Bar shows usage toward threshold (full bar = at threshold)
-      const filled = Math.min(10, Math.round((used / compactThreshold) * 10));
+      // bar fills from empty (fresh) to full (compaction imminent)
+      const used = 100 - pct;
+      const usable = 100 - compactAt;
+      const filled = Math.min(10, Math.round((used / usable) * 10));
       const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
 
       // Color based on room until compact
