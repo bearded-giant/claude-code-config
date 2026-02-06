@@ -38,8 +38,8 @@ process.stdin.on('end', () => {
     // Context window display (shows % until compaction)
     let ctx = '';
     if (remaining != null) {
-      // compaction fires around 5% remaining
-      const compactAt = 5;
+      // compaction fires around 15% remaining
+      const compactAt = 15;
       const pct = Math.round(remaining);
       const untilCompact = Math.max(0, pct - compactAt);
 
