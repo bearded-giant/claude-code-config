@@ -1,5 +1,10 @@
 # Claude Global Configuration
 
+## General Guidelines
+
+- Prioritize action over exploration. When the user asks for a specific output (curl commands, scripts, code changes), produce the output first, then explore the codebase only if needed to refine. Don't spend time reading files before attempting a direct answer.
+- When the user references specific code or asks about codebase behavior, investigate first (see below). But when the ask is "generate X", generate it.
+
 ## CRITICAL: Document Output Rules
 
 **When asked to create documentation, analysis, plans, or research - ALWAYS write to `scratch/` subdirectories. NEVER output long-form content only in chat.**
@@ -60,6 +65,11 @@ When user says "create a plan" or similar, ALWAYS ask:
 Do not assume. User may forget which context they're in.
 </feature_management>
 
+## Feature Workflow
+
+- When working on feature scaffolding, always check for existing feature folder conventions in the project before creating new ones. Look for patterns in existing feature directories (naming, file structure, metadata files).
+- Not all projects use features. When a project has `scratch/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
+
 <investigate_before_answering>
 Never speculate about code you have not opened. If the user references a specific file, read it before answering. Investigate relevant files BEFORE answering questions about the codebase. Do not propose edits to files you haven't read.
 </investigate_before_answering>
@@ -84,7 +94,8 @@ This system uses GNU stow for dotfiles management.
 ## Communication Style
 
 - No emojis in any code, scripts, or documentation
-- Keep responses direct and technical
+- Chat responses: direct and technical
+- Documentation and written content: casual, informal tone. Write like a senior dev explaining to a colleague, not like formal technical writing. Avoid stiff phrasing, corporate language, or overly structured prose.
 
 ## Code Comment Rules
 
@@ -97,6 +108,17 @@ When writing or editing code (excluding tests):
 - Never add docstrings unless explicitly requested
 - Tests are exempt - comments are fine there
   </code_comment_rules>
+
+## Languages & Conventions
+
+- Primary languages: Python for scripts/tools, Shell/Bash for automation, Markdown for documentation
+- When creating new files, default to Python unless the user specifies otherwise
+- Always use existing project style conventions
+
+## Scripting Conventions
+
+- When implementing CLI flags or command modifications, check the existing argument parsing pattern in the script (argparse, getopts, etc.) and follow it exactly
+- Show a usage example after implementing
 
 ## API URL Conventions
 
