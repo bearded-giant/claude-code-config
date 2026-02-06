@@ -70,6 +70,17 @@ Do not assume. User may forget which context they're in.
 - When working on feature scaffolding, always check for existing feature folder conventions in the project before creating new ones. Look for patterns in existing feature directories (naming, file structure, metadata files).
 - Not all projects use features. When a project has `scratch/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
 
+<doc_sync>
+When making changes that affect user-facing behavior (new commands, changed invocations, renamed flags, new options, modified workflows), check the workspace for docs that need updating:
+
+- README, quickstart guides, cheat sheets, usage docs
+- Look in repo root and `docs/` or `scratch/` for `.md` files with usage examples or command references
+- Update invocations, flag names, examples, and any other details that changed
+- Do this as part of the same edit session - don't wait to be asked
+- If a doc references something you just renamed/removed/added, fix it inline
+- Keep the doc's existing tone and format - just patch the relevant lines
+</doc_sync>
+
 <investigate_before_answering>
 Never speculate about code you have not opened. If the user references a specific file, read it before answering. Investigate relevant files BEFORE answering questions about the codebase. Do not propose edits to files you haven't read.
 </investigate_before_answering>
