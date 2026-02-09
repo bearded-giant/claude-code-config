@@ -106,7 +106,8 @@ This system uses GNU stow for dotfiles management.
 
 - No emojis in any code, scripts, or documentation
 - Chat responses: direct and technical
-- Documentation and written content: casual, informal tone. Write like a senior dev explaining to a colleague, not like formal technical writing. Avoid stiff phrasing, corporate language, or overly structured prose.
+- Documentation and written content: casual, informal tone by default. Write like a senior dev explaining to a colleague, not like formal technical writing. Avoid stiff phrasing, corporate language, or overly structured prose. Only use formal tone when the user explicitly asks for it.
+- No bullet points in docs. Use numbered lists, prose, tables, or other structures instead. Bullet lists make docs look like slide decks.
 
 ## Code Comment Rules
 
