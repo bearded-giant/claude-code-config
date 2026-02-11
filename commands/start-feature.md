@@ -1,6 +1,6 @@
 ---
 description: "Start a pending feature: promote to in_progress, expand spec, set as active work"
-argument-hint: "[feature-name] (optional, lists pending features if omitted)"
+argument-hint: "[feature-name] [base-branch]"
 ---
 
 # Start Feature
@@ -10,6 +10,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 ## Arguments
 
 - feature: (optional) Feature name in kebab-case. If not provided, list all pending features and ask which to start.
+- base_branch: (optional) Base branch to create the feature branch from (e.g., `stage`, `main`, `master`). If not provided, prompt the user.
 
 ## Steps
 
@@ -37,7 +38,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
    **If no branch is set (typical for pending stubs):**
    - Ask the user for a branch name (feature name and branch name are intentionally decoupled)
-   - Ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
+   - If `base_branch` was provided as an argument, use it. Otherwise, ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
    - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
 
    **If a branch is already set:**

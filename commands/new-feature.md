@@ -4,6 +4,7 @@ Create a new feature folder with templates.
 
 - name: Feature name in kebab-case (e.g., "jwt-session-enforcement")
 - builds_on: (optional) Parent feature this depends on
+- base_branch: (optional) Base branch to create the feature branch from (e.g., `stage`, `main`, `master`). If not provided, prompt the user. Ignored for pending features.
 - pending: (optional) If "pending" is passed as an argument or the user says "stub", "pending", or "backlog", create the feature with `status: pending` instead of `in_progress`. Use a lighter spec template (see step 3b). Skip branch creation for pending features.
 
 ## Steps
@@ -72,7 +73,7 @@ created: {today's date}
    Branch creation only applies when status is `in_progress`. Pending features defer branch creation to `/start-feature`.
 
    - Ask the user for a branch name (feature name != branch name on purpose)
-   - Ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
+   - If `base_branch` was provided as an argument, use it. Otherwise, ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
    - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
    - If the user says they already have a branch or want to skip, just record the branch name (or leave it empty) and move on
 
