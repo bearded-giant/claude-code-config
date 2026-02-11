@@ -80,7 +80,7 @@ The branch name is stored in `meta.json` and `facts.md` so commands can check it
 
 | Command | Git behavior |
 |---------|-------------|
-| `/new-feature` (in_progress) | Creates branch. Prompts for name + base. Auto-detects `stage`/`main`/`master`. |
+| `/new-feature` (in_progress) | Creates branch. Prompts for name + base branch. |
 | `/new-feature` (pending) | No git. Branch deferred to `/start-feature`. |
 | `/start-feature` | Creates branch if none set. Checks out if already exists. |
 | `/reopen-feature` | Checks out recorded branch. Asks if branch was deleted. |

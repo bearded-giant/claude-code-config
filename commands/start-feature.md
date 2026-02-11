@@ -37,7 +37,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
    **If no branch is set (typical for pending stubs):**
    - Ask the user for a branch name (feature name and branch name are intentionally decoupled)
-   - Auto-detect the base branch: check which of `stage`, `main`, `master` exists as a remote branch (`git branch -r`). Suggest the first match, let user override.
+   - Ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
    - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
 
    **If a branch is already set:**

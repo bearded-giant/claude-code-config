@@ -41,7 +41,8 @@ Reopen a previously completed or paused feature for additional work.
    - If it doesn't exist anywhere (e.g., branch was deleted after merge): ask the user whether to create a new branch or skip
 
    **If no branch is recorded:**
-   - Ask the user if they want to create a branch now (same flow as `/start-feature` branch creation)
+   - Ask the user if they want to create a branch now
+   - If yes: ask for branch name and base branch (do NOT auto-detect with `git branch -r` — too slow on large repos)
    - Or skip if they prefer to handle git manually
 
 4. **Update spec.md**

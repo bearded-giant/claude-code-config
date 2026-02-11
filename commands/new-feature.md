@@ -72,7 +72,7 @@ created: {today's date}
    Branch creation only applies when status is `in_progress`. Pending features defer branch creation to `/start-feature`.
 
    - Ask the user for a branch name (feature name != branch name on purpose)
-   - Auto-detect the base branch: check which of `stage`, `main`, `master` exists as a remote branch (`git branch -r`). Suggest the first match, let user override.
+   - Ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
    - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
    - If the user says they already have a branch or want to skip, just record the branch name (or leave it empty) and move on
 
