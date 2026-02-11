@@ -11,7 +11,7 @@ if [ ! -d "$features_dir" ]; then
   exit 1
 fi
 
-# collect feature data: date, status, name
+# collect feature data: date, status, branch, name
 data=""
 for dir in "$features_dir"/*/; do
   [ -d "$dir" ] || continue
@@ -19,6 +19,8 @@ for dir in "$features_dir"/*/; do
   [ "$name" = "_index.md" ] && continue
 
   spec="$dir/spec.md"
+  meta="$dir/meta.json"
+
   if [ -f "$spec" ]; then
     status=$(grep -m1 '^status:' "$spec" | awk '{print $2}' || echo "unknown")
     modified=$(stat -f '%Sm' -t '%Y-%m-%d' "$spec" 2>/dev/null || stat -c '%Y' "$spec" 2>/dev/null | head -c10 || echo "unknown")
@@ -27,7 +29,17 @@ for dir in "$features_dir"/*/; do
     modified="n/a"
   fi
 
-  data+="${modified}\t${status}\t${name}\n"
+  # read branch from meta.json first, fall back to facts.md
+  branch=""
+  if [ -f "$meta" ]; then
+    branch=$(grep -o '"branch"[[:space:]]*:[[:space:]]*"[^"]*"' "$meta" 2>/dev/null | head -1 | sed 's/.*"branch"[[:space:]]*:[[:space:]]*"//;s/"//' || true)
+  fi
+  if [ -z "$branch" ] && [ -f "$dir/facts.md" ]; then
+    branch=$(grep -m1 '^branch:' "$dir/facts.md" 2>/dev/null | awk '{print $2}' || true)
+  fi
+  [ -z "$branch" ] && branch="-"
+
+  data+="${modified}\t${status}\t${branch}\t${name}\n"
 done
 
 if [ -z "$data" ]; then
@@ -39,23 +51,27 @@ fi
 sorted=$(echo -e "$data" | sort -rn)
 
 # calculate column widths
-max_name=7 max_status=6
-while IFS=$'\t' read -r _ status name; do
+max_name=7 max_status=6 max_branch=6
+while IFS=$'\t' read -r _ status branch name; do
   (( ${#name} > max_name )) && max_name=${#name}
   (( ${#status} > max_status )) && max_status=${#status}
+  (( ${#branch} > max_branch )) && max_branch=${#branch}
 done <<< "$sorted"
 
 nw=$((max_name + 2))
 sw=$((max_status + 2))
+bw=$((max_branch + 2))
 dw=15
 
 # box drawing
 h_line() {
-  local c="$1" l="$2" m="$3" r="$4"
+  local c="$1" m="$2" r="$3"
   printf "%s" "$c"
   printf '%*s' "$nw" '' | tr ' ' '-'
   printf "%s" "$m"
   printf '%*s' "$sw" '' | tr ' ' '-'
+  printf "%s" "$m"
+  printf '%*s' "$bw" '' | tr ' ' '-'
   printf "%s" "$m"
   printf '%*s' "$dw" '' | tr ' ' '-'
   printf "%s\n" "$r"
@@ -63,11 +79,11 @@ h_line() {
 
 pad() { printf " %-*s" "$(($2 - 1))" "$1"; }
 
-h_line '+' "$nw" '+' '+'
-printf "|"; pad "Feature" "$nw"; printf "|"; pad "Status" "$sw"; printf "|"; pad "Last Modified" "$dw"; printf "|\n"
-h_line '+' "$nw" '+' '+'
+h_line '+' '+' '+'
+printf "|"; pad "Feature" "$nw"; printf "|"; pad "Status" "$sw"; printf "|"; pad "Branch" "$bw"; printf "|"; pad "Last Modified" "$dw"; printf "|\n"
+h_line '+' '+' '+'
 
-while IFS=$'\t' read -r date status name; do
-  printf "|"; pad "$name" "$nw"; printf "|"; pad "$status" "$sw"; printf "|"; pad "$date" "$dw"; printf "|\n"
-  h_line '+' "$nw" '+' '+'
+while IFS=$'\t' read -r date status branch name; do
+  printf "|"; pad "$name" "$nw"; printf "|"; pad "$status" "$sw"; printf "|"; pad "$branch" "$bw"; printf "|"; pad "$date" "$dw"; printf "|\n"
+  h_line '+' '+' '+'
 done <<< "$sorted"
