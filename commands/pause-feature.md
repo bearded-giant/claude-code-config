@@ -40,11 +40,20 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
      - Next steps to pick up (infer from plans/current.md)
      - Any blockers or open questions
 
-4. **Update feature index**
+4. **Update facts.md**
+
+   - Ensure all current values are accurate (beta flags, config keys, endpoints, key files, test commands)
+   - Remove any placeholder or template text that was never filled in
+   - Add a `## Paused State` section at the bottom with:
+     - Last known working state (e.g., "endpoints wired but untested", "model done, API in progress")
+     - Any partial work not yet captured elsewhere (draft config values, WIP file paths)
+   - This section gets removed on `/reopen-feature`
+
+5. **Update feature index**
 
    In `scratch/features/_index.md`, change the feature's status from `in_progress` to `paused`.
 
-5. **Update meta.json** (if it exists)
+6. **Update meta.json** (if it exists)
 
    ```json
    {
@@ -53,18 +62,19 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
    }
    ```
 
-6. **Update plans/current.md**
+7. **Update plans/current.md**
 
    - Clear active steps for this feature
    - Leave a one-liner: `Paused: {feature} - see features/{feature}/spec.md for resumption notes`
 
-7. **Report**
+8. **Report**
 
    ```
    Feature '{feature}' paused.
 
    Updated:
      - spec.md (status -> paused, added resumption notes)
+     - facts.md (snapshot current state, added paused state)
      - _index.md (status -> paused)
      - plans/current.md (cleared active steps)
 
