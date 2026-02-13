@@ -1,11 +1,16 @@
-Create a new feature folder with templates.
+---
+description: "Create a new feature folder with templates. Defaults to pending (stub). Use 'start' to begin immediately."
+argument-hint: "<name> [builds_on] [start] [base-branch]"
+---
+
+Create a new feature folder with templates. Defaults to `pending` status (stub). Use `/start-feature` to promote later.
 
 ## Arguments
 
 - name: Feature name in kebab-case (e.g., "jwt-session-enforcement")
 - builds_on: (optional) Parent feature this depends on
-- base_branch: (optional) Base branch to create the feature branch from (e.g., `stage`, `main`, `master`). If not provided, prompt the user. Ignored for pending features.
-- pending: (optional) If "pending" is passed as an argument or the user says "stub", "pending", or "backlog", create the feature with `status: pending` instead of `in_progress`. Use a lighter spec template (see step 3b). Skip branch creation for pending features.
+- start: (optional) If "start", "active", or "in_progress" is passed as an argument or the user explicitly says they want to start working on it now, create the feature with `status: in_progress` instead of `pending`. Use the full spec template (see step 3a). Create the branch.
+- base_branch: (optional) Base branch to create the feature branch from (e.g., `stage`, `main`, `master`). If not provided, prompt the user. Only used for in_progress features.
 
 ## Steps
 
@@ -13,7 +18,7 @@ Create a new feature folder with templates.
 2. Create scratch/features/{name}/ directory
 3. Create spec.md based on status:
 
-**3a. If status is `in_progress` (default):**
+**3a. If status is `in_progress`:**
 
 ```markdown
 # Feature: {name (title case)}
@@ -44,7 +49,7 @@ created: {today's date}
 <!-- list key files created/modified -->
 ```
 
-**3b. If status is `pending`:**
+**3b. If status is `pending` (default):**
 
 Use a minimal template. The user is stubbing this out for later, not starting work now. Fill in the Purpose section with whatever discovery or context the user provides (don't leave it as a placeholder if they gave you a reason).
 
@@ -127,9 +132,9 @@ new:
 ```
 
 7. Update scratch/features/_index.md:
-   - Add new row to the appropriate table (Active Features for `in_progress`, or a new Pending/Backlog section for `pending`)
+   - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
    - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} |`
 
 8. Display the created structure and remind user to fill in the templates.
-   - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
+   - If `pending` (default): note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
