@@ -560,6 +560,149 @@ def save_plans(scratch_dir: Path, plans: List[str]) -> bool:
         return False
 
 
+TIMELINE_LIMIT = 50
+# TIMELINE_LIMIT = None  # uncomment for no limit
+
+
+def build_features_table(scratch_dir: Path) -> str:
+    """Build markdown features table from meta.json files."""
+    features_dir = scratch_dir / "features"
+    if not features_dir.exists():
+        return ""
+
+    rows = []
+    for meta_file in sorted(features_dir.glob("*/meta.json")):
+        try:
+            data = json.loads(meta_file.read_text())
+            name = data.get("name", meta_file.parent.name)
+            status = data.get("status", "unknown")
+            branch = data.get("branch", "-") or "-"
+            rows.append((name, status, branch))
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    if not rows:
+        return ""
+
+    lines = [
+        "| Feature | Status | Branch |",
+        "|---------|--------|--------|",
+    ]
+    for name, status, branch in rows:
+        lines.append(f"| {name} | {status} | {branch} |")
+
+    return '\n'.join(lines)
+
+
+def build_timeline(scratch_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -> str:
+    """Build timeline of md file changes, excluding session files and WORKSPACE.md."""
+    exclude_dirs = {'history'}
+    exclude_files = {'WORKSPACE.md', '_index.md'}
+
+    entries = []
+    for md_file in scratch_dir.rglob("*.md"):
+        rel = md_file.relative_to(scratch_dir)
+        # skip excluded dirs and files
+        if rel.parts[0] in exclude_dirs:
+            continue
+        if rel.name in exclude_files:
+            continue
+
+        try:
+            stat = md_file.stat()
+            mtime = datetime.fromtimestamp(stat.st_mtime)
+            entries.append((mtime, str(rel)))
+        except OSError:
+            continue
+
+    if not entries:
+        return ""
+
+    entries.sort(key=lambda x: x[0], reverse=True)
+    if limit:
+        entries = entries[:limit]
+
+    lines = [
+        "| Modified | File |",
+        "|----------|------|",
+    ]
+    for mtime, rel_path in entries:
+        date_str = mtime.strftime('%Y-%m-%d %H:%M')
+        lines.append(f"| {date_str} | {rel_path} |")
+
+    return '\n'.join(lines)
+
+
+def update_workspace_md(scratch_dir: Path):
+    """Regenerate Features and Timeline sections in WORKSPACE.md."""
+    workspace_file = scratch_dir / "WORKSPACE.md"
+    if not workspace_file.exists():
+        return
+
+    content = workspace_file.read_text()
+
+    features_table = build_features_table(scratch_dir)
+    timeline = build_timeline(scratch_dir)
+
+    # parse into sections: list of (heading, body) tuples
+    # header block (before first ##) is stored with heading=""
+    sections = []
+    current_heading = ""
+    current_lines = []
+
+    for line in content.split('\n'):
+        if line.startswith('## '):
+            sections.append((current_heading, '\n'.join(current_lines)))
+            current_heading = line
+            current_lines = []
+        else:
+            current_lines.append(line)
+    sections.append((current_heading, '\n'.join(current_lines)))
+
+    # rebuild: replace Features/Timeline, preserve everything else
+    has_features = any(h == '## Features' for h, _ in sections)
+    has_timeline = any(h == '## Timeline' for h, _ in sections)
+
+    new_sections = []
+    for heading, body in sections:
+        if heading == '## Features':
+            new_sections.append(('## Features', '\n' + features_table + '\n' if features_table else '\nNo features tracked.\n'))
+        elif heading == '## Timeline':
+            new_sections.append(('## Timeline', '\n' + timeline + '\n' if timeline else '\nNo files tracked yet.\n'))
+        else:
+            new_sections.append((heading, body))
+
+    # insert Features and Timeline if they didn't exist
+    # insert after Purpose section, or after header if no Purpose
+    if not has_features or not has_timeline:
+        insert_idx = 1  # after header block
+        for i, (heading, _) in enumerate(new_sections):
+            if heading == '## Purpose':
+                insert_idx = i + 1
+                break
+
+        if not has_timeline:
+            timeline_body = '\n' + timeline + '\n' if timeline else '\nNo files tracked yet.\n'
+            new_sections.insert(insert_idx, ('## Timeline', timeline_body))
+        if not has_features:
+            features_body = '\n' + features_table + '\n' if features_table else '\nNo features tracked.\n'
+            new_sections.insert(insert_idx, ('## Features', features_body))
+
+    # reassemble
+    result_lines = []
+    for heading, body in new_sections:
+        if heading:
+            result_lines.append(heading)
+        result_lines.append(body)
+
+    new_content = '\n'.join(result_lines)
+    # clean up excessive blank lines
+    while '\n\n\n' in new_content:
+        new_content = new_content.replace('\n\n\n', '\n\n')
+
+    workspace_file.write_text(new_content)
+
+
 def workspace_init(cwd: Path) -> Path:
     """
     Initialize workspace structure if scratch/ doesn't exist.
@@ -603,10 +746,13 @@ Branch: {branch}
 Status: [ ] In Progress  [ ] Complete
 
 ## Purpose
-<!-- auto-initialized by session end hook -->
+<!-- describe what this branch/project is for -->
 
-## Discoveries
-<!-- learnings about the codebase relevant to this work -->
+## Features
+No features tracked.
+
+## Timeline
+No files tracked yet.
 
 ## Notes
 <!-- session notes, decisions, context -->
@@ -691,6 +837,9 @@ def main():
         # persist discoveries and plans (existing behavior)
         discoveries_count = append_discoveries(scratch_dir, discoveries)
         has_plans = save_plans(scratch_dir, plans)
+
+        # regenerate features table and timeline in WORKSPACE.md
+        update_workspace_md(scratch_dir)
 
         # output summary
         parts = []

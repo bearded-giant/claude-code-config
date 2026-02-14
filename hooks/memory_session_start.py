@@ -22,6 +22,7 @@ NOTE: Uses only Python standard library (no external dependencies)
 import sys
 import json
 import os
+import subprocess
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
@@ -48,13 +49,26 @@ def http_post(url: str, data: dict, timeout: int = 5) -> dict:
         return {}
 
 
-def get_project_id(cwd: str) -> str:
-    """
-    Determine project ID from working directory.
-    Looks for .memory-project.json in cwd or parents.
-    """
+def _derive_project_id(path: Path) -> str:
+    # prefer git remote name, fall back to directory name
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=str(path), capture_output=True, text=True, timeout=3
+        )
+        if result.returncode == 0:
+            url = result.stdout.strip().rstrip("/")
+            # extract "org/repo" or just "repo" from url
+            name = url.split(":")[-1].split("/")[-1]
+            return name.removesuffix(".git")
+    except Exception:
+        pass
+    return path.name or DEFAULT_PROJECT_ID
+
+
+def get_project_id(cwd: str, bootstrap: bool = False) -> str:
     path = Path(cwd)
-    
+
     for parent in [path] + list(path.parents):
         config_file = parent / ".memory-project.json"
         if config_file.exists():
@@ -62,10 +76,20 @@ def get_project_id(cwd: str) -> str:
                 with open(config_file) as f:
                     config = json.load(f)
                     return config.get("project_id", DEFAULT_PROJECT_ID)
-            except:
+            except Exception:
                 pass
-    
-    return path.name or DEFAULT_PROJECT_ID
+
+    # no config found — bootstrap one at the project root
+    if not bootstrap:
+        return _derive_project_id(path)
+
+    project_id = _derive_project_id(path)
+    config_path = path / ".memory-project.json"
+    try:
+        config_path.write_text(json.dumps({"project_id": project_id}, indent=2) + "\n")
+    except OSError:
+        pass
+    return project_id
 
 
 def get_session_primer(session_id: str, project_id: str) -> str:
@@ -118,11 +142,11 @@ def main():
         input_data = json.load(sys.stdin)
         
         session_id = input_data.get("session_id", "unknown")
-        cwd = input_data.get("cwd", os.getcwd())
+        # Use CLAUDE_PROJECT_DIR for actual project root (cwd from stdin is bash's current dir)
+        cwd = os.getenv("CLAUDE_PROJECT_DIR") or input_data.get("cwd", os.getcwd())
         source = input_data.get("source", "startup")
         
-        # Get project ID
-        project_id = get_project_id(cwd)
+        project_id = get_project_id(cwd, bootstrap=True)
         
         # Get session primer from memory system
         primer = get_session_primer(session_id, project_id)

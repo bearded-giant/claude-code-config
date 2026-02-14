@@ -55,10 +55,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/workspace_session_hook.py"
-          },
-          {
-            "type": "command",
             "command": "python3 ~/.claude/hooks/memory_session_start.py"
           }
         ]
@@ -69,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_curate_transcript.py"
+            "command": "python3 ~/.claude/hooks/memory_curate.py"
           }
         ]
       }
@@ -77,10 +73,6 @@
     "SessionEnd": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/workspace_session_end.py"
-          },
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/memory_curate.py"
@@ -112,8 +104,8 @@
   },
   "spinnerTipsEnabled": false,
   "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
-  },
-  "skipDangerousModePermissionPrompt": true
+  }
 }
