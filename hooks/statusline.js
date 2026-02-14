@@ -35,29 +35,42 @@ process.stdin.on('end', () => {
     const branch = getGitBranch(dir);
     const remaining = data.context_window?.remaining_percentage;
 
+    // detect recent compaction via signal file from PreCompact hook
+    let recentCompact = false;
+    try {
+      const ts = fs.readFileSync('/tmp/claude-compact-ts', 'utf8').trim();
+      const elapsed = Math.floor(Date.now() / 1000) - parseInt(ts, 10);
+      if (elapsed >= 0 && elapsed < 30) recentCompact = true;
+    } catch (e) {}
+
     // Context window display (shows % until compaction)
     let ctx = '';
     if (remaining != null) {
-      // compaction fires around 15% remaining
       const compactAt = 15;
       const pct = Math.round(remaining);
       const untilCompact = Math.max(0, pct - compactAt);
 
-      // bar fills from empty (fresh) to full (compaction imminent)
-      const used = 100 - pct;
-      const usable = 100 - compactAt;
-      const filled = Math.min(10, Math.round((used / usable) * 10));
-      const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
-
-      // Color based on room until compact
-      if (untilCompact > 50) {
-        ctx = ` \x1b[32m${bar} ${untilCompact}%\x1b[0m`;
-      } else if (untilCompact > 35) {
-        ctx = ` \x1b[33m${bar} ${untilCompact}%\x1b[0m`;
-      } else if (untilCompact > 20) {
-        ctx = ` \x1b[38;5;208m${bar} ${untilCompact}%\x1b[0m`;
+      // if compaction just happened and data looks stale, show reset state
+      if (recentCompact && untilCompact < 25) {
+        const bar = '░'.repeat(10);
+        ctx = ` \x1b[32m${bar} compacted\x1b[0m`;
       } else {
-        ctx = ` \x1b[5;31m${bar} ${untilCompact}%\x1b[0m`;
+        // bar fills from empty (fresh) to full (compaction imminent)
+        const used = 100 - pct;
+        const usable = 100 - compactAt;
+        const filled = Math.min(10, Math.round((used / usable) * 10));
+        const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+
+        // Color based on room until compact
+        if (untilCompact > 50) {
+          ctx = ` \x1b[32m${bar} ${untilCompact}%\x1b[0m`;
+        } else if (untilCompact > 35) {
+          ctx = ` \x1b[33m${bar} ${untilCompact}%\x1b[0m`;
+        } else if (untilCompact > 20) {
+          ctx = ` \x1b[38;5;208m${bar} ${untilCompact}%\x1b[0m`;
+        } else {
+          ctx = ` \x1b[5;31m${bar} ${untilCompact}%\x1b[0m`;
+        }
       }
     }
 

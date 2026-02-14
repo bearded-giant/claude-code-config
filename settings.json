@@ -66,6 +66,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/memory_curate.py"
+          },
+          {
+            "type": "command",
+            "command": "date +%s > /tmp/claude-compact-ts"
           }
         ]
       }
