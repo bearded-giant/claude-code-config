@@ -21,7 +21,7 @@ Your context window will be automatically compacted as it approaches its limit, 
 When starting a session or recovering from context refresh:
 
 1. Read `scratch/WORKSPACE.md` for project context
-2. Check `scratch/features/_index.md` for feature registry
+2. Check `scratch/features/features.json` for feature cache (or `_index.md` as fallback)
 3. Check `scratch/plans/current.md` for active session work
 4. Review recent git log for changes
 5. Verify current state before making changes
@@ -30,15 +30,16 @@ When starting a session or recovering from context refresh:
 <feature_management>
 Features are organized in `scratch/features/` with semantic folder names.
 
-**CRITICAL: Maintain the feature index**
-- When creating a feature via `/new-feature`, update `scratch/features/_index.md`
-- When completing a feature, update its status in the index table
+**CRITICAL: Maintain the feature cache and index**
+- Every feature command (new, start, pause, complete, reopen) MUST update `scratch/features/features.json`
+- Also update `scratch/features/_index.md` for human-readable registry
 - When adding beta flags or key config, add to the Quick Reference section
 
 **Feature folder structure:**
 ```
 features/
-├── _index.md              # Claude-maintained registry
+├── features.json          # feature cache (all commands read/write this)
+├── _index.md              # Claude-maintained registry (human-readable)
 ├── {feature-name}/
 │   ├── spec.md            # what + why + acceptance criteria
 │   ├── facts.md           # beta flags, config, test commands
@@ -52,7 +53,7 @@ features/
 
 **Commands:**
 - `/list-features` - display feature registry
-- `/new-feature <name>` - scaffold feature folder
+- `/new-feature <name>` - scaffold feature folder (auto-detects pending vs in_progress)
 - `/feature-facts <name>` - quick lookup
 - `/qa-report [feature]` - generate validation report
 
@@ -301,7 +302,7 @@ docker compose run --rm test pytest -s --disable-warnings tests/services/auth_se
 
 ### On Session Start
 
-If `scratch/WORKSPACE.md` exists, read it for branch/project context. Check `scratch/features/_index.md` for feature registry and `scratch/context/patterns.md` for architectural learnings.
+If `scratch/WORKSPACE.md` exists, read it for branch/project context. Check `scratch/features/features.json` for feature cache (or `_index.md` as fallback) and `scratch/context/patterns.md` for architectural learnings.
 
 ### On Workspace Init (/ws-init)
 

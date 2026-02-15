@@ -1,15 +1,19 @@
-List all features in the current workspace with last modified dates.
+List all features in the current workspace from the features cache.
 
 ## Steps
 
-1. Check if scratch/features/_index.md exists. If not, inform user to run /ws-init first.
-2. Read scratch/features/_index.md to get feature names and statuses.
-3. For each feature directory in scratch/features/ (excluding _index.md), run `stat -f '%Sm' -t '%Y-%m-%d' scratch/features/{name}/spec.md` (macOS) to get last modified date. Use the most recently modified file in the feature folder as the date.
-4. Display a table with these columns:
+1. Check if `scratch/features/features.json` exists.
+   - If not, check if `scratch/features/` exists. If the directory has feature subdirectories but no `features.json`, build the cache by scanning feature directories (read each `meta.json` or `spec.md` for status, branch, dates) and write `features.json`. Then proceed.
+   - If `scratch/features/` doesn't exist, inform user to run `/ws-init` first.
+
+2. Read `scratch/features/features.json` and parse it.
+
+3. Display a table with these columns, sorted by last_session descending (most recent first):
 
 ```
-| Feature | Status | Last Modified |
+| Feature | Status | Branch | Last Modified |
 ```
 
-5. Sort by last modified descending (most recent first).
-6. If user asks about a specific feature, read its spec.md and facts.md from scratch/features/{name}/
+4. If the cache is empty, display "no features found".
+
+5. If user asks about a specific feature, read its `spec.md` and `facts.md` from `scratch/features/{name}/`.

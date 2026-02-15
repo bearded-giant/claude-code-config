@@ -16,7 +16,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
 1. **Find pending features**
 
-   Read `scratch/features/_index.md` and identify all features with status `pending`.
+   Read `scratch/features/features.json` and identify all features with status `pending`.
 
    - If no argument provided and multiple pending features exist: list them and ask the user which one to start
    - If no argument provided and exactly one pending feature exists: confirm with the user, then proceed
@@ -96,11 +96,26 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    }
    ```
 
-8. **Update plans/current.md**
+8. **Update features.json cache**
+
+   Read `scratch/features/features.json`, update the feature entry:
+
+   ```json
+   {
+     "status": "in_progress",
+     "branch": "{branch_name}",
+     "base_branch": "{base_branch}",
+     "last_session": "{today's date}"
+   }
+   ```
+
+   Write the updated JSON back to `scratch/features/features.json`.
+
+9. **Update plans/current.md**
 
    Set this feature as the active work. Include any context from the `## Discovery Context` section in the spec so the session has immediate context.
 
-9. **Report**
+10. **Report**
 
    ```
    Feature '{feature}' started.
@@ -111,6 +126,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
      - spec.md (status -> in_progress, expanded template)
      - facts.md (branch recorded)
      - _index.md (status -> in_progress)
+     - features.json (cache updated)
      - plans/current.md (set as active)
 
    Discovery context:

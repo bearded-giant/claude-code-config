@@ -57,12 +57,25 @@ Mark a feature as complete by updating all workspace tracking files.
    }
    ```
 
-7. **Update plans/current.md**
+7. **Update features.json cache**
+
+   Read `scratch/features/features.json`, update the feature entry:
+
+   ```json
+   {
+     "status": "complete",
+     "last_session": "{today's date}"
+   }
+   ```
+
+   Write the updated JSON back to `scratch/features/features.json`.
+
+8. **Update plans/current.md**
 
    - Move the feature to a `## Completed` section
    - Clear any steps related to this feature from active work
 
-8. **Report**
+9. **Report**
 
    ```
    Feature '{feature}' marked complete.
@@ -71,6 +84,7 @@ Mark a feature as complete by updating all workspace tracking files.
      - spec.md (status, acceptance criteria, completed date)
      - facts.md (commands, files, benchmarks)
      - _index.md (status -> complete)
+     - features.json (cache updated)
      - plans/current.md (moved to completed)
 
    Unchecked criteria: {count or "none"}

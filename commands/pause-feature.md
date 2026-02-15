@@ -62,12 +62,25 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
    }
    ```
 
-7. **Update plans/current.md**
+7. **Update features.json cache**
+
+   Read `scratch/features/features.json`, update the feature entry:
+
+   ```json
+   {
+     "status": "paused",
+     "last_session": "{today's date}"
+   }
+   ```
+
+   Write the updated JSON back to `scratch/features/features.json`.
+
+8. **Update plans/current.md**
 
    - Clear active steps for this feature
    - Leave a one-liner: `Paused: {feature} - see features/{feature}/spec.md for resumption notes`
 
-8. **Report**
+9. **Report**
 
    ```
    Feature '{feature}' paused.
@@ -76,6 +89,7 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
      - spec.md (status -> paused, added resumption notes)
      - facts.md (snapshot current state, added paused state)
      - _index.md (status -> paused)
+     - features.json (cache updated)
      - plans/current.md (cleared active steps)
 
    Resume with: /reopen-feature {feature}

@@ -71,12 +71,26 @@ Reopen a previously completed or paused feature for additional work.
    }
    ```
 
-7. **Update plans/current.md**
+7. **Update features.json cache**
+
+   Read `scratch/features/features.json`, update the feature entry:
+
+   ```json
+   {
+     "status": "in_progress",
+     "branch": "{branch_name}",
+     "last_session": "{today's date}"
+   }
+   ```
+
+   Write the updated JSON back to `scratch/features/features.json`.
+
+8. **Update plans/current.md**
 
    - Set this feature as the active work
    - If a `## Completed` section lists this feature, move it back to active
 
-8. **Report**
+9. **Report**
 
    ```
    Feature '{feature}' reopened.
@@ -86,6 +100,7 @@ Reopen a previously completed or paused feature for additional work.
    Updated:
      - spec.md (status -> in_progress, removed completed date)
      - _index.md (status -> in_progress)
+     - features.json (cache updated)
      - plans/current.md (set as active)
 
    Review acceptance criteria and update as needed.
