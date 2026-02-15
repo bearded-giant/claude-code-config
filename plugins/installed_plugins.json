@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "plugins": {
+    "commit-commands@claude-code-plugins": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/commit-commands/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-13T01:44:25.767Z",
+        "lastUpdated": "2025-12-13T01:44:25.767Z",
+        "gitCommitSha": "eb872450105745e9489c6f6d73fa2fb4ff5a1e9a"
+      }
+    ],
+    "feature-dev@claude-code-plugins": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/feature-dev/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-13T01:44:25.767Z",
+        "lastUpdated": "2025-12-13T01:44:25.767Z",
+        "gitCommitSha": "eb872450105745e9489c6f6d73fa2fb4ff5a1e9a"
+      }
+    ],
+    "pyright-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2025-12-22T15:18:43.563Z",
+        "lastUpdated": "2025-12-22T15:18:43.563Z"
+      }
+    ],
+    "claude-mem@thedotmack": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/thedotmack/claude-mem/8.5.9",
+        "version": "8.5.9",
+        "installedAt": "2026-01-05T14:36:40.471Z",
+        "lastUpdated": "2026-01-05T14:36:40.471Z"
+      }
+    ],
+    "rust-analyzer-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-15T02:12:07.842Z",
+        "lastUpdated": "2026-02-15T02:12:07.842Z",
+        "gitCommitSha": "2cd88e7947b7382e045666abee790c7f55f669f3"
+      }
+    ]
+  }
+}

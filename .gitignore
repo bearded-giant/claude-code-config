@@ -17,6 +17,13 @@ shell-snapshots/*
 statsig/*
 !statsig/.gitkeep
 
+# plugins - track config json, ignore runtime/downloaded content
+plugins/cache/
+plugins/marketplaces/
+plugins/repos/
+plugins/subtask/
+plugins/install-counts-cache.json
+
 # system files
 .DS_Store
 .claude/
