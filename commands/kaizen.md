@@ -44,7 +44,7 @@ Parse what was provided in $ARGUMENTS. Then ask interactively for anything criti
 Ask about:
 - **Doc type** (if `--type` not provided): feature, fix, or refactor?
 - **Key files/directories** (if codebase_path provided): which areas to focus the explore on?
-- **Known decisions**: has the team already settled anything? These go straight into the Decisions section.
+- **Known decisions**: has the team already settled anything? These go straight into the Key Points section.
 - **Exemptions**: any user types or systems exempt from this feature?
 - **Scope boundaries**: what's explicitly NOT in scope?
 - **Plan/design docs** (if `--docs` not provided): "Any existing plans, specs, or design docs I should read?" Accept file paths or directory paths.
@@ -56,7 +56,7 @@ Be efficient. If the problem statement is detailed enough, skip redundant questi
 If docs were provided (via `--docs` or interactively):
 - Read every file provided. These can be plans, specs, PRDs, research notes, prior kaizen docs, or any design material.
 - Extract context that feeds into generation: problem framing, decisions already made, scope, data models, API shapes, rollout plans.
-- This content directly informs Background, Decisions, and scenario content in the output.
+- This content directly informs Background, Key Points, and scenario content in the output.
 
 ### Phase 4: Explore codebase
 
@@ -99,7 +99,7 @@ If `--split` is used, output multiple files: `scratch/filebox/kaizen_{slug}_{con
 After writing the doc, present a summary:
 - What was generated (file path(s))
 - Number of scenarios covered
-- Key decisions captured
+- Key points captured
 - Open questions flagged
 - Ask if the user wants adjustments
 
