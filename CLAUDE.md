@@ -22,9 +22,10 @@ When starting a session or recovering from context refresh:
 
 1. Read `scratch/WORKSPACE.md` for project context
 2. Check `scratch/features/features.json` for feature cache (or `_index.md` as fallback)
-3. Check `scratch/plans/current.md` for active session work
-4. Review recent git log for changes
-5. Verify current state before making changes
+3. Check `scratch/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
+4. Check `scratch/plans/current.md` for active session work
+5. Review recent git log for changes
+6. Verify current state before making changes
    </session_recovery>
 
 <feature_management>
@@ -43,8 +44,18 @@ features/
 ├── {feature-name}/
 │   ├── spec.md            # what + why + acceptance criteria
 │   ├── facts.md           # beta flags, config, test commands
-│   └── meta.json          # machine-readable (for swarm)
+│   ├── meta.json          # machine-readable (for swarm)
+│   ├── plan.md            # implementation plan (created by /plan-feature)
+│   └── plan_context.json  # which domains informed this plan
 ```
+
+**Domain knowledge base:**
+```
+domains/
+├── _index.json            # registry of all domain explorations
+├── {domain-name}.json     # LLM-consumable exploration of a code domain
+```
+Domains are repo-level, not feature-scoped. Created by `/plan-feature`, updated by `/update-domains` and `/complete-feature`. Load relevant domain JSONs at session start instead of re-reading code.
 
 **When to create a feature folder:**
 - Starting work on a distinct capability (not just a bug fix)
@@ -54,6 +65,10 @@ features/
 **Commands:**
 - `/list-features` - display feature registry
 - `/new-feature <name>` - scaffold feature folder (auto-detects pending vs in_progress)
+- `/plan-feature [name] [--refresh]` - explore code domains (auto-derived), output domain JSONs, draft implementation plan
+- `/list-domains [--verbose]` - show all indexed domains from the knowledge base
+- `/search-domains <query> [--load]` - search domain JSONs for files, functions, patterns, concepts
+- `/update-domains [domains] [--all-stale]` - refresh domain JSONs after code changes
 - `/feature-facts <name>` - quick lookup
 - `/qa-report [feature]` - generate validation report
 
@@ -69,7 +84,7 @@ Do not assume. User may forget which context they're in.
 ## Feature Workflow
 
 - When working on feature scaffolding, always check for existing feature folder conventions in the project before creating new ones. Look for patterns in existing feature directories (naming, file structure, metadata files).
-- Not all projects use features. When a project has `scratch/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
+- Not all projects use features. When a project has `scratch/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/plan-feature`, `/update-domains`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
 
 <doc_sync>
 When making changes that affect user-facing behavior (new commands, changed invocations, renamed flags, new options, modified workflows), check the workspace for docs that need updating:
@@ -212,6 +227,10 @@ When `scratch/` exists, ALL documentation, plans, research, and analysis MUST go
 | `features/_index.md`     | Registry table        | Terse, table rows           | Feature name, status, beta flag, dependencies       |
 | `features/{name}/spec.md`| Feature definition    | Medium, structured          | Purpose, scope, acceptance criteria                 |
 | `features/{name}/facts.md`| Quick lookup         | Terse, key-value            | Beta flags, config keys, test commands              |
+| `features/{name}/plan.md`| Implementation plan   | Concise, actionable         | Steps, file paths, function names                   |
+| `features/{name}/plan_context.json`| Domain linkage | Machine-readable         | Which domains informed this plan                    |
+| `domains/_index.json`    | Domain registry       | Machine-readable            | Domain names, key paths, feature refs               |
+| `domains/{name}.json`    | Domain exploration    | Machine-readable, detailed  | Entry points, key files, architecture, gotchas      |
 | `context/patterns.md`    | Curated patterns      | Medium, organized           | Architectural decisions, gotchas                    |
 | `context/*.md`           | Reference docs        | Minimal prose, lists ok     | API endpoint lists, dependency maps                 |
 | `plans/current.md`       | Session work          | Concise, no phase tracking  | Active task steps (transient)                       |
@@ -237,7 +256,9 @@ NOTE: `context/discoveries.md` is deprecated. Use `context/patterns.md` for cura
 BEFORE writing any document, select the correct directory:
 
 - **Starting a new feature?** → `/new-feature {name}` to scaffold, then `features/{name}/spec.md`
+- **Planning a feature?** → `/plan-feature` to explore code domains and draft plan
 - **Recording beta flags, config?** → `features/{name}/facts.md`
+- **Explored a code domain?** → `domains/{domain}.json` (created by `/plan-feature`, updated by `/update-domains`)
 - **Learned architectural pattern?** → `context/patterns.md` (curated, not append-only)
 - **Active session work?** → `plans/current.md` (transient)
 - **Researching external topic?** → `research/{topic}.md`

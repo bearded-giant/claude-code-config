@@ -26,6 +26,7 @@ Mark a feature as complete by updating all workspace tracking files.
    Read these files (do not proceed without reading them first):
    - `scratch/features/{feature}/spec.md`
    - `scratch/features/{feature}/facts.md`
+   - `scratch/features/{feature}/plan_context.json` (if it exists)
    - `scratch/features/_index.md`
    - `scratch/plans/current.md`
 
@@ -75,7 +76,26 @@ Mark a feature as complete by updating all workspace tracking files.
    - Move the feature to a `## Completed` section
    - Clear any steps related to this feature from active work
 
-9. **Report**
+9. **Update domain JSONs (if domains were used)**
+
+   Check if `scratch/features/{feature}/plan_context.json` exists. If it does:
+
+   - Read it to get the `domains_referenced` list
+   - Read `scratch/domains/_index.json`
+   - For each referenced domain, check if files under its `key_paths` were modified during this feature:
+     ```
+     git log --name-only -- {key_paths}
+     ```
+     Compare against what's in the domain JSON's `key_files`.
+   - If significant changes were made to a domain's files, re-explore that domain using the same approach as `/update-domains`:
+     - Launch a code-explorer agent for each stale domain
+     - Update the domain JSON with fresh exploration data
+     - Append this feature to the domain's `explored_for_features`
+     - Update `last_explored` to today
+   - Update `scratch/domains/_index.json` with refreshed dates and feature references
+   - If no domains were changed, skip silently
+
+10. **Report**
 
    ```
    Feature '{feature}' marked complete.
@@ -86,6 +106,7 @@ Mark a feature as complete by updating all workspace tracking files.
      - _index.md (status -> complete)
      - features.json (cache updated)
      - plans/current.md (moved to completed)
+     - domains: {list of refreshed domains, or "none (no domain changes detected)"}
 
    Unchecked criteria: {count or "none"}
    ```
