@@ -72,6 +72,7 @@
 | Skill | Purpose |
 |-------|---------|
 | `/mcp-builder` | Build MCP servers in TypeScript or Python |
+| `/mdlive` | Preview markdown as live-reloading HTML in browser |
 | `/keybindings-help` | Customize keyboard shortcuts |
 
 ## Plugins: commit-commands
