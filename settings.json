@@ -104,7 +104,6 @@
     "subtask": true,
     "commit-commands@claude-code-plugins": true,
     "feature-dev@claude-code-plugins": true,
-    "mdserve@mdserve": true,
     "rust-analyzer-lsp@claude-plugins-official": true
   },
   "spinnerTipsEnabled": false,

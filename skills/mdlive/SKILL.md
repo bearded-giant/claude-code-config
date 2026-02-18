@@ -35,33 +35,16 @@ comfortably within a terminal window.
 ## Workflow
 
 1. Write the markdown file (e.g. `plan.md`).
-2. Start mdlive using the Bash tool with `run_in_background: true` and
-   the `--open` flag to launch the browser automatically:
+2. Start mdlive using the Bash tool with `run_in_background: true`:
    ```
-   command: mdlive --open plan.md
+   command: mdlive plan.md
    run_in_background: true
    ```
-3. Tell the user the URL (default: http://127.0.0.1:3000).
-4. Continue editing the file - changes reload automatically.
-5. When the task is finished and the preview is no longer needed, stop
+   The browser opens automatically. mdlive auto-cycles to the next
+   available port if 3000 is in use — no port checking needed.
+3. Continue editing the file — changes reload automatically.
+4. When the task is finished and the preview is no longer needed, stop
    the background task using `TaskStop` with the task ID.
-
-## Port conflicts
-
-Before starting mdlive, check if the default port is in use:
-
-```bash
-ss -tlnp | grep :3000
-```
-
-If port 3000 is occupied, pick another port:
-
-```
-command: mdlive --open plan.md --port 3001
-run_in_background: true
-```
-
-Always tell the user the actual URL including the port you used.
 
 ## Directory mode
 
@@ -69,7 +52,7 @@ When producing multiple related markdown files, serve the parent
 directory instead:
 
 ```
-command: mdlive --open docs/
+command: mdlive docs/
 run_in_background: true
 ```
 

@@ -5,7 +5,7 @@
       "repo": "anthropics/claude-code"
     },
     "installLocation": "/Users/bryan/.claude/plugins/marketplaces/claude-code-plugins",
-    "lastUpdated": "2026-02-16T22:53:45.045Z"
+    "lastUpdated": "2026-02-18T02:24:36.028Z"
   },
   "claude-plugins-official": {
     "source": {
@@ -13,7 +13,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "installLocation": "/Users/bryan/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-02-16T03:07:35.192Z"
+    "lastUpdated": "2026-02-18T12:02:40.604Z"
   },
   "thedotmack": {
     "source": {
@@ -22,5 +22,13 @@
     },
     "installLocation": "/Users/bryan/.claude/plugins/marketplaces/thedotmack",
     "lastUpdated": "2026-01-05T14:36:30.335Z"
+  },
+  "mdlive": {
+    "source": {
+      "source": "github",
+      "repo": "bearded-giant/mdlive"
+    },
+    "installLocation": "/Users/bryan/.claude/plugins/marketplaces/mdlive",
+    "lastUpdated": "2026-02-18T12:01:47.691Z"
   }
 }
