@@ -1,5 +1,6 @@
 #!/bin/bash
 # list-features - show feature status table from features.json cache
+# auto-corrects spec.md status drift against features.json
 # usage: list-features [path/to/scratch/features]
 
 set -euo pipefail
@@ -18,13 +19,35 @@ if [ ! -f "$cache" ]; then
   exit 1
 fi
 
-# parse json with python (available everywhere, no jq dependency)
+# parse json, detect and fix drift between features.json and spec.md
+drift_log=$(mktemp)
 data=$(python3 -c "
-import json, sys
+import json, sys, os, re
+
 with open('$cache') as f:
     features = json.load(f)
 if not features:
     sys.exit(0)
+
+fixes = []
+for name, feat in features.items():
+    cache_status = feat.get('status', 'unknown')
+    spec_path = os.path.join('$features_dir', name, 'spec.md')
+    if not os.path.isfile(spec_path):
+        continue
+    with open(spec_path) as sf:
+        spec_text = sf.read()
+    m = re.search(r'^status:\s*(\S+)', spec_text, re.MULTILINE)
+    if m and m.group(1) != cache_status:
+        fixed = re.sub(r'^(status:\s*)\S+', r'\g<1>' + cache_status, spec_text, count=1, flags=re.MULTILINE)
+        with open(spec_path, 'w') as sf:
+            sf.write(fixed)
+        fixes.append(f'  {name}: {m.group(1)} -> {cache_status}')
+
+if fixes:
+    with open('$drift_log', 'w') as dl:
+        dl.write('\n'.join(fixes))
+
 rows = []
 for name, feat in features.items():
     status = feat.get('status', 'unknown')
@@ -38,8 +61,17 @@ for r in rows:
 
 if [ -z "$data" ]; then
   echo "no features found"
+  rm -f "$drift_log"
   exit 0
 fi
+
+# show drift corrections before the table
+if [ -s "$drift_log" ]; then
+  echo "synced spec.md status drift:"
+  cat "$drift_log"
+  echo ""
+fi
+rm -f "$drift_log"
 
 # calculate column widths
 max_name=7 max_status=6 max_branch=6
