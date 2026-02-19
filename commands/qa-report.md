@@ -6,7 +6,7 @@ Generate a QA validation report for a feature.
 
 ## Steps
 
-1. Identify the target feature folder in scratch/features/
+1. Identify the target feature folder in .giantmem/features/
 2. Read the feature's spec.md to get acceptance criteria
 3. Read the feature's facts.md to get test commands
 4. Generate qa_report.md with:
@@ -49,7 +49,7 @@ Status: {PENDING | APPROVED | ISSUES_FOUND}
 
 ```
 
-5. Write to scratch/features/{feature}/qa_report.md
+5. Write to .giantmem/features/{feature}/qa_report.md
 6. If issues found, update meta.json status
 7. Display summary to user
 

@@ -38,7 +38,7 @@ Terminal tool for use outside Claude Code. Reads live workspace files and archiv
 | `domains export <name> [-o file]` | Dump domain as shareable markdown |
 | `domains fzf` | Interactive picker with preview pane |
 
-### scratch-archive integration (giant-tooling/scratch-archive/)
+### ws-archive integration (giant-tooling/scratch-archive/)
 
 | File | Change |
 |------|--------|
@@ -52,7 +52,7 @@ Session recovery now loads `domains/_index.json` at startup. Feature folder stru
 
 ## Data model
 
-### scratch/domains/_index.json
+### .giantmem/domains/_index.json
 
 Registry of all domain explorations. Lightweight enough to load at session start.
 
@@ -72,7 +72,7 @@ Registry of all domain explorations. Lightweight enough to load at session start
 }
 ```
 
-### scratch/domains/{name}.json
+### .giantmem/domains/{name}.json
 
 Full domain exploration. One per code area.
 
@@ -97,11 +97,11 @@ Full domain exploration. One per code area.
 }
 ```
 
-### scratch/features/{name}/plan.md
+### .giantmem/features/{name}/plan.md
 
 Implementation plan for a feature. References which domains informed it.
 
-### scratch/features/{name}/plan_context.json
+### .giantmem/features/{name}/plan_context.json
 
 Links feature to domains. Records which were created, refreshed, or reused.
 
@@ -135,12 +135,12 @@ Links feature to domains. Records which were created, refreshed, or reused.
 ```
 /plan-feature
   -> code-explorer agents analyze codebase
-  -> domain JSONs written to scratch/domains/
+  -> domain JSONs written to .giantmem/domains/
   -> plan.md + plan_context.json written to feature dir
   -> _index.json updated
 
-scratch-archive archive
-  -> copies scratch/domains/ to ~/scratch_archive/{project}/{branch}/{ts}/
+ws-archive archive
+  -> copies .giantmem/domains/ to ~/giantmem_archive/{project}/{branch}/{ts}/
   -> scratch-search.py ingest flattens JSON into SQLite FTS5
 
 domains archive "query"

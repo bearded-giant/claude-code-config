@@ -50,7 +50,7 @@ Input: [path] ([N] rows)
 ```
 
 Create swarm output directory:
-1. If project has `scratch/features/search-result-processing/`: use `scratch/features/search-result-processing/swarm-categorize-{timestamp}/`
+1. If project has `.giantmem/features/search-result-processing/`: use `.giantmem/features/search-result-processing/swarm-categorize-{timestamp}/`
 2. Otherwise: same directory as input file, `swarm-categorize-{timestamp}/`
 
 Create subdirectories:

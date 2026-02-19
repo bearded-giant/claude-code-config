@@ -18,7 +18,7 @@ No output files are created. This is a lookup tool -- it points you at existing 
 
 ### 1. Load the index
 
-Read `scratch/domains/_index.json`. If it doesn't exist, tell the user: "No domains indexed yet. Run `/plan-feature` to explore code domains."
+Read `.giantmem/domains/_index.json`. If it doesn't exist, tell the user: "No domains indexed yet. Run `/plan-feature` to explore code domains."
 
 ### 2. Quick filter from index
 
@@ -26,7 +26,7 @@ Check `key_paths` and `description` in each index entry for the query. This narr
 
 ### 3. Deep search matching domains
 
-For each candidate domain (or all if the quick filter found nothing), read `scratch/domains/{domain}.json` and search across all fields:
+For each candidate domain (or all if the quick filter found nothing), read `.giantmem/domains/{domain}.json` and search across all fields:
 
 - `entry_points[].path`, `entry_points[].description`
 - `key_files[].path`, `key_files[].purpose`, `key_files[].exports`, `key_files[].patterns`, `key_files[].dependencies`
@@ -42,15 +42,15 @@ Group matches by domain, showing which sections matched:
 ```
 Search: "session_store"
 
-auth_session (scratch/domains/auth_session.json)
+auth_session (.giantmem/domains/auth_session.json)
   key_files: src/services/auth_session/session_store.py -- "Redis-backed session storage"
   architecture.data_flow: "request -> auth middleware -> session_store -> Redis"
   gotchas: "Redis SCAN needed for lookup by session_id"
 
-merchant_api (scratch/domains/merchant_api.json)
+merchant_api (.giantmem/domains/merchant_api.json)
   dependencies.internal: "auth_session"
 
-2 domains matched. Load with: "read scratch/domains/auth_session.json"
+2 domains matched. Load with: "read .giantmem/domains/auth_session.json"
 ```
 
 If no matches, say so and suggest:

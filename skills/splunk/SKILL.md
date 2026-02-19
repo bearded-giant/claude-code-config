@@ -28,7 +28,7 @@ If no subcommand is provided, ask the user which they want.
 
 After the subcommand, parse remaining `$ARGUMENTS`:
 
-- `feature_name` -- name of a feature in `scratch/features/`. Optional. If omitted and `scratch/features/` exists, list features and ask.
+- `feature_name` -- name of a feature in `.giantmem/features/`. Optional. If omitted and `.giantmem/features/` exists, list features and ask.
 - `--docs=path1,path2` -- additional files to read for context (research docs, log maps, CSV data, etc.)
 - `--manual` -- skip auto-detection, use guided questionnaire instead
 - `--index=<index_pattern>` -- override the default Splunk index. If not provided, ask the user for their index pattern.
@@ -41,11 +41,11 @@ After the subcommand, parse remaining `$ARGUMENTS`:
 
 Read feature context in this order. Stop when you have enough to identify metrics.
 
-1. `scratch/features/{feature}/facts.md` -- beta flags, config keys, log events
-2. `scratch/features/{feature}/spec.md` -- what the feature does, acceptance criteria
-3. `scratch/features/{feature}/plan.md` -- implementation plan, file paths
+1. `.giantmem/features/{feature}/facts.md` -- beta flags, config keys, log events
+2. `.giantmem/features/{feature}/spec.md` -- what the feature does, acceptance criteria
+3. `.giantmem/features/{feature}/plan.md` -- implementation plan, file paths
 4. Any files passed via `--docs`
-5. If still thin, search `scratch/research/` for files referencing the feature name
+5. If still thin, search `.giantmem/research/` for files referencing the feature name
 6. If the feature has log events, search the codebase for the log message strings to find extra fields (the structured logging extras that become top-level Splunk fields)
 
 From these sources, extract:
@@ -115,7 +115,7 @@ Requirements:
 - Panel titles that describe what the panel shows
 - Data source names that match the panel purpose
 
-Write to: `scratch/filebox/splunk_{feature_slug}_dashboard.json`
+Write to: `.giantmem/filebox/splunk_{feature_slug}_dashboard.json`
 
 **For `queries`:**
 
@@ -133,7 +133,7 @@ Generate a markdown file with each query as a named, described block:
 \`\`\`
 ```
 
-Write to: `scratch/research/splunk_{feature_slug}_queries.md`
+Write to: `.giantmem/research/splunk_{feature_slug}_queries.md`
 
 ### Phase 5: Present
 
@@ -161,7 +161,12 @@ Example: `/splunk query "count of session_miss events by auth_method over time, 
 - Never hardcode time ranges in dashboard queries
 - Use `dc()` (distinct count) for user-impact metrics, `count` for volume metrics
 - Prefer `splunk.line` for timecharts, `splunk.table` for stats/breakdowns, `splunk.column` for comparisons
-- Panel titles should describe what the panel shows, not the SPL command
+- Panel titles should be short, non-alarming, and describe what the panel shows in business terms (not SPL commands or internal jargon)
+- Every visualization MUST include a `description` field. The description provides context for the reader: what the panel measures, why it matters, and how to interpret the data. Descriptions are the most critical part of a dashboard -- they prevent misinterpretation of raw numbers. Write them for the least-technical person who will view the dashboard.
+- **Chart descriptions must be very short** (1 short sentence, ~15 words max). Splunk truncates long descriptions on chart panels (line, area, column, bar, pie, singlevalue). Keep them tight: "Shows X per hour by Y." No jargon, no filler.
+- **Table descriptions can be longer** (2-3 sentences). Splunk renders table descriptions with more space. Use this for context like column explanations and interpretation guidance.
+- When a panel shows request/event counts, the description must clarify that these are requests, not users. If the dashboard also has user-level panels, cross-reference them (e.g., "Use the Impact tab for merchant-level counts")
+- When a panel shows `dc(user_id)` or similar unique counts, the description should say "unique [users/merchants/etc.]" explicitly
 - For rex extractions, always use a named capture group
 - Quote all field values in `eval(if(...))` expressions
 - Do not add comments to SPL queries -- they don't support inline comments

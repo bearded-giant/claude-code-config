@@ -90,9 +90,9 @@ Key generation rules:
 - If `--light`: fewer scenarios, skip edge cases, keep sections compact
 - If `--split`: generate separate docs per concern, each self-contained with cross-references
 
-**Output path:** `scratch/filebox/kaizen_{slug}.md` where `{slug}` is a snake_case version of the feature name derived from the problem statement.
+**Output path:** `.giantmem/filebox/kaizen_{slug}.md` where `{slug}` is a snake_case version of the feature name derived from the problem statement.
 
-If `--split` is used, output multiple files: `scratch/filebox/kaizen_{slug}_{concern}.md`
+If `--split` is used, output multiple files: `.giantmem/filebox/kaizen_{slug}_{concern}.md`
 
 ### Phase 6: Present
 

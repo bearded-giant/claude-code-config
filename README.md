@@ -100,7 +100,7 @@ Implements plans with parallel workers. Creates safety branch, runs tests, valid
 - Stops if working tree is dirty
 
 ```bash
-/swarm-exec scratch/plans/add-preferences-api.md
+/swarm-exec .giantmem/plans/add-preferences-api.md
 ```
 
 ## Hooks

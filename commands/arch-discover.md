@@ -40,13 +40,13 @@ Map an existing complex system to understand it before refactoring.
 
 ## Output
 
-**Primary output:** scratch/context/architecture.md
+**Primary output:** .giantmem/context/architecture.md
 - Component map (text or mermaid)
 - Data flow diagram
 - Integration points list
 - Refactor risks and gotchas
 
-**Discoveries:** Append to scratch/context/discoveries.md using format:
+**Discoveries:** Append to .giantmem/context/discoveries.md using format:
 ```
 - YYYY-MM-DD HH:MM: [category] terse one-line finding
 ```

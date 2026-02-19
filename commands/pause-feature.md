@@ -9,25 +9,25 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
 
 ## Arguments
 
-- feature: (optional) Feature name in kebab-case. If not provided, infer from `scratch/plans/current.md` or ask.
+- feature: (optional) Feature name in kebab-case. If not provided, infer from `.giantmem/plans/current.md` or ask.
 
 ## Steps
 
 1. **Identify the feature**
 
    If no argument provided:
-   - Read `scratch/plans/current.md` for active feature context
+   - Read `.giantmem/plans/current.md` for active feature context
    - If unclear, ask the user
 
-   Validate `scratch/features/{feature}/` exists with spec.md.
+   Validate `.giantmem/features/{feature}/` exists with spec.md.
 
 2. **Read current state**
 
    Read these files (do not proceed without reading them first):
-   - `scratch/features/{feature}/spec.md`
-   - `scratch/features/{feature}/facts.md`
-   - `scratch/features/_index.md`
-   - `scratch/plans/current.md`
+   - `.giantmem/features/{feature}/spec.md`
+   - `.giantmem/features/{feature}/facts.md`
+   - `.giantmem/features/_index.md`
+   - `.giantmem/plans/current.md`
 
    Verify the feature status is `in_progress`. If `complete` or already `paused`, inform the user and stop.
 
@@ -51,7 +51,7 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
 
 5. **Update feature index**
 
-   In `scratch/features/_index.md`, change the feature's status from `in_progress` to `paused`.
+   In `.giantmem/features/_index.md`, change the feature's status from `in_progress` to `paused`.
 
 6. **Update meta.json** (if it exists)
 
@@ -64,7 +64,7 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
 
 7. **Update features.json cache**
 
-   Read `scratch/features/features.json`, update the feature entry:
+   Read `.giantmem/features/features.json`, update the feature entry:
 
    ```json
    {
@@ -73,7 +73,7 @@ Pause an in-progress feature to switch context. Captures enough state to resume 
    }
    ```
 
-   Write the updated JSON back to `scratch/features/features.json`.
+   Write the updated JSON back to `.giantmem/features/features.json`.
 
 8. **Update plans/current.md**
 

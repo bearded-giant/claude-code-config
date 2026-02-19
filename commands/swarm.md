@@ -75,10 +75,12 @@ Detect task type from keywords in task (after removing flags):
 
 Extract file/directory references. Use Glob to resolve ambiguous references. Read files to pass as context.
 
-**Feature Context:** If task mentions a feature name, check `scratch/features/{name}/`:
+**Feature Context:** If task mentions a feature name, check `.giantmem/features/{name}/`:
 - Read `spec.md` for acceptance criteria and scope
 - Read `facts.md` for beta flags, config keys, test commands
 - Use this context to inform the analysis
+
+**Swarm Coordination:** If `.giantmem/agents.json` exists, read it for agent role definitions and task routing preferences.
 
 Report: `Task: [type] | Files: [count] | Template: [name] | Feature: [name or none]`
 
@@ -247,8 +249,8 @@ If continuing, focus workers on aspects blocking convergence.
 Directory name: `swarm-{descriptive-topic}` (e.g., `swarm-workspace-lib-patterns`)
 
 Location:
-- If feature detected: `scratch/features/{name}/swarm-{topic}/`
-- Otherwise: `scratch/research/swarm-{topic}/`
+- If feature detected: `.giantmem/features/{name}/swarm-{topic}/`
+- Otherwise: `.giantmem/research/swarm-{topic}/`
 
 ### Write All Artifacts
 

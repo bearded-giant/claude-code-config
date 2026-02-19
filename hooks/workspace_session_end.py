@@ -6,7 +6,8 @@ Hook: SessionEnd
 Extracts session summary, discoveries, and plans from transcript.
 Creates individual session files for grep-ability and git history.
 
-If scratch/ doesn't exist, auto-initializes workspace structure first.
+If .giantmem/ doesn't exist, auto-initializes workspace structure first.
+Falls back to scratch/ for legacy workspaces.
 
 Input (JSON on stdin):
 {
@@ -16,16 +17,16 @@ Input (JSON on stdin):
 }
 
 Output files:
-- scratch/history/sessions/{timestamp}_{session_id}.md  (detailed session file)
-- scratch/history/sessions.md  (index with one-liners)
-- scratch/context/discoveries.md  (appended)
-- scratch/plans/current.md  (updated if plans found)
+- .giantmem/history/sessions/{timestamp}_{session_id}.md  (detailed session file)
+- .giantmem/history/sessions.md  (index with one-liners)
+- .giantmem/context/discoveries.md  (appended)
+- .giantmem/plans/current.md  (updated if plans found)
 
-Auto-init creates (if scratch/ missing):
-- scratch/{context,plans,history,filebox,prompts,research,reviews}/
-- scratch/history/sessions/
-- scratch/WORKSPACE.md
-- scratch/.gitkeep
+Auto-init creates (if .giantmem/ missing):
+- .giantmem/{context,plans,history,filebox,prompts,research,reviews}/
+- .giantmem/history/sessions/
+- .giantmem/WORKSPACE.md
+- .giantmem/.gitkeep
 
 NOTE: Uses only Python standard library (no external dependencies)
 """
@@ -65,7 +66,7 @@ TOPIC_KEYWORDS = {
     'perf': ['performance', 'optimize', 'speed', 'slow', 'fast', 'cache'],
     'ui': ['ui', 'frontend', 'component', 'style', 'css', 'render', 'display'],
     'deploy': ['deploy', 'ci', 'cd', 'pipeline', 'docker', 'kubernetes'],
-    'workspace': ['workspace', 'scratch', 'hook', 'session', 'claude', 'mcp', 'plugin'],
+    'workspace': ['workspace', 'giantmem', 'hook', 'session', 'claude', 'mcp', 'plugin'],
 }
 
 # bonus weight given to workspace-defined topic
@@ -186,12 +187,12 @@ def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
     }
 
 
-def extract_workspace_topic(scratch_dir: Path) -> Optional[str]:
+def extract_workspace_topic(workspace_dir: Path) -> Optional[str]:
     """
     Extract topic hint from WORKSPACE.md Purpose section.
     Returns matching topic keyword if found, None otherwise.
     """
-    workspace_file = scratch_dir / "WORKSPACE.md"
+    workspace_file = workspace_dir / "WORKSPACE.md"
     if not workspace_file.exists():
         return None
 
@@ -354,7 +355,7 @@ def extract_plans(content: str) -> List[str]:
 
 
 def create_session_file(
-    scratch_dir: Path,
+    workspace_dir: Path,
     session_id: str,
     start_time: Optional[datetime],
     end_time: Optional[datetime],
@@ -365,7 +366,7 @@ def create_session_file(
     discoveries: List[Tuple[str, str]],
 ) -> Optional[Path]:
     """Create individual session summary file."""
-    sessions_dir = scratch_dir / "history" / "sessions"
+    sessions_dir = workspace_dir / "history" / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
     # filename: YYYYMMDD_HHMMSS_sessionid.md
@@ -463,7 +464,7 @@ def create_session_file(
 
 
 def update_session_index(
-    scratch_dir: Path,
+    workspace_dir: Path,
     session_id: str,
     topic: str,
     brief: str,
@@ -472,7 +473,7 @@ def update_session_index(
     session_filename: str,
 ):
     """Add one-liner to sessions.md index."""
-    index_file = scratch_dir / "history" / "sessions.md"
+    index_file = workspace_dir / "history" / "sessions.md"
     index_file.parent.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -502,12 +503,12 @@ def update_session_index(
         pass
 
 
-def append_discoveries(scratch_dir: Path, discoveries: List[Tuple[str, str]]) -> int:
+def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) -> int:
     """Append discoveries to discoveries.md."""
     if not discoveries:
         return 0
 
-    discoveries_file = scratch_dir / "context" / "discoveries.md"
+    discoveries_file = workspace_dir / "context" / "discoveries.md"
     discoveries_file.parent.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -525,12 +526,12 @@ def append_discoveries(scratch_dir: Path, discoveries: List[Tuple[str, str]]) ->
         return 0
 
 
-def save_plans(scratch_dir: Path, plans: List[str]) -> bool:
+def save_plans(workspace_dir: Path, plans: List[str]) -> bool:
     """Save plans to plans/current.md."""
     if not plans:
         return False
 
-    plans_file = scratch_dir / "plans" / "current.md"
+    plans_file = workspace_dir / "plans" / "current.md"
     plans_file.parent.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -564,9 +565,9 @@ TIMELINE_LIMIT = 50
 # TIMELINE_LIMIT = None  # uncomment for no limit
 
 
-def build_features_table(scratch_dir: Path) -> str:
+def build_features_table(workspace_dir: Path) -> str:
     """Build markdown features table from meta.json files."""
-    features_dir = scratch_dir / "features"
+    features_dir = workspace_dir / "features"
     if not features_dir.exists():
         return ""
 
@@ -594,14 +595,14 @@ def build_features_table(scratch_dir: Path) -> str:
     return '\n'.join(lines)
 
 
-def build_timeline(scratch_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -> str:
+def build_timeline(workspace_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -> str:
     """Build timeline of md file changes, excluding session files and WORKSPACE.md."""
     exclude_dirs = {'history'}
     exclude_files = {'WORKSPACE.md', '_index.md'}
 
     entries = []
-    for md_file in scratch_dir.rglob("*.md"):
-        rel = md_file.relative_to(scratch_dir)
+    for md_file in workspace_dir.rglob("*.md"):
+        rel = md_file.relative_to(workspace_dir)
         # skip excluded dirs and files
         if rel.parts[0] in exclude_dirs:
             continue
@@ -633,16 +634,16 @@ def build_timeline(scratch_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -> 
     return '\n'.join(lines)
 
 
-def update_workspace_md(scratch_dir: Path):
+def update_workspace_md(workspace_dir: Path):
     """Regenerate Features and Timeline sections in WORKSPACE.md."""
-    workspace_file = scratch_dir / "WORKSPACE.md"
+    workspace_file = workspace_dir / "WORKSPACE.md"
     if not workspace_file.exists():
         return
 
     content = workspace_file.read_text()
 
-    features_table = build_features_table(scratch_dir)
-    timeline = build_timeline(scratch_dir)
+    features_table = build_features_table(workspace_dir)
+    timeline = build_timeline(workspace_dir)
 
     # parse into sections: list of (heading, body) tuples
     # header block (before first ##) is stored with heading=""
@@ -704,24 +705,16 @@ def update_workspace_md(scratch_dir: Path):
 
 
 def workspace_init(cwd: Path) -> Path:
-    """
-    Initialize workspace structure if scratch/ doesn't exist.
-    Mirrors workspace-lib.sh workspace_init function.
-    Returns the scratch_dir path.
-    """
-    scratch_dir = cwd / "scratch"
+    workspace_dir = cwd / ".giantmem"
     name = cwd.name
 
-    # create subdirectories
     subdirs = ['context', 'plans', 'history', 'filebox', 'prompts', 'research', 'reviews']
     for subdir in subdirs:
-        (scratch_dir / subdir).mkdir(parents=True, exist_ok=True)
+        (workspace_dir / subdir).mkdir(parents=True, exist_ok=True)
 
-    # create sessions subdir for session files
-    (scratch_dir / "history" / "sessions").mkdir(parents=True, exist_ok=True)
+    (workspace_dir / "history" / "sessions").mkdir(parents=True, exist_ok=True)
 
-    # create WORKSPACE.md if it doesn't exist
-    workspace_file = scratch_dir / "WORKSPACE.md"
+    workspace_file = workspace_dir / "WORKSPACE.md"
     if not workspace_file.exists():
         today = datetime.now().strftime('%Y-%m-%d')
 
@@ -759,12 +752,11 @@ No files tracked yet.
 """
         workspace_file.write_text(content)
 
-    # create .gitkeep in scratch root
-    gitkeep = scratch_dir / ".gitkeep"
+    gitkeep = workspace_dir / ".gitkeep"
     if not gitkeep.exists():
         gitkeep.touch()
 
-    return scratch_dir
+    return workspace_dir
 
 
 def main():
@@ -777,12 +769,14 @@ def main():
         transcript_path = input_data.get("transcript_path", "")
 
         cwd_path = Path(cwd)
-        scratch_dir = cwd_path / "scratch"
+        workspace_dir = cwd_path / ".giantmem"
+        if not workspace_dir.exists():
+            workspace_dir = cwd_path / "scratch"
 
-        # auto-init workspace if scratch doesn't exist
-        if not scratch_dir.exists():
-            scratch_dir = workspace_init(cwd_path)
-            print(f"Workspace: initialized scratch/ in {cwd_path.name}", file=sys.stderr)
+        # auto-init workspace if neither exists
+        if not workspace_dir.exists():
+            workspace_dir = workspace_init(cwd_path)
+            print(f"Workspace: initialized .giantmem/ in {cwd_path.name}", file=sys.stderr)
 
         if not transcript_path:
             return
@@ -801,7 +795,7 @@ def main():
             return
 
         # derive topic and brief (with workspace hint if available)
-        workspace_topic = extract_workspace_topic(scratch_dir)
+        workspace_topic = extract_workspace_topic(workspace_dir)
         topic = extract_session_topic(user_prompts, assistant_content, workspace_topic)
         brief = extract_session_brief(user_prompts, topic)
 
@@ -811,7 +805,7 @@ def main():
 
         # create individual session file
         session_file = create_session_file(
-            scratch_dir=scratch_dir,
+            workspace_dir=workspace_dir,
             session_id=session_id,
             start_time=start_time,
             end_time=end_time,
@@ -825,7 +819,7 @@ def main():
         # update index
         session_filename = session_file.name if session_file else ''
         update_session_index(
-            scratch_dir=scratch_dir,
+            workspace_dir=workspace_dir,
             session_id=session_id,
             topic=topic,
             brief=brief,
@@ -835,11 +829,11 @@ def main():
         )
 
         # persist discoveries and plans (existing behavior)
-        discoveries_count = append_discoveries(scratch_dir, discoveries)
-        has_plans = save_plans(scratch_dir, plans)
+        discoveries_count = append_discoveries(workspace_dir, discoveries)
+        has_plans = save_plans(workspace_dir, plans)
 
         # regenerate features table and timeline in WORKSPACE.md
-        update_workspace_md(scratch_dir)
+        update_workspace_md(workspace_dir)
 
         # output summary
         parts = []

@@ -12,7 +12,7 @@ Generate C4 architecture diagrams using Mermaid syntax.
 - **Always generate**: Context (L1) and Container (L2) diagrams
 - **Only on request**: Component (L3) - user must explicitly ask
 - **Output format**: Mermaid C4 syntax in markdown code blocks
-- **Write to**: `scratch/plans/` or `scratch/context/` depending on purpose
+- **Write to**: `.giantmem/plans/` or `.giantmem/context/` depending on purpose
 
 ## Process
 
@@ -48,4 +48,4 @@ Reference @templates/context.md and @templates/container.md for Mermaid C4 synta
 - Use snake_case for IDs in mermaid
 - Label all relationships with action verbs
 - Include external systems and actors
-- Write output to scratch/ per workspace rules
+- Write output to .giantmem/ per workspace rules

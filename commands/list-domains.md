@@ -5,7 +5,7 @@ argument-hint: "[--verbose]"
 
 # List Domains
 
-Display all domains in the knowledge base from `scratch/domains/_index.json`.
+Display all domains in the knowledge base from `.giantmem/domains/_index.json`.
 
 ## Arguments
 
@@ -15,7 +15,7 @@ Display all domains in the knowledge base from `scratch/domains/_index.json`.
 
 ### 1. Read the index
 
-Read `scratch/domains/_index.json`. If it doesn't exist, tell the user: "No domains indexed yet. Run `/plan-feature` to explore code domains."
+Read `.giantmem/domains/_index.json`. If it doesn't exist, tell the user: "No domains indexed yet. Run `/plan-feature` to explore code domains."
 
 ### 2. Display domains
 
@@ -56,7 +56,7 @@ payment_flow - Payment processing pipeline [STALE - 14 days]
 
 After the listing, add:
 ```
-Load a domain: "read scratch/domains/{name}.json"
+Load a domain: "read .giantmem/domains/{name}.json"
 Search domains: /search-domains <query>
 Refresh stale: /update-domains --all-stale
 ```

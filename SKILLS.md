@@ -41,10 +41,10 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/ws-init` | Bootstrap scratch/ structure |
+| `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-note {text}` | Add timestamped note to WORKSPACE.md |
 | `/ws-edit` | Open WORKSPACE.md |
-| `/scratch-archive` | Archive scratch/ to ~/scratch_archive/ |
+| `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
 
 ## Code Quality

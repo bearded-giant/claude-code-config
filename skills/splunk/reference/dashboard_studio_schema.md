@@ -110,7 +110,8 @@ Each visualization is a panel on the dashboard.
 "visualizations": {
     "viz_unique_id": {
         "type": "splunk.line",
-        "title": "Panel Title -- describe what it shows",
+        "title": "Panel Title -- short, non-alarming, business-friendly",
+        "description": "What this panel measures, why it matters, and how to interpret the data. Clarify whether values are requests or unique users. This is the most important field for preventing misinterpretation.",
         "dataSources": {
             "primary": "ds_unique_id"
         },
@@ -186,12 +187,11 @@ The layout has three parts: `options` (dashboard-level), `tabs` (tab definitions
     },
     "layoutDefinitions": {
         "tab_overview": {
-            "type": "grid",
+            "type": "absolute",
             "options": {
-                "display": "auto",
+                "display": "auto-scale",
                 "width": 1440,
-                "height": 960,
-                "gutterSize": 8
+                "height": 960
             },
             "structure": [
                 {
@@ -202,12 +202,11 @@ The layout has three parts: `options` (dashboard-level), `tabs` (tab definitions
             ]
         },
         "tab_details": {
-            "type": "grid",
+            "type": "absolute",
             "options": {
-                "display": "auto",
+                "display": "auto-scale",
                 "width": 1440,
-                "height": 960,
-                "gutterSize": 8
+                "height": 960
             },
             "structure": [
                 {
@@ -234,12 +233,11 @@ When there are no tabs, use a single layout definition with a default layoutId.
     "globalInputs": ["input_global_time"],
     "layoutDefinitions": {
         "default": {
-            "type": "grid",
+            "type": "absolute",
             "options": {
-                "display": "auto",
+                "display": "auto-scale",
                 "width": 1440,
-                "height": 960,
-                "gutterSize": 8
+                "height": 960
             },
             "structure": [
                 {

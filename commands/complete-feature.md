@@ -9,26 +9,26 @@ Mark a feature as complete by updating all workspace tracking files.
 
 ## Arguments
 
-- feature: (optional) Feature name in kebab-case. If not provided, infer from `scratch/plans/current.md` or ask.
+- feature: (optional) Feature name in kebab-case. If not provided, infer from `.giantmem/plans/current.md` or ask.
 
 ## Steps
 
 1. **Identify the feature**
 
    If no argument provided:
-   - Read `scratch/plans/current.md` for active feature context
+   - Read `.giantmem/plans/current.md` for active feature context
    - If unclear, ask the user
 
-   Validate `scratch/features/{feature}/` exists with spec.md and facts.md.
+   Validate `.giantmem/features/{feature}/` exists with spec.md and facts.md.
 
 2. **Read current state**
 
    Read these files (do not proceed without reading them first):
-   - `scratch/features/{feature}/spec.md`
-   - `scratch/features/{feature}/facts.md`
-   - `scratch/features/{feature}/plan_context.json` (if it exists)
-   - `scratch/features/_index.md`
-   - `scratch/plans/current.md`
+   - `.giantmem/features/{feature}/spec.md`
+   - `.giantmem/features/{feature}/facts.md`
+   - `.giantmem/features/{feature}/plan_context.json` (if it exists)
+   - `.giantmem/features/_index.md`
+   - `.giantmem/plans/current.md`
 
 3. **Update spec.md**
 
@@ -47,7 +47,7 @@ Mark a feature as complete by updating all workspace tracking files.
 
 5. **Update feature index**
 
-   In `scratch/features/_index.md`, change the feature's status from `in_progress` to `complete`.
+   In `.giantmem/features/_index.md`, change the feature's status from `in_progress` to `complete`.
 
 6. **Update meta.json** (if it exists)
 
@@ -60,7 +60,7 @@ Mark a feature as complete by updating all workspace tracking files.
 
 7. **Update features.json cache**
 
-   Read `scratch/features/features.json`, update the feature entry:
+   Read `.giantmem/features/features.json`, update the feature entry:
 
    ```json
    {
@@ -69,7 +69,7 @@ Mark a feature as complete by updating all workspace tracking files.
    }
    ```
 
-   Write the updated JSON back to `scratch/features/features.json`.
+   Write the updated JSON back to `.giantmem/features/features.json`.
 
 8. **Update plans/current.md**
 
@@ -78,10 +78,10 @@ Mark a feature as complete by updating all workspace tracking files.
 
 9. **Update domain JSONs (if domains were used)**
 
-   Check if `scratch/features/{feature}/plan_context.json` exists. If it does:
+   Check if `.giantmem/features/{feature}/plan_context.json` exists. If it does:
 
    - Read it to get the `domains_referenced` list
-   - Read `scratch/domains/_index.json`
+   - Read `.giantmem/domains/_index.json`
    - For each referenced domain, check if files under its `key_paths` were modified during this feature:
      ```
      git log --name-only -- {key_paths}
@@ -92,7 +92,7 @@ Mark a feature as complete by updating all workspace tracking files.
      - Update the domain JSON with fresh exploration data
      - Append this feature to the domain's `explored_for_features`
      - Update `last_explored` to today
-   - Update `scratch/domains/_index.json` with refreshed dates and feature references
+   - Update `.giantmem/domains/_index.json` with refreshed dates and feature references
    - If no domains were changed, skip silently
 
 10. **Report**

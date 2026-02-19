@@ -2,7 +2,7 @@ Create a GitLab merge request description file for the current branch.
 
 ## Output
 
-Write to `scratch/mr-description.md` if scratch/ exists, otherwise `mr-description.md` in project root. Always overwrite if exists.
+Write to `.giantmem/mr-description.md` if .giantmem/ exists, otherwise `mr-description.md` in project root. Always overwrite if exists.
 
 ## Steps
 

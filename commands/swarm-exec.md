@@ -65,14 +65,16 @@ User remains in control. Swarm makes changes, user decides what to keep.
 Input: $ARGUMENTS
 
 Accept any of:
-- Feature spec: `scratch/features/{name}/spec.md` (preferred for multi-session work)
-- Plan file: `scratch/plans/feature.md`
+- Feature spec: `.giantmem/features/{name}/spec.md` (preferred for multi-session work)
+- Plan file: `.giantmem/plans/feature.md`
 - Inline description: `"add logout button to navbar, update auth service"`
 
 **If feature spec provided:**
 - Read `spec.md` for acceptance criteria
 - Read `facts.md` for beta flags, config keys, test commands
 - Store feature name for QA report output
+
+**Swarm Coordination:** If `.giantmem/agents.json` exists, read it for agent role definitions and task routing preferences.
 
 Extract:
 - **Work units**: Independent chunks that can parallelize
@@ -302,7 +304,7 @@ Make the minimal change to fix this issue.
 **If input was from `features/{name}/`**, write QA report:
 
 ```
-Write to: scratch/features/{name}/qa_report.md
+Write to: .giantmem/features/{name}/qa_report.md
 ```
 
 QA Report format:
@@ -347,7 +349,7 @@ Swarm iterations: {N}
 
 ### 4b. Update Feature Index (if feature)
 
-**If converged successfully**, update `scratch/features/_index.md`:
+**If converged successfully**, update `.giantmem/features/_index.md`:
 - Change feature status from `in_progress` to `complete`
 
 ### 4c. Output Summary
@@ -377,7 +379,7 @@ Failing: [N] (should be 0)
 ## Validation
 Review issues resolved: [N]
 Codex consultations: [N]
-QA Report: scratch/features/{name}/qa_report.md (if feature)
+QA Report: .giantmem/features/{name}/qa_report.md (if feature)
 
 ## Your Next Steps (swarm does NOT commit/push)
 

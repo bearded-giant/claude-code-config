@@ -31,7 +31,7 @@ Both commands will refuse to run without it.
 | `--light` | no | Fewer scenarios, skip edge cases, compact sections. |
 | `--split` | no | Separate docs per concern instead of one unified doc. |
 
-**Output:** `scratch/filebox/kaizen_{slug}.md`
+**Output:** `.giantmem/filebox/kaizen_{slug}.md`
 
 ### Examples
 
@@ -47,7 +47,7 @@ With codebase exploration:
 
 With input docs:
 ```
-/kaizen ~/dev/python/cc-wt/flask-session --docs=scratch/research/session_analysis.md,scratch/features/redis-sessions/spec.md "consolidate session storage to latest-only" --type=refactor
+/kaizen ~/dev/python/cc-wt/flask-session --docs=.giantmem/research/session_analysis.md,.giantmem/features/redis-sessions/spec.md "consolidate session storage to latest-only" --type=refactor
 ```
 
 Light doc for a small change:
@@ -71,22 +71,22 @@ Light doc for a small change:
 
 Lighten a heavy doc:
 ```
-/kaizen-review scratch/filebox/kaizen_session_storage.md "too many scenarios, cut the edge cases and tighten the prose"
+/kaizen-review .giantmem/filebox/kaizen_session_storage.md "too many scenarios, cut the edge cases and tighten the prose"
 ```
 
 Add missing scenarios:
 ```
-/kaizen-review scratch/filebox/kaizen_session_storage.md ~/dev/python/cc-wt/flask-session "add scenarios for admin user bypass and OAuth token refresh"
+/kaizen-review .giantmem/filebox/kaizen_session_storage.md ~/dev/python/cc-wt/flask-session "add scenarios for admin user bypass and OAuth token refresh"
 ```
 
 Apply peer review feedback:
 ```
-/kaizen-review scratch/filebox/kaizen_session_storage.md "reviewers flagged: missing rollback strategy for the migration, and the redis key format doesn't match what's in production"
+/kaizen-review .giantmem/filebox/kaizen_session_storage.md "reviewers flagged: missing rollback strategy for the migration, and the redis key format doesn't match what's in production"
 ```
 
 Split a large doc:
 ```
-/kaizen-review scratch/filebox/kaizen_session_storage.md "split into separate docs for the redis migration and the JWT cookie work"
+/kaizen-review .giantmem/filebox/kaizen_session_storage.md "split into separate docs for the redis migration and the JWT cookie work"
 ```
 
 ## Getting the most out of /kaizen

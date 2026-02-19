@@ -6,7 +6,7 @@
 
 | Command | Purpose |
 |---------|---------|
-| `/ws-history` | Show recent sessions from scratch/history/ |
+| `/ws-history` | Show recent sessions from .giantmem/history/ |
 | `/ws-history {n}` | Show last n sessions |
 | `/ws-history {id}` | Show full session details |
 | `/ws-history-search {query}` | Search session files for keywords |
@@ -55,7 +55,7 @@ Map an existing system before refactoring.
 /arch-discover bar processing flow
 ```
 
-Output: `scratch/context/architecture.md`
+Output: `.giantmem/context/architecture.md`
 
 ### /arch-brainstorm
 
@@ -66,7 +66,7 @@ Two-phase architecture decision support. Analyzes constraints, asks clarifying q
 /arch-brainstorm replacing bar-orm
 ```
 
-Output: `scratch/plans/{topic}_analysis.md`
+Output: `.giantmem/plans/{topic}_analysis.md`
 
 ### /scope
 
@@ -77,7 +77,7 @@ Create phased scope document for large refactors.
 /scope bar-redesign
 ```
 
-Output: `scratch/plans/{project}_scope.md`
+Output: `.giantmem/plans/{project}_scope.md`
 
 ---
 
@@ -100,7 +100,7 @@ See `/swarm-usage` for full documentation.
 Parallel implementation with validation. Creates safety branch, never commits.
 
 ```
-/swarm-exec scratch/plans/add-foo-api.md
+/swarm-exec .giantmem/plans/add-foo-api.md
 ```
 
 See `/swarm-exec-usage` for full documentation.
@@ -130,10 +130,10 @@ See `/swarm-exec-usage` for full documentation.
 
 | Command | Purpose |
 |---------|---------|
-| `/ws-init` | Bootstrap scratch/ structure |
+| `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-note {text}` | Add note to WORKSPACE.md |
 | `/ws-edit` | Open WORKSPACE.md |
-| `/scratch-archive` | Archive to ~/scratch_archive/ |
+| `/ws-archive` | Archive to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules |
 
 ---

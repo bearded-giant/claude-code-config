@@ -35,4 +35,5 @@ settings.json.*.bak
 # local settings (users should create their own)
 settings.local.json
 
-scratch/
+scratch
+.giantmem/

@@ -21,6 +21,6 @@ splunk/
 2. Extracts log events, structured fields, lifecycle phases, key dimensions
 3. Presents proposed panels/queries in a table for confirmation
 4. Surfaces efficacy guidance inline (span selection, dc() for user counts, rex vs direct match, etc.)
-5. Generates output to `scratch/filebox/` (dashboard JSON) or `scratch/research/` (query checklist)
+5. Generates output to `.giantmem/filebox/` (dashboard JSON) or `.giantmem/research/` (query checklist)
 
 Flags: `--docs=` for extra context files, `--manual` to skip auto-detection, `--index=` to set the index pattern.

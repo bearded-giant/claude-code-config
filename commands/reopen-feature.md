@@ -17,16 +17,16 @@ Reopen a previously completed or paused feature for additional work.
 
    If no argument provided, ask the user which feature to reopen.
 
-   Validate `scratch/features/{feature}/` exists with spec.md.
+   Validate `.giantmem/features/{feature}/` exists with spec.md.
 
 2. **Read current state**
 
    Read these files (do not proceed without reading them first):
-   - `scratch/features/{feature}/spec.md`
-   - `scratch/features/{feature}/facts.md`
-   - `scratch/features/{feature}/meta.json` (if it exists)
-   - `scratch/features/_index.md`
-   - `scratch/plans/current.md`
+   - `.giantmem/features/{feature}/spec.md`
+   - `.giantmem/features/{feature}/facts.md`
+   - `.giantmem/features/{feature}/meta.json` (if it exists)
+   - `.giantmem/features/_index.md`
+   - `.giantmem/plans/current.md`
 
    Verify the feature status is `complete` or `paused`. If already `in_progress`, inform the user and stop.
 
@@ -59,7 +59,7 @@ Reopen a previously completed or paused feature for additional work.
 
 5. **Update feature index**
 
-   In `scratch/features/_index.md`, change the feature's status from `complete` or `paused` to `in_progress`.
+   In `.giantmem/features/_index.md`, change the feature's status from `complete` or `paused` to `in_progress`.
 
 6. **Update meta.json** (if it exists)
 
@@ -73,7 +73,7 @@ Reopen a previously completed or paused feature for additional work.
 
 7. **Update features.json cache**
 
-   Read `scratch/features/features.json`, update the feature entry:
+   Read `.giantmem/features/features.json`, update the feature entry:
 
    ```json
    {
@@ -83,7 +83,7 @@ Reopen a previously completed or paused feature for additional work.
    }
    ```
 
-   Write the updated JSON back to `scratch/features/features.json`.
+   Write the updated JSON back to `.giantmem/features/features.json`.
 
 8. **Update plans/current.md**
 

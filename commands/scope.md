@@ -10,19 +10,19 @@ Create a comprehensive scope document for a large refactor or migration.
 
 ## Prerequisites
 
-- scratch/WORKSPACE.md should describe the project purpose
-- scratch/context/architecture.md should exist (run /arch-discover first if needed)
+- .giantmem/WORKSPACE.md should describe the project purpose
+- .giantmem/context/architecture.md should exist (run /arch-discover first if needed)
 - Recommended: run /arch-brainstorm first to decide on approach
 
 ## Process
 
-1. Read existing context from scratch/
+1. Read existing context from .giantmem/
 2. Create scope document with phased breakdown
 3. Each phase has dependencies and completion checkpoints
 
 ## Output Structure
 
-Write to scratch/plans/{project}_scope.md (snake_case):
+Write to .giantmem/plans/{project}_scope.md (snake_case):
 
 ```markdown
 # {Project} Scope

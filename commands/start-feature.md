@@ -16,21 +16,21 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
 1. **Find pending features**
 
-   Read `scratch/features/features.json` and identify all features with status `pending`.
+   Read `.giantmem/features/features.json` and identify all features with status `pending`.
 
    - If no argument provided and multiple pending features exist: list them and ask the user which one to start
    - If no argument provided and exactly one pending feature exists: confirm with the user, then proceed
    - If no pending features exist: inform the user and stop
-   - If argument provided: validate `scratch/features/{feature}/` exists and status is `pending`
+   - If argument provided: validate `.giantmem/features/{feature}/` exists and status is `pending`
 
 2. **Read current state**
 
    Read these files (do not proceed without reading them first):
-   - `scratch/features/{feature}/spec.md`
-   - `scratch/features/{feature}/facts.md`
-   - `scratch/features/{feature}/meta.json` (if it exists)
-   - `scratch/features/_index.md`
-   - `scratch/plans/current.md`
+   - `.giantmem/features/{feature}/spec.md`
+   - `.giantmem/features/{feature}/facts.md`
+   - `.giantmem/features/{feature}/meta.json` (if it exists)
+   - `.giantmem/features/_index.md`
+   - `.giantmem/plans/current.md`
 
 3. **Create or checkout branch**
 
@@ -83,7 +83,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
 6. **Update feature index**
 
-   In `scratch/features/_index.md`, change the feature's status from `pending` to `in_progress`.
+   In `.giantmem/features/_index.md`, change the feature's status from `pending` to `in_progress`.
 
 7. **Update meta.json** (if it exists)
 
@@ -98,7 +98,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
 
 8. **Update features.json cache**
 
-   Read `scratch/features/features.json`, update the feature entry:
+   Read `.giantmem/features/features.json`, update the feature entry:
 
    ```json
    {
@@ -109,7 +109,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    }
    ```
 
-   Write the updated JSON back to `scratch/features/features.json`.
+   Write the updated JSON back to `.giantmem/features/features.json`.
 
 9. **Update plans/current.md**
 

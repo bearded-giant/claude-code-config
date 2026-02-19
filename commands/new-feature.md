@@ -15,11 +15,11 @@ Create a new feature folder with templates. Status is auto-detected:
 
 ## Steps
 
-1. Validate scratch/features/ exists, if not inform user to run /ws-init
+1. Validate .giantmem/features/ exists, if not inform user to run /ws-init
 
 2. **Determine status automatically**
 
-   Read `scratch/features/features.json` (create it as `{}` if it doesn't exist).
+   Read `.giantmem/features/features.json` (create it as `{}` if it doesn't exist).
 
    Check if any feature in the cache has `"status": "in_progress"`.
    - If yes → this feature's status is `pending`
@@ -27,7 +27,7 @@ Create a new feature folder with templates. Status is auto-detected:
 
    Tell the user which status was auto-selected and why (e.g., "Creating as pending — feature X is currently in_progress" or "Creating as in_progress — no active feature").
 
-3. Create scratch/features/{name}/ directory
+3. Create .giantmem/features/{name}/ directory
 
 4. Create spec.md based on status:
 
@@ -146,7 +146,7 @@ new:
 
 8. **Update features.json cache**
 
-   Read `scratch/features/features.json`, add the new feature entry:
+   Read `.giantmem/features/features.json`, add the new feature entry:
 
    ```json
    {
@@ -163,9 +163,9 @@ new:
    }
    ```
 
-   Write the updated JSON back to `scratch/features/features.json`.
+   Write the updated JSON back to `.giantmem/features/features.json`.
 
-9. Update scratch/features/_index.md:
+9. Update .giantmem/features/_index.md:
    - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
    - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} |`
 

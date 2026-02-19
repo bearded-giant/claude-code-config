@@ -19,7 +19,7 @@ Before proposing solutions, investigate:
    - What are the contributing factors?
 
 2. **Context Gathering**
-   - Read scratch/context/ for prior discoveries
+   - Read .giantmem/context/ for prior discoveries
    - Review relevant code sections
    - Identify existing patterns and conventions
 
@@ -47,8 +47,8 @@ After receiving answers:
 3. Identify risks and mitigations for recommended approach
 
 **Output:**
-- Write analysis to scratch/plans/{topic}_analysis.md (snake_case)
-- Append key architectural decisions to scratch/context/discoveries.md:
+- Write analysis to .giantmem/plans/{topic}_analysis.md (snake_case)
+- Append key architectural decisions to .giantmem/context/discoveries.md:
   ```
   - YYYY-MM-DD HH:MM: [architecture] decision summary
   ```

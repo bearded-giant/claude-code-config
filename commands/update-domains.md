@@ -19,7 +19,7 @@ If no arguments provided, detect stale domains automatically and ask.
 
 ### 1. Load domain index
 
-Read `scratch/domains/_index.json`. If it doesn't exist, tell the user to run `/plan-feature` first to create initial domain explorations.
+Read `.giantmem/domains/_index.json`. If it doesn't exist, tell the user to run `/plan-feature` first to create initial domain explorations.
 
 ### 2. Determine which domains to update
 
@@ -33,14 +33,14 @@ git log --since="{last_explored}" --name-only -- {key_paths}
 If any files changed, mark that domain as stale.
 
 **If `--for={feature}` provided:**
-Read `scratch/features/{feature}/plan_context.json` and get `domains_referenced`. Check each for staleness.
+Read `.giantmem/features/{feature}/plan_context.json` and get `domains_referenced`. Check each for staleness.
 
 **If no arguments:**
 Run the staleness check on all domains, then present the stale ones and ask the user which to update. Also list any domains that have never been explored but whose key_paths appear in recent git diffs.
 
 ### 3. Read current domain JSONs
 
-For each domain being updated, read `scratch/domains/{domain}.json` to understand what was previously captured.
+For each domain being updated, read `.giantmem/domains/{domain}.json` to understand what was previously captured.
 
 ### 4. Re-explore each domain
 
@@ -61,7 +61,7 @@ Run agents in parallel when updating multiple domains.
 
 ### 5. Update domain JSONs
 
-For each domain, update `scratch/domains/{domain_name}.json`:
+For each domain, update `.giantmem/domains/{domain_name}.json`:
 - Replace all fields with fresh exploration data
 - Preserve `explored_for_features` (merge, don't replace)
 - Update `last_explored` to today
@@ -69,7 +69,7 @@ For each domain, update `scratch/domains/{domain_name}.json`:
 
 ### 6. Update domain index
 
-Update `scratch/domains/_index.json`:
+Update `.giantmem/domains/_index.json`:
 - Update `last_explored` for each refreshed domain
 - Update `key_paths` if the exploration revealed new paths
 - Update `features` list
@@ -94,7 +94,7 @@ Referenced by features:
   - auth_session -> jwt-session-enforcement, jwt-session-cookie
   - payment_flow -> checkout-redesign
 
-Domain index: scratch/domains/_index.json ({n} total domains)
+Domain index: .giantmem/domains/_index.json ({n} total domains)
 
 Tip: If a feature plan is now outdated, run /plan-feature {feature} --refresh
 ```

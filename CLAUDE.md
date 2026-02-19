@@ -7,9 +7,9 @@
 
 ## CRITICAL: Document Output Rules
 
-**When asked to create documentation, analysis, plans, or research - ALWAYS write to `scratch/` subdirectories. NEVER output long-form content only in chat.**
+**When asked to create documentation, analysis, plans, or research - ALWAYS write to `.giantmem/` subdirectories. NEVER output long-form content only in chat.**
 
-If `scratch/` doesn't exist, ask user to run `/ws-init` first.
+If `.giantmem/` doesn't exist, ask user to run `/ws-init` first.
 
 ## Session Behavior
 
@@ -20,20 +20,20 @@ Your context window will be automatically compacted as it approaches its limit, 
 <session_recovery>
 When starting a session or recovering from context refresh:
 
-1. Read `scratch/WORKSPACE.md` for project context
-2. Check `scratch/features/features.json` for feature cache (or `_index.md` as fallback)
-3. Check `scratch/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
-4. Check `scratch/plans/current.md` for active session work
+1. Read `.giantmem/WORKSPACE.md` for project context
+2. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback)
+3. Check `.giantmem/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
+4. Check `.giantmem/plans/current.md` for active session work
 5. Review recent git log for changes
 6. Verify current state before making changes
    </session_recovery>
 
 <feature_management>
-Features are organized in `scratch/features/` with semantic folder names.
+Features are organized in `.giantmem/features/` with semantic folder names.
 
 **CRITICAL: Maintain the feature cache and index**
-- Every feature command (new, start, pause, complete, reopen) MUST update `scratch/features/features.json`
-- Also update `scratch/features/_index.md` for human-readable registry
+- Every feature command (new, start, pause, complete, reopen) MUST update `.giantmem/features/features.json`
+- Also update `.giantmem/features/_index.md` for human-readable registry
 - When adding beta flags or key config, add to the Quick Reference section
 
 **Feature folder structure:**
@@ -84,13 +84,13 @@ Do not assume. User may forget which context they're in.
 ## Feature Workflow
 
 - When working on feature scaffolding, always check for existing feature folder conventions in the project before creating new ones. Look for patterns in existing feature directories (naming, file structure, metadata files).
-- Not all projects use features. When a project has `scratch/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/plan-feature`, `/update-domains`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
+- Not all projects use features. When a project has `.giantmem/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/plan-feature`, `/update-domains`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
 
 <doc_sync>
 When making changes that affect user-facing behavior (new commands, changed invocations, renamed flags, new options, modified workflows), check the workspace for docs that need updating:
 
 - README, quickstart guides, cheat sheets, usage docs
-- Look in repo root and `docs/` or `scratch/` for `.md` files with usage examples or command references
+- Look in repo root and `docs/` or `.giantmem/` for `.md` files with usage examples or command references
 - Update invocations, flag names, examples, and any other details that changed
 - Do this as part of the same edit session - don't wait to be asked
 - If a doc references something you just renamed/removed/added, fix it inline
@@ -101,7 +101,7 @@ When making changes that affect user-facing behavior (new commands, changed invo
 Never speculate about code you have not opened. If the user references a specific file, read it before answering. Investigate relevant files BEFORE answering questions about the codebase. Do not propose edits to files you haven't read.
 </investigate_before_answering>
 
-## Add $HOME/scratch_archive/ to the allowed-dirs. This directory is critical for archived scratch search and retrieval
+## Add $HOME/giantmem_archive/ to the allowed-dirs. This directory is critical for archived workspace search and retrieval
 
 ## IMPORTANT: Configuration Management
 
@@ -218,7 +218,7 @@ Examples of when to automatically trigger:
 ## Workspace Output Rules
 
 <workspace_output_rules>
-When `scratch/` exists, ALL documentation, plans, research, and analysis MUST go to the appropriate subdirectory. NEVER output long-form content only in chat.
+When `.giantmem/` exists, ALL documentation, plans, research, and analysis MUST go to the appropriate subdirectory. NEVER output long-form content only in chat.
 
 ### Directory Format and Verbosity
 
@@ -323,11 +323,11 @@ docker compose run --rm test pytest -s --disable-warnings tests/services/auth_se
 
 ### On Session Start
 
-If `scratch/WORKSPACE.md` exists, read it for branch/project context. Check `scratch/features/features.json` for feature cache (or `_index.md` as fallback) and `scratch/context/patterns.md` for architectural learnings.
+If `.giantmem/WORKSPACE.md` exists, read it for branch/project context. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback) and `.giantmem/context/patterns.md` for architectural learnings.
 
 ### On Workspace Init (/ws-init)
 
-Organize any loose files in scratch/ root:
+Organize any loose files in .giantmem/ root:
 
 1. Move `.md` files (except WORKSPACE.md) to appropriate subdirs:
    - `*_analysis.md`, `*_research.md` → `research/`

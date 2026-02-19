@@ -36,6 +36,7 @@
         "{{VIZ_ID}}": {
             "type": "{{VIZ_TYPE}}",
             "title": "{{PANEL_TITLE}}",
+            "description": "{{PANEL_DESCRIPTION}}",
             "dataSources": {
                 "primary": "{{DS_ID}}"
             },
@@ -59,12 +60,11 @@
         },
         "layoutDefinitions": {
             "{{TAB_ID}}": {
-                "type": "grid",
+                "type": "absolute",
                 "options": {
-                    "display": "auto",
+                    "display": "auto-scale",
                     "width": 1440,
-                    "height": 960,
-                    "gutterSize": 8
+                    "height": 960
                 },
                 "structure": [
                     {

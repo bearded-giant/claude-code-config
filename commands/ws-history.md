@@ -1,4 +1,4 @@
-Display previous sessions from scratch/history/sessions.md.
+Display previous sessions from .giantmem/history/sessions.md.
 
 ## Arguments
 
@@ -7,11 +7,11 @@ Display previous sessions from scratch/history/sessions.md.
 
 ## Steps
 
-1. Check if scratch/history/sessions.md exists
+1. Check if .giantmem/history/sessions.md exists
    - If not, inform user no history found
 
 2. If argument looks like a session ID (8 hex chars):
-   - Find matching file in scratch/history/sessions/
+   - Find matching file in .giantmem/history/sessions/
    - Display full session details
    - Show how to resume: `claude --resume {full-session-id}`
 

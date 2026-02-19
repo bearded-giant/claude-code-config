@@ -89,4 +89,4 @@ See @reference/evaluation.md for evaluation methodology.
 
 ## Output Location
 
-Write MCP server implementations to appropriate project directories. Write plans and analysis to `scratch/plans/` per workspace rules.
+Write MCP server implementations to appropriate project directories. Write plans and analysis to `.giantmem/plans/` per workspace rules.

@@ -11,7 +11,7 @@ Domains are derived automatically from the feature spec and codebase analysis. T
 
 ## Arguments
 
-- feature: (optional) Feature name in kebab-case. If not provided, use the current in_progress feature from `scratch/features/features.json`.
+- feature: (optional) Feature name in kebab-case. If not provided, use the current in_progress feature from `.giantmem/features/features.json`.
 - `--refresh`: Force re-exploration of domains that already have JSONs.
 
 ## Directory Structure
@@ -19,7 +19,7 @@ Domains are derived automatically from the feature spec and codebase analysis. T
 Domain JSONs live at repo level, not per-feature:
 
 ```
-scratch/
+.giantmem/
   domains/
     _index.json           # registry of all domain explorations
     auth_session.json     # domain exploration
@@ -34,17 +34,17 @@ scratch/
 ### 1. Identify the feature
 
 If no argument provided:
-- Read `scratch/features/features.json` and find the feature with `"status": "in_progress"`
+- Read `.giantmem/features/features.json` and find the feature with `"status": "in_progress"`
 - If multiple in_progress, list them and ask
 - If none, tell the user to run `/new-feature` or `/start-feature` first
 
-Validate `scratch/features/{feature}/spec.md` exists. Read it.
+Validate `.giantmem/features/{feature}/spec.md` exists. Read it.
 
 ### 2. Ensure domains directory exists
 
-Create `scratch/domains/` if it doesn't exist. Create `scratch/domains/_index.json` as `{"repo": "", "last_updated": "", "domains": {}}` if it doesn't exist.
+Create `.giantmem/domains/` if it doesn't exist. Create `.giantmem/domains/_index.json` as `{"repo": "", "last_updated": "", "domains": {}}` if it doesn't exist.
 
-Read `scratch/domains/_index.json`.
+Read `.giantmem/domains/_index.json`.
 
 ### 3. Derive domains from the feature spec and codebase
 
@@ -117,7 +117,7 @@ GOTCHAS:
 
 ### 5. Parse exploration into domain JSONs
 
-For each explored domain, create/update `scratch/domains/{domain_name}.json`:
+For each explored domain, create/update `.giantmem/domains/{domain_name}.json`:
 
 ```json
 {
@@ -169,7 +169,7 @@ If updating an existing domain JSON:
 
 ### 6. Update domain index
 
-Update `scratch/domains/_index.json`:
+Update `.giantmem/domains/_index.json`:
 
 ```json
 {
@@ -191,7 +191,7 @@ For existing domains not being refreshed, leave their entries untouched. Merge t
 
 ### 7. Draft the feature plan
 
-Write `scratch/features/{feature}/plan.md`:
+Write `.giantmem/features/{feature}/plan.md`:
 
 ```markdown
 # Plan: {feature name (title case)}
@@ -229,7 +229,7 @@ Use the domain JSONs and feature spec to inform the plan. The plan should be con
 
 ### 8. Write plan_context.json
 
-Write `scratch/features/{feature}/plan_context.json`:
+Write `.giantmem/features/{feature}/plan_context.json`:
 
 ```json
 {
@@ -244,7 +244,7 @@ Write `scratch/features/{feature}/plan_context.json`:
 
 ### 9. Update meta.json
 
-Add plan-related fields to `scratch/features/{feature}/meta.json`:
+Add plan-related fields to `.giantmem/features/{feature}/meta.json`:
 
 ```json
 {
@@ -261,13 +261,13 @@ Add plan-related fields to `scratch/features/{feature}/meta.json`:
 Feature '{feature}' planned.
 
 Domains explored:
-  - auth_session (new) -> scratch/domains/auth_session.json
+  - auth_session (new) -> .giantmem/domains/auth_session.json
   - merchant_api (reused, explored 2026-02-10)
 
-Plan: scratch/features/{feature}/plan.md
-Context: scratch/features/{feature}/plan_context.json
+Plan: .giantmem/features/{feature}/plan.md
+Context: .giantmem/features/{feature}/plan_context.json
 
-Domain index: scratch/domains/_index.json ({n} total domains)
+Domain index: .giantmem/domains/_index.json ({n} total domains)
 ```
 
 ## Rules

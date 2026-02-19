@@ -6,16 +6,16 @@ Hooks that run at various Claude Code lifecycle events.
 
 **Hook:** `SessionEnd`
 
-Extracts session metadata from transcript and creates session summary files. Auto-initializes workspace structure if `scratch/` doesn't exist.
+Extracts session metadata from transcript and creates session summary files. Auto-initializes workspace structure if `.giantmem/` doesn't exist.
 
 ### Output Files
 
 | File | Description |
 |------|-------------|
-| `scratch/history/sessions/{timestamp}_{session_id}.md` | Detailed session file |
-| `scratch/history/sessions.md` | Index with one-liner entries |
-| `scratch/context/discoveries.md` | Appended findings |
-| `scratch/plans/current.md` | Updated if plans detected |
+| `.giantmem/history/sessions/{timestamp}_{session_id}.md` | Detailed session file |
+| `.giantmem/history/sessions.md` | Index with one-liner entries |
+| `.giantmem/context/discoveries.md` | Appended findings |
+| `.giantmem/plans/current.md` | Updated if plans detected |
 
 ### Session File Contents
 
@@ -87,7 +87,7 @@ Topics are determined by keyword frequency analysis of user prompts and assistan
 
 **Workspace Topic Hint:**
 
-If `scratch/WORKSPACE.md` contains a filled-in Purpose section:
+If `.giantmem/WORKSPACE.md` contains a filled-in Purpose section:
 
 ```markdown
 ## Purpose
@@ -98,10 +98,10 @@ The hook extracts topic keywords from Purpose and applies a +5 weight bonus. Thi
 
 ### Auto-Init Behavior
 
-If `scratch/` doesn't exist when session ends, the hook creates:
+If `.giantmem/` doesn't exist when session ends, the hook creates:
 
 ```
-scratch/
+.giantmem/
   .gitkeep
   WORKSPACE.md          # with project name, date, git branch
   context/
@@ -132,7 +132,7 @@ Patterns that trigger discovery extraction:
 
 **Hook:** `SessionStart`
 
-Injects workspace context at session start. Reads `scratch/WORKSPACE.md`, recent sessions, active plans, and discoveries to provide continuity.
+Injects workspace context at session start. Reads `.giantmem/WORKSPACE.md`, recent sessions, active plans, and discoveries to provide continuity.
 
 ## memory_*.py
 

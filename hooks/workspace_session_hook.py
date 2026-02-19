@@ -15,7 +15,7 @@ Input (JSON on stdin):
 Output: Workspace context injected into session via stdout.
 
 Workflow:
-1. Check if scratch/ exists in cwd
+1. Check if .giantmem/ exists in cwd (fallback: scratch/)
 2. If not, bootstrap via workspace-lib.sh
 3. Read WORKSPACE.md and discoveries.md
 4. Output context for Claude to use
@@ -30,8 +30,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-# Path to workspace-lib.sh - adjust if needed
-WORKSPACE_LIB = Path.home() / "dev/script-hodge-podge/workspace/workspace-lib.sh"
+# path to workspace-lib.sh - uses GIANT_TOOLING_DIR env var with fallback
+WORKSPACE_LIB = Path(os.environ.get('GIANT_TOOLING_DIR', str(Path.home() / "dev/giant-tooling"))) / "workspace/workspace-lib.sh"
 
 
 def bootstrap_workspace(cwd: str) -> bool:
@@ -39,16 +39,17 @@ def bootstrap_workspace(cwd: str) -> bool:
     Bootstrap workspace structure using workspace-lib.sh.
     Returns True if bootstrap was performed.
     """
-    scratch_dir = Path(cwd) / "scratch"
+    workspace_dir = Path(cwd) / ".giantmem"
+    if not workspace_dir.exists():
+        workspace_dir = Path(cwd) / "scratch"
 
-    if scratch_dir.exists():
+    if workspace_dir.exists():
         return False
 
     if not WORKSPACE_LIB.exists():
         return False
 
     try:
-        # Source the lib and call workspace_init
         cmd = f'source "{WORKSPACE_LIB}" && workspace_init "{cwd}"'
         subprocess.run(
             ["bash", "-c", cmd],
@@ -61,12 +62,8 @@ def bootstrap_workspace(cwd: str) -> bool:
         return False
 
 
-def read_recent_sessions(scratch_dir: Path, limit: int = 3) -> list:
-    """
-    Read recent session summaries for context injection.
-    Returns list of (filename, topic, brief) tuples.
-    """
-    sessions_dir = scratch_dir / "history" / "sessions"
+def read_recent_sessions(workspace_dir: Path, limit: int = 3) -> list:
+    sessions_dir = workspace_dir / "history" / "sessions"
     if not sessions_dir.exists():
         return []
 
@@ -98,12 +95,8 @@ def read_recent_sessions(scratch_dir: Path, limit: int = 3) -> list:
     return sessions
 
 
-def read_feature_index(scratch_dir: Path) -> str:
-    """
-    Read features index for session context.
-    Returns index content or None.
-    """
-    index_file = scratch_dir / "features" / "_index.md"
+def read_feature_index(workspace_dir: Path) -> str:
+    index_file = workspace_dir / "features" / "_index.md"
     if index_file.exists():
         try:
             return index_file.read_text()[:2000]
@@ -117,7 +110,9 @@ def read_workspace_context(cwd: str) -> dict:
     Read workspace context files.
     Returns dict with available context.
     """
-    scratch_dir = Path(cwd) / "scratch"
+    workspace_dir = Path(cwd) / ".giantmem"
+    if not workspace_dir.exists():
+        workspace_dir = Path(cwd) / "scratch"
     context = {
         "workspace_md": None,
         "discoveries": None,
@@ -128,11 +123,11 @@ def read_workspace_context(cwd: str) -> dict:
         "bootstrapped": False
     }
 
-    if not scratch_dir.exists():
+    if not workspace_dir.exists():
         return context
 
     # read WORKSPACE.md
-    workspace_file = scratch_dir / "WORKSPACE.md"
+    workspace_file = workspace_dir / "WORKSPACE.md"
     if workspace_file.exists():
         try:
             context["workspace_md"] = workspace_file.read_text()[:2000]
@@ -140,7 +135,7 @@ def read_workspace_context(cwd: str) -> dict:
             pass
 
     # read discoveries
-    discoveries_file = scratch_dir / "context" / "discoveries.md"
+    discoveries_file = workspace_dir / "context" / "discoveries.md"
     if discoveries_file.exists():
         try:
             content = discoveries_file.read_text()
@@ -151,7 +146,7 @@ def read_workspace_context(cwd: str) -> dict:
             pass
 
     # read tree (truncated)
-    tree_file = scratch_dir / "context" / "tree.md"
+    tree_file = workspace_dir / "context" / "tree.md"
     if tree_file.exists():
         try:
             content = tree_file.read_text()
@@ -162,7 +157,7 @@ def read_workspace_context(cwd: str) -> dict:
             pass
 
     # read current plan if exists
-    plan_file = scratch_dir / "plans" / "current.md"
+    plan_file = workspace_dir / "plans" / "current.md"
     if plan_file.exists():
         try:
             context["current_plan"] = plan_file.read_text()[:1500]
@@ -170,12 +165,12 @@ def read_workspace_context(cwd: str) -> dict:
             pass
 
     # read recent sessions
-    recent = read_recent_sessions(scratch_dir)
+    recent = read_recent_sessions(workspace_dir)
     if recent:
         context["recent_sessions"] = recent
 
     # read feature index
-    context["feature_index"] = read_feature_index(scratch_dir)
+    context["feature_index"] = read_feature_index(workspace_dir)
 
     return context
 
@@ -190,7 +185,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
 
     if bootstrapped:
         parts.append(f"[Workspace bootstrapped for {project_name}]")
-        parts.append("Created scratch/ with: context/, plans/, history/, prompts/, research/, reviews/, filebox/")
+        parts.append("Created .giantmem/ with: context/, plans/, history/, prompts/, research/, reviews/, filebox/")
         parts.append("")
 
     if context.get("workspace_md"):
@@ -224,7 +219,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
 
     if parts:
         parts.append("---")
-        parts.append("Remember: Save findings to scratch/context/discoveries.md, plans to scratch/plans/")
+        parts.append("Remember: Save findings to .giantmem/context/discoveries.md, plans to .giantmem/plans/")
 
     return "\n".join(parts) if parts else ""
 

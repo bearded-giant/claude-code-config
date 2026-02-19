@@ -38,9 +38,9 @@ Output summary (YOU commit when ready)
 
 Good use cases:
 ```
-/swarm-exec scratch/plans/add-preferences-api.md
+/swarm-exec .giantmem/plans/add-preferences-api.md
 /swarm-exec "add logout button to navbar, clear session, redirect to login"
-/swarm-exec scratch/plans/refactor-auth-to-oauth2.md
+/swarm-exec .giantmem/plans/refactor-auth-to-oauth2.md
 ```
 
 ## What It's NOT For
@@ -83,7 +83,7 @@ git diff main..swarm-exec/{timestamp}
 ### With Plan File (Recommended)
 
 ```
-/swarm-exec scratch/plans/my-feature.md
+/swarm-exec .giantmem/plans/my-feature.md
 ```
 
 Plan file should contain:
@@ -152,7 +152,7 @@ Model must exist before service. Service before API.
 /swarm-exec "improve the auth system"
 
 # Good - clear plan exists
-/swarm-exec scratch/plans/auth-improvement.md
+/swarm-exec .giantmem/plans/auth-improvement.md
 ```
 
 ### 2. Be Specific About Files

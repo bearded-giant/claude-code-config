@@ -6,7 +6,7 @@ Quick reference for finding past work across workspaces and Claude sessions.
 
 ### /ws-history
 
-Show recent sessions from `scratch/history/sessions.md`:
+Show recent sessions from `.giantmem/history/sessions.md`:
 
 ```bash
 /ws-history              # last 10 sessions
@@ -60,16 +60,16 @@ For more control, grep the files directly.
 
 ```bash
 # search all session summaries
-grep -r "foo" ~/dev/my-project/scratch/history/sessions/
+grep -r "foo" ~/dev/my-project/.giantmem/history/sessions/
 
 # search with context
-grep -r -B2 -A2 "validation" ~/dev/my-project/scratch/history/sessions/
+grep -r -B2 -A2 "validation" ~/dev/my-project/.giantmem/history/sessions/
 
 # find sessions that touched a specific file
-grep -l "router.lua" ~/dev/my-project/scratch/history/sessions/*.md
+grep -l "router.lua" ~/dev/my-project/.giantmem/history/sessions/*.md
 
 # search discoveries
-grep "discovery" ~/dev/my-project/scratch/context/discoveries.md
+grep "discovery" ~/dev/my-project/.giantmem/context/discoveries.md
 ```
 
 ### Search JSONL conversations
@@ -94,10 +94,10 @@ done
 
 ```bash
 # list all files created across sessions
-grep -h "^- /Users" ~/dev/my-project/scratch/history/sessions/*.md | sort -u
+grep -h "^- /Users" ~/dev/my-project/.giantmem/history/sessions/*.md | sort -u
 
 # find sessions that created md files
-grep -l "\.md$" ~/dev/my-project/scratch/history/sessions/*.md
+grep -l "\.md$" ~/dev/my-project/.giantmem/history/sessions/*.md
 ```
 
 ---
@@ -108,7 +108,7 @@ grep -l "\.md$" ~/dev/my-project/scratch/history/sessions/*.md
 |------|---------|
 | Find where I discussed X | `/session-search "X"` |
 | What files did I create for feature Y | `/ws-history-search Y` then check "Files Touched" |
-| Find a doc Opus wrote | `grep -r "topic" ~/dev/project/scratch/` |
+| Find a doc Opus wrote | `grep -r "topic" ~/dev/project/.giantmem/` |
 | List recent work in project | `/ws-history` |
 | Resume a specific session | `claude --resume <session-id>` |
 
@@ -118,9 +118,9 @@ grep -l "\.md$" ~/dev/my-project/scratch/history/sessions/*.md
 
 | Data | Location |
 |------|----------|
-| Workspace session index | `scratch/history/sessions.md` |
-| Workspace session details | `scratch/history/sessions/*.md` |
-| Workspace discoveries | `scratch/context/discoveries.md` |
+| Workspace session index | `.giantmem/history/sessions.md` |
+| Workspace session details | `.giantmem/history/sessions/*.md` |
+| Workspace discoveries | `.giantmem/context/discoveries.md` |
 | JSONL conversations | `~/.claude/projects/{project}/*.jsonl` |
 | Global history index | `~/.claude/history.jsonl` |
 

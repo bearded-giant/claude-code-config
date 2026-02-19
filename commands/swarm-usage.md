@@ -162,7 +162,7 @@ Don't use for:
 All swarm outputs go to a dedicated directory:
 
 ```
-scratch/research/swarm-{topic}/
+.giantmem/research/swarm-{topic}/
 ├── README.md                    # manifest + config summary
 ├── analysis.md                  # human-readable final report
 ├── validator-synthesis.json     # aggregated findings
@@ -174,7 +174,7 @@ scratch/research/swarm-{topic}/
 └── worker-maintainability.json  # worker output
 ```
 
-If a feature is detected, outputs go to `scratch/features/{name}/swarm-{topic}/`.
+If a feature is detected, outputs go to `.giantmem/features/{name}/swarm-{topic}/`.
 
 ### Why Artifacts Are Retained
 

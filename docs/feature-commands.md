@@ -36,7 +36,7 @@ This removes the extra step of having to say `start` or run `/start-feature` sep
 
 ## Features Cache (`features.json`)
 
-All feature metadata is cached in `scratch/features/features.json`. This is a flat JSON object keyed by feature name:
+All feature metadata is cached in `.giantmem/features/features.json`. This is a flat JSON object keyed by feature name:
 
 ```json
 {
@@ -65,7 +65,7 @@ If the cache is missing but feature directories exist, `/list-features` rebuilds
 /new-feature session-cleanup
 ```
 
-Auto-detects no active feature, creates as `in_progress`. Prompts for branch name and base branch. Creates `scratch/features/session-cleanup/` with spec, facts, and meta.json. Checks out the new branch.
+Auto-detects no active feature, creates as `in_progress`. Prompts for branch name and base branch. Creates `.giantmem/features/session-cleanup/` with spec, facts, and meta.json. Checks out the new branch.
 
 ### 2. Discovery during another feature
 

@@ -6,10 +6,10 @@ Search workspace session files for keywords, files created, or discoveries.
 
 ## Steps
 
-1. Check if scratch/history/sessions/ exists
+1. Check if .giantmem/history/sessions/ exists
    - If not, inform user no session files found
 
-2. Search across all session files in scratch/history/sessions/:
+2. Search across all session files in .giantmem/history/sessions/:
    - Grep for the query term (case-insensitive)
    - Look in: User Prompts, Files Touched, Commands Run, Discoveries
 
@@ -18,7 +18,7 @@ Search workspace session files for keywords, files created, or discoveries.
 ```
 ## Session 2026-01-28 (cf328fa4)
 - [User Prompt] "I want to add jwks validation..."
-- [File] scratch/features/jwks-fetch/spec.md
+- [File] .giantmem/features/jwks-fetch/spec.md
 
 ## Session 2026-01-23 (7de9712f)
 - [Discovery] jwks endpoint returns PEM format

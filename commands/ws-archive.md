@@ -1,8 +1,8 @@
-Archive scratch directory to central ~/scratch_archive location.
+Archive workspace directory to central ~/giantmem_archive location.
 
 ## Steps
 
-1. Check if `scratch/` exists in current directory. If not, error.
+1. Check if `.giantmem/` exists in current directory (fallback: `scratch/`). If neither, error.
 
 2. Determine project name:
    - If in a worktree under `cc-wt/`, use `cc-wt`
@@ -18,11 +18,16 @@ Archive scratch directory to central ~/scratch_archive location.
 #!/bin/bash
 set -e
 
-SCRATCH_DIR="$PWD/scratch"
-if [ ! -d "$SCRATCH_DIR" ] || [ -L "$SCRATCH_DIR" ]; then
-    echo "No scratch directory to archive (or already symlinked)"
+WORKSPACE_DIR="$PWD/.giantmem"
+if [ ! -d "$WORKSPACE_DIR" ]; then
+    WORKSPACE_DIR="$PWD/scratch"
+fi
+if [ ! -d "$WORKSPACE_DIR" ] || [ -L "$WORKSPACE_DIR" ]; then
+    echo "No workspace directory to archive (or already symlinked)"
     exit 1
 fi
+
+WORKSPACE_NAME=$(basename "$WORKSPACE_DIR")
 
 # Determine project name from path
 case "$PWD" in
@@ -38,7 +43,7 @@ else
     BRANCH=$(basename "$PWD")
 fi
 
-ARCHIVE_BASE="$HOME/scratch_archive/$PROJECT"
+ARCHIVE_BASE="$HOME/giantmem_archive/$PROJECT"
 ARCHIVE_DIR="$ARCHIVE_BASE/$BRANCH"
 
 # If archive already exists, create timestamped backup
@@ -50,19 +55,19 @@ if [ -d "$ARCHIVE_DIR" ]; then
 fi
 
 mkdir -p "$ARCHIVE_BASE"
-echo "Moving scratch/ to: $ARCHIVE_DIR"
-mv "$SCRATCH_DIR" "$ARCHIVE_DIR"
+echo "Moving $WORKSPACE_NAME/ to: $ARCHIVE_DIR"
+mv "$WORKSPACE_DIR" "$ARCHIVE_DIR"
 
-echo "Creating symlink: scratch/ -> $ARCHIVE_DIR"
-ln -s "$ARCHIVE_DIR" "$SCRATCH_DIR"
+echo "Creating symlink: $WORKSPACE_NAME/ -> $ARCHIVE_DIR"
+ln -s "$ARCHIVE_DIR" "$WORKSPACE_DIR"
 
-echo "Archive complete. scratch/ now symlinked to archive."
-ls -la "$SCRATCH_DIR"
+echo "Archive complete. $WORKSPACE_NAME/ now symlinked to archive."
+ls -la "$WORKSPACE_DIR"
 ```
 
 5. Report the archive location and confirm symlink is working.
 
 This ensures:
-- Active scratch/ continues to work (via symlink)
+- Active .giantmem/ continues to work (via symlink)
 - All writes go directly to archive
 - When worktree is deleted, archive persists
