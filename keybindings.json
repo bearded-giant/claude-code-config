@@ -1,0 +1,25 @@
+{
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "escape": null,
+        "shift+escape": "chat:cancel"
+      }
+    },
+    {
+      "context": "Autocomplete",
+      "bindings": {
+        "escape": null,
+        "shift+escape": "autocomplete:dismiss"
+      }
+    },
+    {
+      "context": "Confirmation",
+      "bindings": {
+        "escape": null,
+        "shift+escape": "confirmation:cancel"
+      }
+    }
+  ]
+}
