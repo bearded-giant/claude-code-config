@@ -37,3 +37,6 @@ settings.local.json
 
 scratch
 .giantmem/
+
+plugins/blocklist.json
+plugins/known_marketplaces.json
