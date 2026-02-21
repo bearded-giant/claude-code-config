@@ -22,10 +22,11 @@ When starting a session or recovering from context refresh:
 
 1. Read `.giantmem/WORKSPACE.md` for project context
 2. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback)
-3. Check `.giantmem/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
-4. Check `.giantmem/plans/current.md` for active session work
-5. Review recent git log for changes
-6. Verify current state before making changes
+3. Identify the active feature (status `in_progress` in features.json)
+4. Check `.giantmem/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
+5. If active feature exists, check `features/{active-feature}/plans/current.md` for session work; otherwise check `.giantmem/plans/current.md`
+6. Review recent git log for changes
+7. Verify current state before making changes
    </session_recovery>
 
 <feature_management>
@@ -46,7 +47,12 @@ features/
 │   ├── facts.md           # beta flags, config, test commands
 │   ├── meta.json          # machine-readable (for swarm)
 │   ├── plan.md            # implementation plan (created by /plan-feature)
-│   └── plan_context.json  # which domains informed this plan
+│   ├── plan_context.json  # which domains informed this plan
+│   ├── plans/             # session work scoped to this feature
+│   │   └── current.md
+│   ├── research/          # research scoped to this feature
+│   ├── reviews/           # code reviews scoped to this feature
+│   └── filebox/           # data, exports, samples for this feature
 ```
 
 **Domain knowledge base:**
@@ -76,9 +82,31 @@ Domains are repo-level, not feature-scoped. Created by `/plan-feature`, updated 
 When user says "create a plan" or similar, ALWAYS ask:
 > Is this a **feature** (persistent, spans sessions) or **session work** (transient, current task only)?
 - Feature → use `/new-feature` → writes to `features/{name}/spec.md`
-- Session work → write to `plans/current.md`
+- Session work → if active feature exists, write to `features/{active-feature}/plans/current.md`; otherwise `plans/current.md`
 
 Do not assume. User may forget which context they're in.
+
+**Feature-scoped output routing:**
+
+When a feature has status `in_progress` in `features.json`, it is the **active feature**. All session output that would normally go to top-level `.giantmem/` subdirectories MUST instead go inside the active feature's directory:
+
+| Without active feature | With active feature `{name}` |
+|------------------------|------------------------------|
+| `.giantmem/plans/current.md` | `.giantmem/features/{name}/plans/current.md` |
+| `.giantmem/research/{topic}.md` | `.giantmem/features/{name}/research/{topic}.md` |
+| `.giantmem/reviews/{subject}.md` | `.giantmem/features/{name}/reviews/{subject}.md` |
+| `.giantmem/filebox/*` | `.giantmem/features/{name}/filebox/*` |
+
+**Always global (never feature-scoped):**
+- `domains/` - repo-level code knowledge, not feature-scoped
+- `history/` - session log spans all features
+- `prompts/` - reusable templates
+- `context/patterns.md` - curated architectural patterns (repo-level)
+- `WORKSPACE.md`, `features/_index.md`, `features.json`
+
+Create the subdirectories inside the feature folder on first write (don't require them to exist upfront).
+
+When no feature is `in_progress`, use top-level `.giantmem/` subdirectories as before.
 </feature_management>
 
 ## Feature Workflow
@@ -220,7 +248,11 @@ Examples of when to automatically trigger:
 <workspace_output_rules>
 When `.giantmem/` exists, ALL documentation, plans, research, and analysis MUST go to the appropriate subdirectory. NEVER output long-form content only in chat.
 
+**CRITICAL: Feature-scoped routing applies here.** When a feature is `in_progress`, plans, research, reviews, and filebox output go inside the active feature directory. See the feature-scoped output routing table in `<feature_management>` for exact paths.
+
 ### Directory Format and Verbosity
+
+**Global directories (always at `.giantmem/` level):**
 
 | Directory                | Format                | Verbosity                   | Example                                             |
 | ------------------------ | --------------------- | --------------------------- | --------------------------------------------------- |
@@ -233,10 +265,16 @@ When `.giantmem/` exists, ALL documentation, plans, research, and analysis MUST 
 | `domains/{name}.json`    | Domain exploration    | Machine-readable, detailed  | Entry points, key files, architecture, gotchas      |
 | `context/patterns.md`    | Curated patterns      | Medium, organized           | Architectural decisions, gotchas                    |
 | `context/*.md`           | Reference docs        | Minimal prose, lists ok     | API endpoint lists, dependency maps                 |
+| `history/sessions.md`    | Session log           | One line per session        | `- 2025-01-15: worked on auth flow`                 |
+| `prompts/*.md`           | Prompt templates      | N/A                         | Reusable prompt templates                           |
+
+**Feature-scoped directories (inside active feature when one exists, otherwise at `.giantmem/` level):**
+
+| Directory                | Format                | Verbosity                   | Example                                             |
+| ------------------------ | --------------------- | --------------------------- | --------------------------------------------------- |
 | `plans/current.md`       | Session work          | Concise, no phase tracking  | Active task steps (transient)                       |
 | `research/*.md`          | Findings + sources    | Medium, cite sources        | Key findings, code examples                         |
 | `reviews/*.md`           | Issues + locations    | Terse, file:line refs       | Bullet points with code refs                        |
-| `history/sessions.md`    | Session log           | One line per session        | `- 2025-01-15: worked on auth flow`                 |
 | `filebox/*`              | Raw data              | N/A                         | JSON, logs, samples                                 |
 
 NOTE: `context/discoveries.md` is deprecated. Use `context/patterns.md` for curated architectural patterns instead.
@@ -253,18 +291,25 @@ NOTE: `context/discoveries.md` is deprecated. Use `context/patterns.md` for cura
 
 ### Directory Selection
 
-BEFORE writing any document, select the correct directory:
+BEFORE writing any document, determine the correct path:
 
+1. Check if a feature is `in_progress` in `features.json` → that is the **active feature**
+2. If active feature exists, feature-scoped outputs go to `features/{active-feature}/` subdirs
+3. If no active feature, use top-level `.giantmem/` subdirs
+
+**Always global:**
 - **Starting a new feature?** → `/new-feature {name}` to scaffold, then `features/{name}/spec.md`
 - **Planning a feature?** → `/plan-feature` to explore code domains and draft plan
 - **Recording beta flags, config?** → `features/{name}/facts.md`
 - **Explored a code domain?** → `domains/{domain}.json` (created by `/plan-feature`, updated by `/update-domains`)
 - **Learned architectural pattern?** → `context/patterns.md` (curated, not append-only)
-- **Active session work?** → `plans/current.md` (transient)
-- **Researching external topic?** → `research/{topic}.md`
-- **Reviewing code quality?** → `reviews/{subject}.md`
-- **Temporary data, exports, samples?** → `filebox/`
 - **Prompt template to reuse?** → `prompts/{name}.md`
+
+**Feature-scoped (inside active feature dir when one exists):**
+- **Active session work?** → `{feature}/plans/current.md` or `plans/current.md`
+- **Researching external topic?** → `{feature}/research/{topic}.md` or `research/{topic}.md`
+- **Reviewing code quality?** → `{feature}/reviews/{subject}.md` or `reviews/{subject}.md`
+- **Temporary data, exports, samples?** → `{feature}/filebox/` or `filebox/`
 
 ### Format Examples
 
@@ -323,7 +368,7 @@ docker compose run --rm test pytest -s --disable-warnings tests/services/auth_se
 
 ### On Session Start
 
-If `.giantmem/WORKSPACE.md` exists, read it for branch/project context. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback) and `.giantmem/context/patterns.md` for architectural learnings.
+If `.giantmem/WORKSPACE.md` exists, read it for branch/project context. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback) and `.giantmem/context/patterns.md` for architectural learnings. Identify the active feature (status `in_progress`) and use its subdirectories for all feature-scoped output during the session.
 
 ### On Workspace Init (/ws-init)
 
