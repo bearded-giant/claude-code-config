@@ -134,6 +134,30 @@ Patterns that trigger discovery extraction:
 
 Injects workspace context at session start. Reads `.giantmem/WORKSPACE.md`, recent sessions, active plans, and discoveries to provide continuity.
 
+## debug_stop_check.py
+
+**Hook:** `Stop`
+
+Prevents Claude from stopping when there are active (unresolved) debug sessions. Works with the persistent debug state protocol in `agents/debugger.md`.
+
+Checks `.giantmem/debug/` and any `features/{name}/debug/` directories for markdown files that don't have a filled-in Resolution section. If found, blocks the stop and tells Claude to update `next_action` or move the file to `debug/resolved/`.
+
+Skips the check when `stop_hook_active` is true (already continuing from a prior stop hook) to prevent infinite loops.
+
 ## memory_*.py
 
 Memory-related hooks for the claude-mem MCP integration (separate system).
+
+## Hook Wiring Summary
+
+All hooks are configured in `settings.json`. Here's the full map:
+
+| Event | Scripts | Context injection? |
+|-------|---------|-------------------|
+| SessionStart | `memory_session_start.py`, `workspace_session_hook.py` | Yes (one-time) |
+| UserPromptSubmit | `memory_inject.py` | Yes (every prompt, up to 5 memories) |
+| PreCompact | `memory_curate.py`, timestamp file | No (stderr + file) |
+| SessionEnd | `memory_curate.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| Stop | `debug_stop_check.py` | No (JSON decision only) |
+
+Memory hooks talk to the claude-mem API. Workspace hooks read/write local `.giantmem/` files. They're complementary -- memory handles cross-session recall, workspace handles project structure and session logging.
