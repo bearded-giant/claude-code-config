@@ -114,6 +114,7 @@ For each parallel group, spawn workers simultaneously.
 **CRITICAL**:
 - Spawn independent work units IN PARALLEL (multiple Task calls)
 - Wait for dependencies before spawning dependent units
+- Include deviation rules in every worker prompt (see below)
 
 ```
 Task tool:
@@ -139,6 +140,17 @@ You are a Haiku Execution Worker. Implement the assigned work unit.
 ## Plan Context
 [Overall plan so your changes fit the bigger picture]
 
+## Deviation Rules
+
+You will encounter things not in the plan. Follow these rules:
+
+1. **Auto-fix bugs** -- broken behavior, errors, security vulns you find in files you're editing. Fix inline, note in deviations.
+2. **Auto-add missing critical** -- missing validation, error handling, null checks, auth guards that should exist. Fix inline, note in deviations.
+3. **Auto-fix blockers** -- missing deps, broken imports, config errors preventing your work. Fix to unblock, note in deviations.
+4. **Stop for architectural changes** -- new tables, framework changes, auth approach changes, new infra. Do NOT proceed. Report as status: "blocked" with details.
+
+Rule of thumb: if you can fix it in <5 lines and it's clearly correct, auto-fix. If it changes the shape of the system, stop.
+
 ## Instructions
 1. Read existing code to understand patterns
 2. Use Edit for modifications, Write for new files
@@ -159,7 +171,10 @@ You are a Haiku Execution Worker. Implement the assigned work unit.
   "tests_added": ["test names if any"],
   "issues_encountered": ["any problems"],
   "codex_consulted": true|false,
-  "needs_followup": ["if partial, what remains"]
+  "needs_followup": ["if partial, what remains"],
+  "deviations": [
+    {"rule": "1|2|3|4", "description": "what was found", "file": "path", "action": "auto-fixed|blocked"}
+  ]
 }
 ```
 
@@ -336,6 +351,12 @@ Swarm iterations: {N}
 - Issues found: {count}
 - Issues resolved: {count}
 
+## Deviations from Plan
+
+1. [Rule N - {category}] {description} -- {file} -- auto-fixed
+
+Or: "None -- plan executed as written"
+
 ## Sign-off
 
 - [x] All acceptance criteria met
@@ -380,6 +401,14 @@ Failing: [N] (should be 0)
 Review issues resolved: [N]
 Codex consultations: [N]
 QA Report: .giantmem/features/{name}/qa_report.md (if feature)
+
+## Deviations from Plan
+
+[Aggregate all worker deviations here. Format:]
+
+1. [Rule N - {category}] {description} -- {file} -- {auto-fixed|blocked}
+
+Or: "None -- plan executed as written"
 
 ## Your Next Steps (swarm does NOT commit/push)
 

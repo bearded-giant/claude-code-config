@@ -82,3 +82,57 @@ Input origin
 - Don't refactor unrelated code during debugging
 - Include regression test with fix
 - Comments only if fix is non-obvious
+
+## Persistent Debug State
+
+Debug sessions survive `/clear` and context resets. When investigating, write a structured markdown file that tracks your progress.
+
+**File location:**
+- Active feature: `.giantmem/features/{active-feature}/debug/{slug}.md`
+- No active feature: `.giantmem/debug/{slug}.md`
+- Resolved: move to `debug/resolved/{slug}.md` when fixed
+
+**Slug:** kebab-case from the issue summary, e.g. `empty-cart-after-login.md`
+
+**File structure:**
+
+```markdown
+# Debug: {one-line summary}
+
+Started: {timestamp}
+Symptom: {what the user sees}
+Trigger: {reproduction steps or conditions}
+
+## Current Focus
+
+hypothesis: {what you think is wrong}
+test: {how you're verifying}
+expecting: {what result confirms or eliminates}
+next_action: {exact next step to take on resume}
+
+## Eliminated
+
+- {hypothesis} -- {evidence that ruled it out}
+- {hypothesis} -- {evidence that ruled it out}
+
+## Evidence
+
+- {timestamp}: {finding, include file:line refs}
+- {timestamp}: {finding}
+
+## Resolution
+
+root_cause: {what's actually wrong}
+fix: {what to change, file:line refs}
+prevention: {how to avoid in future}
+```
+
+**Protocol:**
+
+1. **On start:** create the debug file after initial evidence gathering. `Current Focus` gets your first hypothesis.
+2. **On each cycle:** update `Current Focus` (overwrite). Append to `Evidence`. If a hypothesis is ruled out, move it to `Eliminated` with the disqualifying evidence.
+3. **On context reset/resume:** read the debug file. Skip everything in `Eliminated`. Continue from `next_action`.
+4. **On resolution:** fill in `Resolution`, move file to `debug/resolved/`.
+5. **Never re-investigate eliminated hypotheses.** The `Eliminated` section is authoritative. If you find yourself considering something already listed there, stop and form a new hypothesis.
+
+**Why this matters:** without persistent state, context resets cause circular debugging -- the same dead ends get re-explored. The debug file is the single source of truth for what's been tried and what's left.

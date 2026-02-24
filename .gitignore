@@ -40,3 +40,5 @@ scratch
 
 plugins/blocklist.json
 plugins/known_marketplaces.json
+
+archive/*
