@@ -144,6 +144,12 @@ Checks `.giantmem/debug/` and any `features/{name}/debug/` directories for markd
 
 Skips the check when `stop_hook_active` is true (already continuing from a prior stop hook) to prevent infinite loops.
 
+## guard_protected_paths.py
+
+**Hook:** `PreToolUse` (matcher: Write, Edit, MultiEdit)
+
+Blocks writes to protected directories: `archive/`, `plugins/marketplaces/`, `plugins/cache/`, `node_modules/`. Returns a block decision with a reason explaining the path is read-only. Prevents swarm workers and main sessions from accidentally modifying third-party or archived code.
+
 ## memory_*.py
 
 Memory-related hooks for the claude-mem MCP integration (separate system).
@@ -158,6 +164,7 @@ All hooks are configured in `settings.json`. Here's the full map:
 | UserPromptSubmit | `memory_inject.py` | Yes (every prompt, up to 5 memories) |
 | PreCompact | `memory_curate.py`, timestamp file | No (stderr + file) |
 | SessionEnd | `memory_curate.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | Stop | `debug_stop_check.py` | No (JSON decision only) |
 
 Memory hooks talk to the claude-mem API. Workspace hooks read/write local `.giantmem/` files. They're complementary -- memory handles cross-session recall, workspace handles project structure and session logging.
