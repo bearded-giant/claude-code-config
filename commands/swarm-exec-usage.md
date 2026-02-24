@@ -194,6 +194,21 @@ If first execution is close but not perfect:
 - Run /swarm-exec again with fixes
 - Or manually fix small issues
 
+## Deviation Rules
+
+Workers follow a tiered decision framework when they encounter things not in the plan:
+
+| Rule | What | Worker Action |
+|------|------|---------------|
+| 1. Bugs | Broken behavior, errors, security vulns in files being edited | Auto-fix, note in output |
+| 2. Missing critical | Missing validation, error handling, null checks, auth guards | Auto-fix, note in output |
+| 3. Blockers | Missing deps, broken imports, config errors | Auto-fix to unblock, note in output |
+| 4. Architectural | New tables, framework changes, auth approach, new infra | Stop. Report as `status: "blocked"` |
+
+Rules 1-3 keep workers moving without bothering you for obvious fixes. Rule 4 ensures system-shape changes always come back to you for a decision.
+
+All deviations (auto-fixed or blocked) are reported in a `## Deviations from Plan` section in both the QA report and terminal summary. If workers executed the plan clean, it says "None -- plan executed as written."
+
 ## Convergence
 
 Execution converges when ALL:
@@ -223,6 +238,11 @@ If stuck after 5 iterations:
 - Escalates to Sonnet if still failing
 - Reports partial completion
 
+**Worker reports blocked (rule 4 deviation):**
+- Orchestrator stops that work unit
+- Presents the architectural question to you
+- You decide, then swarm continues or adjusts plan
+
 **Max iterations without convergence:**
 ```
 Execution incomplete after 5 iterations.
@@ -247,6 +267,7 @@ Your options:
 |---------|---------|
 | /swarm | Analyze (read-only) |
 | /swarm-exec | Execute (read-write) |
+| /qa-report | Goal-backward feature verification (exists/substantive/wired) |
 | /arch-discover | Map architecture |
 | /arch-brainstorm | Plan approach |
 | /scope | Create phased plan |
