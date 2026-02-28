@@ -26,8 +26,9 @@
         "scope": "user",
         "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/pyright-lsp/1.0.0",
         "version": "1.0.0",
-        "installedAt": "2025-12-22T15:18:43.563Z",
-        "lastUpdated": "2025-12-22T15:18:43.563Z"
+        "installedAt": "2026-02-28T22:00:52.788Z",
+        "lastUpdated": "2026-02-28T22:00:52.788Z",
+        "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
       }
     ],
     "claude-mem@thedotmack": [
@@ -47,6 +48,26 @@
         "installedAt": "2026-02-15T02:12:07.842Z",
         "lastUpdated": "2026-02-15T02:12:07.842Z",
         "gitCommitSha": "2cd88e7947b7382e045666abee790c7f55f669f3"
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-28T22:00:57.214Z",
+        "lastUpdated": "2026-02-28T22:00:57.214Z",
+        "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
+      }
+    ],
+    "lua-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/lua-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-28T22:01:08.306Z",
+        "lastUpdated": "2026-02-28T22:01:08.306Z",
+        "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
       }
     ]
   }

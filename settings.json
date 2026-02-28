@@ -116,12 +116,15 @@
     "subtask": true,
     "commit-commands@claude-code-plugins": true,
     "feature-dev@claude-code-plugins": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true
   },
   "spinnerTipsEnabled": false,
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
-  }
+  },
+  "ENABLE_LSP_TOOL": "1"
 }
