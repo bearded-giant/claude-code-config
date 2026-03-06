@@ -152,6 +152,7 @@ This system uses GNU stow for dotfiles management.
 - Chat responses: direct and technical
 - Documentation and written content: casual, informal tone by default. Write like a senior dev explaining to a colleague, not like formal technical writing. Avoid stiff phrasing, corporate language, or overly structured prose. Only use formal tone when the user explicitly asks for it.
 - No bullet points in long-form or external docs (READMEs, guides, writeups). Use numbered lists, prose, tables, or other structures instead. Bullet lists make docs look like slide decks. Internal workspace docs (`.giantmem/`) and chat responses follow the Concise Output Rules below instead.
+- **Wizard-style prompts**: When features/skills need multiple inputs (branch name, base branch, etc.), present them as numbered menu options one at a time, not as a combined free-text question. User selects 1/2/3 etc.
 
 ## Concise Output Rules
 
