@@ -140,10 +140,12 @@ This system uses GNU stow for dotfiles management.
 - NEVER edit files in ~/.config or other home directory locations directly
 - Always edit the source files in their respective repositories
 - Structure: ~/dotfiles/{package}/.config/{app}/ or ~/dotfiles/{package}/.{config-file}
+- NEVER edit ~/.config/tmux/ directly — it is stow-managed from ~/dotfiles/tmux/.config/tmux/
 - Examples:
   - Claude config: ~/dev/claude-code-config/ (symlinked to ~/.claude via stow)
   - Wezterm config: ~/dotfiles/wezterm/.config/wezterm/ (symlinked to ~/.config/wezterm)
   - Shell config: ~/dotfiles/shell/.bashrc (symlinked to ~/.bashrc)
+  - Tmux config/plugins: ~/dotfiles/tmux/.config/tmux/ (symlinked to ~/.config/tmux)
     </stow_dotfiles_rules>
 
 ## Communication Style

@@ -31,7 +31,6 @@
       "/Users/bryan/"
     ]
   },
-  "model": "opus",
   "hooks": {
     "SessionStart": [
       {
@@ -122,6 +121,7 @@
   },
   "spinnerTipsEnabled": false,
   "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
