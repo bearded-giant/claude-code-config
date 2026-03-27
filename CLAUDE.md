@@ -1,3 +1,59 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## About This Repo
+
+This is a Claude Code configuration repo (`~/.claude`) managed via GNU stow from `~/dev/claude-code-config`. It defines the global behavior, hooks, commands, agents, skills, and plugins for all Claude Code sessions.
+
+### Architecture
+
+```
+.claude/
+  CLAUDE.md              # this file - global instructions (loaded every session)
+  settings.json          # permissions, hooks config, enabled plugins, env vars
+  commands/              # 40+ slash commands (markdown prompt files)
+  agents/                # 10 specialized agent definitions (markdown)
+  hooks/                 # Python/JS lifecycle hooks (see hook pipeline below)
+  scripts/               # utility scripts (categorize-search, sync-preprod, etc.)
+  skills/                # multi-file skill definitions (c4-diagrams, mcp-builder)
+  plugins/               # plugin config and runtime (config.json, installed_plugins.json)
+  mcp/                   # MCP server configs (project-server.js)
+  docs/                  # reference docs (feature-commands, session-search-guide)
+```
+
+### Hook Pipeline
+
+All hooks are Python (stdlib only, no external deps) except statusline (Node.js). Configured in `settings.json` under `hooks`.
+
+| Event | Hook | Purpose |
+|-------|------|---------|
+| SessionStart | `memory_session_start.py` | Injects session primer from memory API (`localhost:8765`) |
+| SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
+| UserPromptSubmit | `memory_inject.py` | Queries memory API for relevant memories, prepends to prompt |
+| PreCompact | `memory_curate.py` | Triggers memory curation before context compaction |
+| PreCompact | writes `/tmp/claude-compact-ts` | Signal file for statusline compaction indicator |
+| SessionEnd | `memory_curate.py` | Triggers memory curation on session end |
+| SessionEnd | `workspace_session_end.py` | Extracts session summary, discoveries, plans from transcript |
+| PreToolUse (Write/Edit) | `guard_protected_paths.py` | Blocks writes to `archive/`, `plugins/cache/`, `node_modules/` |
+| Stop | `debug_stop_check.py` | Debug hook for unexpected stops |
+
+**External dependencies:** Memory hooks require a local memory API at `localhost:8765` (graceful no-op if unavailable). Workspace hooks use `~/dev/giant-tooling/workspace/workspace-lib.sh` for bootstrap (fallback: inline init).
+
+### Statusline
+
+`hooks/statusline.js` (Node.js) renders: model name, directory, git branch, context window usage bar, and rate limit usage per org (cached in `~/.cache/claude-usage/`). Refreshed by `hooks/usage-fetch.py`.
+
+### Key Files to Know
+
+- `settings.json` - permissions, hook wiring, enabled plugins, env vars
+- `plugins/installed_plugins.json` - which plugins are installed
+- `plugins/config.json` - plugin repository config
+- `.memory-project.json` - project ID for memory system
+- `.giantmem/` - workspace scratch area (gitignored)
+
+---
+
 # Claude Global Configuration
 
 ## General Guidelines
@@ -130,6 +186,15 @@ Never speculate about code you have not opened. If the user references a specifi
 </investigate_before_answering>
 
 ## Add $HOME/giantmem_archive/ to the allowed-dirs. This directory is critical for archived workspace search and retrieval
+
+## Discord Bot
+
+- Bot: `BG-CLC` (Discord plugin via `plugin:discord:discord`)
+- DM channel ID: `1485390190523584542`
+- User snowflake: `333424240240099328`
+- Inbound notifications don't surface in conversation yet (--channels flag not available in client as of 2026-03-22, even with Team Channels preview enabled) -- use `fetch_messages` to poll the DM channel, then `reply` to respond
+- Config lives at `~/.claude/channels/discord/.env` (token) and `~/.claude/channels/discord/access.json` (allowlist)
+- Access policy: `allowlist` (locked down)
 
 ## IMPORTANT: Configuration Management
 

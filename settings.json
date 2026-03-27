@@ -117,14 +117,32 @@
     "feature-dev@claude-code-plugins": true,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
-    "lua-lsp@claude-plugins-official": true
+    "lua-lsp@claude-plugins-official": true,
+    "discord@claude-plugins-official": true
   },
   "spinnerTipsEnabled": false,
+  "channelsEnabled": true,
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
   },
-  "ENABLE_LSP_TOOL": "1"
+  "ENABLE_LSP_TOOL": "1",
+  "mcpServers": {
+    "salesforce-dx": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@salesforce/mcp",
+        "--orgs",
+        "DEFAULT_TARGET_ORG",
+        "--toolsets",
+        "orgs,metadata,data,users",
+        "--tools",
+        "run_apex_test",
+        "--allow-non-ga-tools"
+      ]
+    }
+  }
 }

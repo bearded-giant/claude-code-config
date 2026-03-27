@@ -69,6 +69,16 @@
         "lastUpdated": "2026-02-28T22:01:08.306Z",
         "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
       }
+    ],
+    "discord@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/discord/0.0.4",
+        "version": "0.0.4",
+        "installedAt": "2026-03-22T21:24:28.120Z",
+        "lastUpdated": "2026-03-24T21:22:00.696Z",
+        "gitCommitSha": "61c0597779bd2d670dcd4fbbf37c66aa19eb2ce6"
+      }
     ]
   }
 }
