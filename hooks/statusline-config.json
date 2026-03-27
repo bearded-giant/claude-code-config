@@ -1,0 +1,10 @@
+{
+  "style": "compact",
+  "line2": true,
+  "tools": "last",
+  "agents": true,
+  "thinking": false,
+  "messages": false,
+  "lines": true,
+  "duration": true
+}
