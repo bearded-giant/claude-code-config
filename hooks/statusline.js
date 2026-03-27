@@ -87,7 +87,7 @@ function fmtCountdown(resets_at, now) {
 // --- git info ---
 
 function getGitInfo(dir) {
-  const info = { branch: null, dirty: false, ahead: 0, behind: 0 };
+  const info = { branch: null, dirty: false, untracked: false, ahead: 0, behind: 0 };
   try {
     let gitDir = null;
     let current = dir;
@@ -115,7 +115,9 @@ function getGitInfo(dir) {
       const bm = header.match(/behind (\d+)/);
       if (am) info.ahead = parseInt(am[1]);
       if (bm) info.behind = parseInt(bm[1]);
-      info.dirty = lines.slice(1).some(l => l.trim().length > 0);
+      const fileLines = lines.slice(1).filter(l => l.trim().length > 0);
+      info.dirty = fileLines.some(l => !l.startsWith('??'));
+      info.untracked = fileLines.some(l => l.startsWith('??'));
     } catch (e) {}
   } catch (e) {}
   return info;
@@ -407,6 +409,7 @@ process.stdin.on('end', () => {
     if (git.branch) {
       let b = `${CYAN}${git.branch}${RST}`;
       if (git.dirty) b += `${YELLOW}*${RST}`;
+      if (git.untracked) b += `${GREEN}?${RST}`;
       if (git.ahead) b += `${GREEN}+${git.ahead}${RST}`;
       if (git.behind) b += `${RED}-${git.behind}${RST}`;
       branchPart = ` \u2502 ${b}`;
