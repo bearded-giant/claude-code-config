@@ -354,7 +354,7 @@ function fmtToolFeed(tools, mode) {
     // just show the most recent non-completed tool, or last completed
     const running = tools.filter(t => !t.completed);
     const t = running.length ? running[running.length - 1] : tools[tools.length - 1];
-    const target = t.target ? ` ${t.target.slice(0, 30)}` : '';
+    const target = t.target ? ` ${t.target.slice(0, 60)}` : '';
     if (!t.completed) return `${CYAN}${t.name}${target}...${RST}`;
     return `${DIM}${t.name}${target}${RST}`;
   }
@@ -435,9 +435,9 @@ process.stdin.on('end', () => {
       const added = cost.total_lines_added || 0;
       const removed = cost.total_lines_removed || 0;
       if (added || removed) {
-        let lp = '';
-        if (added) lp += `${GREEN}+${added}${RST}`;
-        if (removed) lp += `${RED}-${removed}${RST}`;
+        let lp = `${DIM}w:${RST}`;
+        if (added) lp += `${DIM}${GREEN}+${added}${RST}`;
+        if (removed) lp += `${DIM}${RED}-${removed}${RST}`;
         parts.push(lp);
       }
     }
