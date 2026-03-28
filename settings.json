@@ -42,6 +42,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/workspace_session_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/ensure_personal_claude.py"
           }
         ]
       }
