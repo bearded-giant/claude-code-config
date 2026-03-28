@@ -51,9 +51,15 @@ function colorForPct(pct) {
   return BLINK_RED;
 }
 
-function fmtBar(pct, width) {
-  const filled = Math.min(width, Math.round((pct / 100) * width));
-  return '\u2588'.repeat(filled) + '\u2591'.repeat(width - filled);
+// pie/circle gauge: ○ ◔ ◑ ◕ ●
+const PIES = ['\u25CB', '\u25D4', '\u25D1', '\u25D5', '\u25CF'];
+
+function pie(pct) {
+  if (pct <= 0) return PIES[0];
+  if (pct <= 25) return PIES[1];
+  if (pct <= 50) return PIES[2];
+  if (pct <= 75) return PIES[3];
+  return PIES[4];
 }
 
 function fmtDuration(ms) {
@@ -144,10 +150,9 @@ function contextGauge(data) {
   const untilCompact = Math.max(0, pct - compactAt);
 
   if (recentCompact && untilCompact < 25) {
-    return ` ${GREEN}${'\u2591'.repeat(10)} compacted${RST}`;
+    return ` ${GREEN}${pie(0)} compacted${RST}`;
   }
 
-  // used% relative to usable window (for bar fill)
   const usedPct = Math.round(((100 - pct) / (100 - compactAt)) * 100);
 
   let color;
@@ -156,9 +161,7 @@ function contextGauge(data) {
   else if (untilCompact > 20) color = ORANGE;
   else color = BLINK_RED;
 
-  const filled = Math.min(10, Math.round(usedPct / 10));
-  const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(10 - filled);
-  return ` ${color}${bar} ${untilCompact}%${RST}`;
+  return ` ${color}${pie(usedPct)} ${untilCompact}%${RST}`;
 }
 
 // --- rate limit usage ---
@@ -203,14 +206,15 @@ function usageGauges() {
       let parts = [];
       if (show5h && fh && fh.used_pct != null) {
         const p = Math.min(100, Math.max(0, fh.used_pct));
-        parts.push(`${colorForPct(p)}5h ${fmtBar(p, 5)} ${p}%${fmtCountdown(fh.resets_at, now)}${RST}`);
+        parts.push(`${colorForPct(p)}5h ${pie(p)} ${p}%${fmtCountdown(fh.resets_at, now)}${RST}`);
       }
       if (show7d && sd && sd.used_pct != null) {
         const p = Math.min(100, Math.max(0, sd.used_pct));
-        parts.push(`${colorForPct(p)}7d ${fmtBar(p, 5)} ${p}%${fmtCountdown(sd.resets_at, now)}${RST}`);
+        parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${fmtCountdown(sd.resets_at, now)}${RST}`);
       }
       if (parts.length) {
-        result += ` \u2502 ${DIM}${org.label}${RST} ${parts.join(' ')}`;
+        const label = orgs.length > 1 ? `${DIM}${org.label}${RST} ` : '';
+        result += ` \u2502 ${label}${parts.join(' ')}`;
       }
     }
     return result;
@@ -398,10 +402,12 @@ process.stdin.on('end', () => {
     const data = JSON.parse(input);
     const cfg = loadConfig();
 
-    const model = data.model?.display_name || 'Claude';
     const dir = data.cwd || data.workspace?.current_dir || process.cwd();
     const homeDir = os.homedir();
-    const displayPath = dir.startsWith(homeDir) ? '~' + dir.slice(homeDir.length) : dir;
+    const fullPath = dir.startsWith(homeDir) ? '~' + dir.slice(homeDir.length) : dir;
+    // show last 2 path components for readability on narrow panes
+    const pathParts = fullPath.split('/');
+    const displayPath = pathParts.length > 2 ? '.../' + pathParts.slice(-2).join('/') : fullPath;
 
     // git
     const git = getGitInfo(dir);
@@ -417,7 +423,7 @@ process.stdin.on('end', () => {
 
     const ctx = contextGauge(data);
     const usage = usageGauges();
-    const line1 = `${DIM}${model}${RST} \u2502 ${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
+    const line1 = `${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
 
     // minimal: one line only
     if (cfg.style === 'minimal' || !cfg.line2) {
@@ -464,7 +470,15 @@ process.stdin.on('end', () => {
     }
 
     const sep = ` ${DIM}\u2502${RST} `;
-    const line2 = parts.join(sep);
+    let line2 = parts.join(sep);
+
+    // persist line 2 so it survives ticks with missing data
+    const line2Cache = path.join(STATE_DIR, 'line2-cache.txt');
+    if (line2) {
+      try { fs.mkdirSync(STATE_DIR, { recursive: true }); fs.writeFileSync(line2Cache, line2); } catch (e) {}
+    } else {
+      try { line2 = fs.readFileSync(line2Cache, 'utf8'); } catch (e) {}
+    }
 
     if (line2) {
       process.stdout.write(`${line1}\n${line2}`);
