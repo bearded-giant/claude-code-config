@@ -32,12 +32,7 @@ After writing the file, print the file path AND the full markdown content in cha
    - Generate curl examples using `api.rechargeapps.com` as base URL
    - Include example response bodies from context when possible (read route handlers, serializers, or tests to infer response shape)
 
-5. Check for analytics trigger:
-   - If the message contains "trenddata", "trend-data", or "trend-data!"
-   - Forward the query to the analytics-agent API (`/api/analyze`) instead of the normal LLM flow
-   - Strip the trigger keyword before sending
-
-6. Write the description file with this structure:
+5. Write the description file with this structure:
 
 ```markdown
 # Description
@@ -58,9 +53,11 @@ After writing the file, print the file path AND the full markdown content in cha
 
 ## Style
 
-- Casual bullet points over prose
+- Ultra-concise bullet points over prose
 - One idea per bullet
 - If a sentence would need a comma, split it into two bullets instead
 - No compound sentences
 - Keep it scannable - someone skimming the MR should get the gist in seconds
 - This is a rough draft to supplement the diff, not formal documentation
+- Bullet lists start with lower case letters
+- No periods at the end of a bullet point
