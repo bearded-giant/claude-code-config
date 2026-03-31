@@ -196,7 +196,7 @@ function usageGauges() {
 
     let result = '';
     const orgs = (cache.orgs || []).filter(
-      o => !visibleFilter || visibleFilter.includes(o.label)
+      o => !visibleFilter || visibleFilter.some(v => o.label?.toLowerCase().includes(v.toLowerCase()))
     );
     for (const org of orgs) {
       const fh = org.five_hour;
