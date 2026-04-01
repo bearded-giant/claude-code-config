@@ -399,10 +399,10 @@ BEFORE writing any document, determine the correct path:
 **features/_index.md - CORRECT:**
 
 ```markdown
-| Feature | Status | Beta Flag | Builds On |
-|---------|--------|-----------|-----------|
-| [jwt-session-cookie](jwt-session-cookie/) | complete | `enable_jwt_session_cookie` | - |
-| [jwt-session-enforcement](jwt-session-enforcement/) | in_progress | `enable_jwt_session_enforcement` | jwt-session-cookie |
+| Feature | Status | Beta Flag | Builds On | FE |
+|---------|--------|-----------|-----------|-----|
+| [jwt-session-cookie](jwt-session-cookie/) | complete | `enable_jwt_session_cookie` | - | - |
+| [jwt-session-enforcement](jwt-session-enforcement/) | in_progress | `enable_jwt_session_enforcement` | jwt-session-cookie | FE: jwt-session-enforcement |
 ```
 
 **features/{name}/facts.md - CORRECT:**

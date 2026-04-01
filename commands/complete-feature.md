@@ -95,7 +95,16 @@ Mark a feature as complete by updating all workspace tracking files.
    - Update `.giantmem/domains/_index.json` with refreshed dates and feature references
    - If no domains were changed, skip silently
 
-10. **Report**
+10. **Check frontend status (if dual-repo feature)**
+
+   Read the feature's `meta.json` or `features.json` entry. If `frontend.enabled` is `true`:
+
+   - Check if the frontend worktree still exists at the recorded path (`~/dev/javascript/frontend-wt/{frontend_branch}`)
+   - Remind the user that the frontend branch needs its own MR/PR separately
+   - Report the frontend branch name and worktree path so they can handle it
+   - Do NOT remove the frontend worktree or branch — that's the user's responsibility
+
+11. **Report**
 
    ```
    Feature '{feature}' marked complete.
@@ -109,6 +118,7 @@ Mark a feature as complete by updating all workspace tracking files.
      - domains: {list of refreshed domains, or "none (no domain changes detected)"}
 
    Unchecked criteria: {count or "none"}
+   Frontend: {frontend_branch at ~/dev/javascript/frontend-wt/{frontend_branch} — needs separate MR, or "n/a"}
    ```
 
 ## Rules

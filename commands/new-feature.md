@@ -95,7 +95,31 @@ created: {today's date}
    - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
    - If the user says they already have a branch or want to skip, just record the branch name (or leave it empty) and move on
 
-6. Create facts.md:
+6. **Frontend (dual-repo) prompt (in_progress only, skip for pending)**
+
+   After backend branch creation, ask:
+
+   ```
+   Does this feature include frontend changes?
+   1. No (backend only)
+   2. Yes
+   ```
+
+   **If yes:**
+   - Ask for the frontend branch name (default: same as the backend branch name)
+   - The frontend base branch is always `master` — do not ask
+   - Create the frontend worktree: run `fewta {frontend_branch} master` from the shell
+     - `fewta` is the registered frontend worktree command (from `wt-frontend.sh`)
+     - This creates `~/dev/javascript/frontend-wt/{frontend_branch}/` with a fresh worktree
+   - If `fewta` is not available in the shell (command not found), fall back to:
+     ```bash
+     cd ~/dev/javascript/frontend-wt/.bare && git worktree add -b {frontend_branch} ../{frontend_branch} origin/master
+     ```
+   - Record the frontend details (see steps 7-9 for where they go)
+
+   **If no:** set `frontend` to `null` in meta.json/features.json.
+
+7. Create facts.md:
 
 ```markdown
 # {name} facts
@@ -104,6 +128,12 @@ created: {today's date}
 
 branch: {branch_name or "pending"}
 base: {base_branch or "tbd"}
+
+## Frontend
+
+frontend: {true or false}
+frontend_branch: {frontend_branch or "n/a"}
+frontend_worktree: {~/dev/javascript/frontend-wt/{frontend_branch} or "n/a"}
 
 ## Identifiers
 
@@ -129,7 +159,7 @@ new:
 ```
 ```
 
-7. Create meta.json:
+8. Create meta.json:
 
 ```json
 {
@@ -139,12 +169,28 @@ new:
   "base_branch": "{base_branch or ""}",
   "builds_on": ["{builds_on}"],
   "beta_flag": "",
+  "frontend": {
+    "enabled": false
+  },
   "created": "{today's date}",
   "last_session": "{today's date}"
 }
 ```
 
-8. **Update features.json cache**
+When frontend is enabled:
+
+```json
+{
+  "frontend": {
+    "enabled": true,
+    "branch": "{frontend_branch}",
+    "base_branch": "master",
+    "worktree": "~/dev/javascript/frontend-wt/{frontend_branch}"
+  }
+}
+```
+
+9. **Update features.json cache**
 
    Read `.giantmem/features/features.json`, add the new feature entry:
 
@@ -157,18 +203,27 @@ new:
        "base_branch": "{base_branch or ""}",
        "builds_on": "{builds_on or "none"}",
        "beta_flag": "",
+       "frontend": {
+         "enabled": true/false,
+         "branch": "{frontend_branch or ""}",
+         "base_branch": "master",
+         "worktree": "~/dev/javascript/frontend-wt/{frontend_branch}"
+       },
        "created": "{today's date}",
        "last_session": "{today's date}"
      }
    }
    ```
 
+   When frontend is not enabled, use `"frontend": null`.
+
    Write the updated JSON back to `.giantmem/features/features.json`.
 
-9. Update .giantmem/features/_index.md:
+10. Update .giantmem/features/_index.md:
    - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
-   - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} |`
+   - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} | {FE if frontend enabled, otherwise -} |`
 
-10. Display the created structure and confirm:
+11. Display the created structure and confirm:
    - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
+   - If frontend enabled: confirm the frontend worktree was created and show the path.

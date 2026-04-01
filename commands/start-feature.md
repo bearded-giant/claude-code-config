@@ -47,6 +47,32 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    - If it doesn't exist locally but exists on remote: `git fetch origin && git checkout -b {branch_name} origin/{branch_name}`
    - If it doesn't exist anywhere: treat as "no branch" and prompt for creation
 
+3b. **Frontend (dual-repo) prompt**
+
+   After backend branch setup, check if `meta.json` already has `frontend.enabled: true`. If so, skip the prompt and handle the existing frontend config.
+
+   If no frontend config exists, ask:
+
+   ```
+   Does this feature include frontend changes?
+   1. No (backend only)
+   2. Yes
+   ```
+
+   **If yes:**
+   - Ask for the frontend branch name (default: same as the backend branch name)
+   - The frontend base branch is always `master` — do not ask
+   - Create the frontend worktree: run `fewta {frontend_branch} master` from the shell
+     - `fewta` is the registered frontend worktree command (from `wt-frontend.sh`)
+     - This creates `~/dev/javascript/frontend-wt/{frontend_branch}/` with a fresh worktree
+   - If `fewta` is not available in the shell (command not found), fall back to:
+     ```bash
+     cd ~/dev/javascript/frontend-wt/.bare && git worktree add -b {frontend_branch} ../{frontend_branch} origin/master
+     ```
+   - Update meta.json, facts.md, and features.json with frontend details (see `/new-feature` for the frontend data model)
+
+   **If no:** set `frontend` to `null` in meta.json/features.json.
+
 4. **Expand spec.md**
 
    - Change `status: pending` to `status: in_progress`
@@ -121,6 +147,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    Feature '{feature}' started.
 
    Branch: {branch_name} (from {base_branch})
+   Frontend: {frontend_branch at ~/dev/javascript/frontend-wt/{frontend_branch}, or "no"}
 
    Updated:
      - spec.md (status -> in_progress, expanded template)
