@@ -35,7 +35,7 @@
 | `/list-features` | Display feature registry |
 | `/feature-facts {name}` | Quick lookup of feature details |
 | `/complete-feature {name}` | Mark feature complete |
-| `/qa-report {name}` | Generate QA validation report |
+| `/feature-report {name}` | Generate QA validation report |
 
 ## Workspace
 

@@ -267,7 +267,7 @@ Your options:
 |---------|---------|
 | /swarm | Analyze (read-only) |
 | /swarm-exec | Execute (read-write) |
-| /qa-report | Goal-backward feature verification (exists/substantive/wired) |
+| /feature-report | Goal-backward feature verification (exists/substantive/wired) |
 | /arch-discover | Map architecture |
 | /arch-brainstorm | Plan approach |
 | /scope | Create phased plan |

@@ -14,7 +14,7 @@ What it would do:
 5. Flag deviations already noted by swarm-exec (read from qa_report.md if it exists)
 6. Output a structured review to `features/{name}/reviews/branch_review.md`
 
-Different from `/qa-report` which runs tests and checks exists/substantive/wired. This specifically reviews the diff shape -- what changed, was it in scope, did anything get missed.
+Different from `/feature-report` which runs tests and checks exists/substantive/wired. This specifically reviews the diff shape -- what changed, was it in scope, did anything get missed.
 
 When to build: when I find myself manually eyeballing `git diff` output for more than a few files and wishing I had a checklist.
 

@@ -115,7 +115,7 @@ See `/swarm-exec-usage` for full documentation.
 | `/list-features` | Display feature registry |
 | `/feature-facts {name}` | Quick lookup of feature details |
 | `/complete-feature {name}` | Mark feature complete, update index |
-| `/qa-report {name}` | Generate QA validation report |
+| `/feature-report {name}` | Generate QA validation report |
 
 ```
 /new-feature foo-integration

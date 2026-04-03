@@ -132,7 +132,7 @@ Domains are repo-level, not feature-scoped. Created by `/plan-feature`, updated 
 - `/search-domains <query> [--load]` - search domain JSONs for files, functions, patterns, concepts
 - `/update-domains [domains] [--all-stale]` - refresh domain JSONs after code changes
 - `/feature-facts <name>` - quick lookup
-- `/qa-report [feature]` - generate validation report
+- `/feature-report [feature]` - generate validation report
 
 **IMPORTANT - "Create a plan" disambiguation:**
 When user says "create a plan" or similar, ALWAYS ask:
@@ -282,7 +282,7 @@ When writing or editing code (excluding tests):
 When user says this phrase, enter auto-sync mode where:
 
 - After any file edit/update that's NOT in .gitignore
-- Automatically sync the file to preprod using scp
+- Automatically sync the file to preprod using `~/.claude/scripts/sync-preprod`
 - Show a brief confirmation like "→ Synced: customcheckout/api/blueprint.py"
 - Continue in this mode until user says "stop syncing" or similar
 
@@ -296,6 +296,17 @@ Claude: Entering auto-sync mode. Files will sync to preprod on save.
 Claude: [makes the edit]
 → Synced: customcheckout/api/merchant_two_factor_auth.py
 ```
+
+### "sync to preprod" / "sync to prestage" (one-shot)
+
+When user says "sync to preprod" or "sync to prestage" outside of auto-sync mode, sync all dirty and untracked non-test files:
+
+1. Get dirty files: `git diff --name-only` + `git ls-files --others --exclude-standard`
+2. Filter out: `tests/`, `test_*` files, `.gitignore`d paths
+3. Sync each remaining file using `~/.claude/scripts/sync-preprod` (or `sync-prestage`)
+4. Show summary of what was synced
+
+Use `sync-preprod` for preprod, `sync-prestage` for prestage. Both scripts handle path resolution for cc-wt worktrees automatically.
 
 ## Smart Agent Triggers
 
