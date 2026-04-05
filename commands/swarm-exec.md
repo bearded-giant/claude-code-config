@@ -60,6 +60,17 @@ git branch -D swarm-exec/{timestamp}
 
 User remains in control. Swarm makes changes, user decides what to keep.
 
+## Output Directory
+
+All worker and validator outputs are persisted to disk so you can review raw details.
+
+```bash
+SWARM_OUT="/tmp/swarm-exec/{timestamp}"
+mkdir -p "$SWARM_OUT"
+```
+
+Create this directory in Phase 0 before any workers spawn. All worker reports and validator reports are written here as JSON files.
+
 ## Phase 0: Parse Plan
 
 Input: $ARGUMENTS
@@ -178,18 +189,33 @@ Rule of thumb: if you can fix it in <5 lines and it's clearly correct, auto-fix.
 }
 ```
 
+### Capturing Worker Output
+
+**CRITICAL**: After each worker agent completes, IMMEDIATELY write its full output to disk:
+
+```bash
+# Write raw worker output to file
+Write to: $SWARM_OUT/worker-{group}-{unit}.json
+Content: the complete worker response (the JSON output schema above)
+```
+
+If the worker returns unstructured text instead of JSON, write it as-is to `$SWARM_OUT/worker-{group}-{unit}.txt`.
+
+Do NOT rely on conversation context alone -- agent results disappear on compaction. The file is the source of truth.
+
 Report:
 ```
 Workers dispatched: [N] (group [M] of [total groups])
 Executing: [work unit names]
+Outputs: $SWARM_OUT/worker-*.json
 ```
 
 ## Phase 2: Collect and Validate
 
 After workers complete:
 
-1. **Collect reports** from all workers
-2. **Spawn Opus Validator**
+1. **Collect reports** from all workers -- read from `$SWARM_OUT/worker-*.json` files, NOT from conversation memory
+2. **Spawn Opus Validator** -- pass worker output file paths so validator reads them directly
 
 ```
 Task tool:
@@ -203,8 +229,9 @@ Task tool:
 ```
 You are the Opus Execution Validator. Review changes and run tests.
 
-## Worker Reports
-[All worker JSON outputs]
+## Worker Report Files
+Read each of these files for the full worker output:
+[List of $SWARM_OUT/worker-*.json file paths]
 
 ## Changed Files
 [List of all modified/created files]
@@ -286,7 +313,20 @@ Thresholds:
   ],
   "codex_consulted": true|false
 }
+
+## IMPORTANT: Write your full output to $SWARM_OUT/validator-{iteration}.json
 ```
+
+### Capturing Validator Output
+
+**CRITICAL**: After the validator agent completes, IMMEDIATELY write its full output to disk:
+
+```bash
+Write to: $SWARM_OUT/validator-{iteration}.json
+Content: the complete validator response (the JSON output schema above)
+```
+
+Same rule as workers -- do NOT rely on conversation context. The file is the source of truth for convergence decisions and user review.
 
 ## Phase 3: Convergence Loop
 
@@ -301,7 +341,8 @@ Read validator response.
 
 ### Fix Workers
 
-When spawning fix workers, be specific:
+When spawning fix workers, be specific. Write their output to `$SWARM_OUT/fix-{iteration}-{unit}.json`.
+
 ```
 You are a Fix Worker. Address this specific issue:
 
@@ -310,6 +351,7 @@ File: [path]
 Suggested fix: [from validator]
 
 Make the minimal change to fix this issue.
+Report what you changed in JSON format (same schema as execution workers).
 ```
 
 ## Phase 4: Final Output
@@ -409,6 +451,10 @@ QA Report: .giantmem/features/{name}/qa_report.md (if feature)
 1. [Rule N - {category}] {description} -- {file} -- {auto-fixed|blocked}
 
 Or: "None -- plan executed as written"
+
+## Raw Output
+All worker and validator output files:
+  ls /tmp/swarm-exec/{timestamp}/
 
 ## Your Next Steps (swarm does NOT commit/push)
 
