@@ -1,46 +1,28 @@
 Search Claude JSONL conversation content across projects.
 
-## Arguments
+Run the search script and display results to the user:
 
-- query: Search term (required)
-- project: (optional) Filter by project path substring
-
-## Steps
-
-1. Identify JSONL files to search:
-   - All projects: ~/.claude/projects/*/*.jsonl
-   - Or filtered by project substring if provided
-
-2. Search JSONL files for query:
-   - Use grep/ripgrep for efficiency
-   - Focus on assistant message content (where Claude's explanations live)
-   - Case-insensitive search
-
-3. For each match:
-   - Extract project name from path
-   - Extract session ID from filename
-   - Show surrounding context (the actual text)
-
-4. Display matches grouped by session:
-
-```
-## edgerouter / b3f4d541 (2026-01-28)
-"...the JWKS endpoint returns keys in JWK format, which lua-resty-jwt
-can parse directly. The validation flow is: fetch JWKS → cache by kid →
-validate signature..."
-
-## edgerouter / a6bc1ba2 (2026-01-25)
-"...for the tertiary pool logic, we need to check the route segments..."
+```bash
+~/.claude/scripts/session-search $ARGUMENTS
 ```
 
-5. Show how to resume: `claude --resume {session-id}`
+## Argument Parsing
 
-## Performance Note
+The script handles all argument parsing. Pass `$ARGUMENTS` through directly.
 
-JSONL files can be large. Consider:
-- Limiting to recent files (last 30 days) by default
-- Using ripgrep for speed
-- Adding --all flag to search everything
+Examples the user might type:
+- `/session-search cookie` -- search last 30 days
+- `/session-search cookie --days 7` -- search last 7 days
+- `/session-search cookie --project agent-chat` -- filter to project
+- `/session-search "preprod session" --all` -- search all time
+- `/session-search cookie --limit 5` -- cap results
 
+The script uses named args. Map user input to `--query`:
+- `/session-search cookie` -> `--query cookie`
+- `/session-search cookie --days 7` -> `--query cookie --days 7`
+
+## What to Show
+
+Run the script and display its output verbatim. The script handles formatting, ranking, and resume commands. Do not add extra commentary unless the user asks follow-up questions.
 
 ARGUMENTS: $ARGUMENTS

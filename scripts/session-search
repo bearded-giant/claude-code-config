@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+# session-search - search claude JSONL sessions for conversation content
+# usage: session-search <query> [--days N] [--all] [--project SUBSTR] [--limit N]
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+from pathlib import Path
+
+PROJECTS_DIR = Path.home() / ".claude" / "projects"
+DEFAULT_DAYS = 30
+DEFAULT_LIMIT = 10
+SNIPPET_RADIUS = 120
+
+
+def parse_args():
+    p = argparse.ArgumentParser(description="search claude session content")
+    p.add_argument("--query", "-q", required=True, nargs="+", help="search terms")
+    p.add_argument("--days", type=int, default=DEFAULT_DAYS, help=f"search last N days (default {DEFAULT_DAYS})")
+    p.add_argument("--all", action="store_true", help="search all sessions regardless of age")
+    p.add_argument("--project", type=str, default=None, help="filter by project path substring")
+    p.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help=f"max sessions to show (default {DEFAULT_LIMIT})")
+    p.add_argument("--paths", action="store_true", help="output only JSONL paths (for piping to session-read)")
+    p.add_argument("--exact", action="store_true", help="treat query as exact phrase (default: all keywords must appear)")
+    p.add_argument("--files", action="store_true", help="show files created/edited in each session")
+    return p.parse_args()
+
+
+def _extract_cwd(jsonl_path):
+    """pull cwd from the first message that has it"""
+    try:
+        with open(jsonl_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line or '"cwd"' not in line:
+                    continue
+                try:
+                    msg = json.loads(line)
+                    cwd = msg.get("cwd")
+                    if cwd:
+                        return cwd
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        pass
+    return None
+
+
+def find_sessions(days, search_all, project_filter):
+    if not PROJECTS_DIR.is_dir():
+        print(f"no projects dir at {PROJECTS_DIR}", file=sys.stderr)
+        sys.exit(1)
+
+    cutoff = 0 if search_all else time.time() - (days * 86400)
+    sessions = []
+
+    for jsonl in PROJECTS_DIR.rglob("*.jsonl"):
+        # skip subagent files
+        if "subagents" in str(jsonl):
+            continue
+        try:
+            mtime = jsonl.stat().st_mtime
+        except (OSError, FileNotFoundError):
+            continue
+        if mtime < cutoff:
+            continue
+        # extract project name from path: -Users-bryan-dev-foo -> dev-foo
+        rel = str(jsonl.relative_to(PROJECTS_DIR))
+        project_dir = rel.split("/")[0]
+        project_name = re.sub(r"^-Users-[^-]+-", "", project_dir).replace("-", "/", 2)
+        if project_filter and project_filter.lower() not in project_name.lower():
+            continue
+        sessions.append((jsonl, project_name))
+
+    return sessions
+
+
+def extract_conversation_text(jsonl_path):
+    """pull only human and assistant text content from a session file"""
+    texts = []
+    try:
+        with open(jsonl_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    msg = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                msg_type = msg.get("type")
+                if msg_type == "human":
+                    # human messages have content as a list of blocks
+                    content = msg.get("message", {}).get("content", [])
+                    if isinstance(content, str):
+                        texts.append(("human", content))
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                texts.append(("human", block["text"]))
+                            elif isinstance(block, str):
+                                texts.append(("human", block))
+                elif msg_type == "assistant":
+                    content = msg.get("message", {}).get("content", [])
+                    if isinstance(content, str):
+                        texts.append(("assistant", content))
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                texts.append(("assistant", block["text"]))
+    except Exception:
+        pass
+    return texts
+
+
+DOC_EXTENSIONS = {".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".csv", ".sh"}
+
+
+def extract_files(jsonl_path):
+    """pull unique doc/config file paths from Write/Edit tool calls"""
+    files = []
+    seen = set()
+    try:
+        with open(jsonl_path, "r") as f:
+            for line in f:
+                if '"tool_use"' not in line:
+                    continue
+                try:
+                    msg = json.loads(line.strip())
+                except json.JSONDecodeError:
+                    continue
+                content = msg.get("message", {}).get("content", [])
+                if not isinstance(content, list):
+                    continue
+                for block in content:
+                    if not isinstance(block, dict) or block.get("type") != "tool_use":
+                        continue
+                    name = block.get("name", "")
+                    if name not in ("Write", "Edit"):
+                        continue
+                    fp = block.get("input", {}).get("file_path", "")
+                    if not fp or fp in seen:
+                        continue
+                    ext = os.path.splitext(fp)[1].lower()
+                    if ext in DOC_EXTENSIONS:
+                        seen.add(fp)
+                        files.append((name, fp))
+    except Exception:
+        pass
+    return files
+
+
+def search_session_exact(texts, pattern):
+    """search for exact phrase matches"""
+    matches = []
+    for role, text in texts:
+        for m in pattern.finditer(text):
+            start = max(0, m.start() - SNIPPET_RADIUS)
+            end = min(len(text), m.end() + SNIPPET_RADIUS)
+            snippet = text[start:end].replace("\n", " ").strip()
+            if start > 0:
+                snippet = "..." + snippet
+            if end < len(text):
+                snippet = snippet + "..."
+            matches.append((role, snippet))
+    return matches
+
+
+def search_session_keywords(texts, patterns):
+    """search for messages containing all keywords"""
+    matches = []
+    for role, text in texts:
+        text_lower = text.lower()
+        if all(p.search(text_lower) for p in patterns):
+            # snippet around the first keyword found
+            m = patterns[0].search(text)
+            if m:
+                start = max(0, m.start() - SNIPPET_RADIUS)
+                end = min(len(text), m.end() + SNIPPET_RADIUS)
+                snippet = text[start:end].replace("\n", " ").strip()
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(text):
+                    snippet = snippet + "..."
+                matches.append((role, snippet))
+    return matches
+
+
+def format_project_name(name):
+    """shorten common prefixes for display"""
+    name = re.sub(r"^dev/python/", "", name)
+    name = re.sub(r"^dev/javascript/", "", name)
+    name = re.sub(r"^dev/", "", name)
+    return name
+
+
+def main():
+    args = parse_args()
+    query_display = " ".join(args.query)
+
+    if args.exact:
+        pattern = re.compile(re.escape(query_display), re.IGNORECASE)
+        search_fn = lambda texts: search_session_exact(texts, pattern)
+    else:
+        patterns = [re.compile(re.escape(term), re.IGNORECASE) for term in args.query]
+        search_fn = lambda texts: search_session_keywords(texts, patterns)
+
+    sessions = find_sessions(args.days, args.all, args.project)
+    if not sessions:
+        print("no sessions found matching filters")
+        return
+
+    results = []
+    for jsonl_path, project_name in sessions:
+        texts = extract_conversation_text(jsonl_path)
+        matches = search_fn(texts)
+        if matches:
+            mtime = os.path.getmtime(jsonl_path)
+            session_id = jsonl_path.stem
+            work_dir = _extract_cwd(jsonl_path)
+            days_ago = max(0, (time.time() - mtime) / 86400)
+            # recency weight: 1.0 for today, halves every 7 days
+            recency = 2 ** (-days_ago / 7)
+            score = len(matches) * recency
+            result = {
+                "project": project_name,
+                "session_id": session_id,
+                "work_dir": work_dir,
+                "date": time.strftime("%Y-%m-%d", time.localtime(mtime)),
+                "days_ago": round(days_ago, 1),
+                "match_count": len(matches),
+                "score": round(score, 2),
+                "snippets": matches[:3],
+                "path": str(jsonl_path),
+            }
+            if args.files:
+                result["files"] = extract_files(jsonl_path)
+            results.append(result)
+
+    results.sort(key=lambda r: r["score"], reverse=True)
+    results = results[:args.limit]
+
+    if not results:
+        if not args.paths:
+            print(f'no matches for "{query_display}"')
+            if not args.all:
+                print(f"(searched last {args.days} days -- use --all to search everything)")
+        return
+
+    if args.paths:
+        for r in results:
+            print(r["path"])
+        return
+
+    total = sum(r["match_count"] for r in results)
+    mode = "exact" if args.exact else "keywords"
+    print(f'found {total} matches across {len(results)} sessions for "{query_display}" ({mode})\n')
+
+    for r in results:
+        proj = format_project_name(r["project"])
+        age = f"{int(r['days_ago'])}d ago" if r["days_ago"] >= 1 else "today"
+        print(f"## {proj} / {r['session_id'][:8]} ({r['date']})  [{r['match_count']} hits, {age}, score:{r['score']}]")
+        for role, snippet in r["snippets"]:
+            tag = "YOU" if role == "human" else "CLAUDE"
+            print(f"  [{tag}] {snippet}")
+        if r.get("files"):
+            print(f"  files ({len(r['files'])}):")
+            for action, fp in r["files"]:
+                tag = "new" if action == "Write" else "edit"
+                print(f"    [{tag}] {fp}")
+        if r["work_dir"]:
+            print(f"  cd {r['work_dir']} && claude --resume {r['session_id']}")
+        else:
+            print(f"  claude --resume {r['session_id']}")
+        print(f"  {r['path']}")
+        print()
+
+
+if __name__ == "__main__":
+    main()

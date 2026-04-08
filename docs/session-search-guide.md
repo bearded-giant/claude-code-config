@@ -39,66 +39,49 @@ List JSONL sessions from `~/.claude/projects/`:
 /session-history 30               # last 30 sessions
 ```
 
-### /session-search
+### /session-search (`css`)
 
-Search actual Claude conversation content:
-
-```bash
-/session-search "foo validation"
-/session-search "bar config" my-project
-```
-
-This searches the JSONL files where Claude's full responses live.
-
----
-
-## Direct Grep Commands
-
-For more control, grep the files directly.
-
-### Search workspace session files
+Search actual Claude conversation content. Alias: `css`.
 
 ```bash
-# search all session summaries
-grep -r "foo" ~/dev/my-project/.giantmem/history/sessions/
-
-# search with context
-grep -r -B2 -A2 "validation" ~/dev/my-project/.giantmem/history/sessions/
-
-# find sessions that touched a specific file
-grep -l "router.lua" ~/dev/my-project/.giantmem/history/sessions/*.md
-
-# search discoveries
-grep "discovery" ~/dev/my-project/.giantmem/context/discoveries.md
+css -q cookie                          # last 30 days
+css -q cookie --days 7                 # last 7 days
+css -q cookie --project agent-chat     # filter to project
+css -q "preprod session" --all         # search all time
+css -q cookie --limit 5               # cap results
+css -q cookie --paths                  # output only JSONL paths (for piping)
 ```
 
-### Search JSONL conversations
+Extracts only human/assistant text from JSONL (filters out tool results, diffs, patches), ranks sessions by match count, shows clean snippets with `[YOU]`/`[CLAUDE]` tags. Each result includes `cd <dir> && claude --resume <id>` and the raw JSONL path.
+
+### session-read (`csr`)
+
+Drill into a specific session JSONL with clean filtered output. Alias: `csr`.
 
 ```bash
-# find sessions mentioning a topic
-rg -l "foo" ~/.claude/projects/*my-project*/*.jsonl
-
-# extract assistant text with context
-rg -i "bar" ~/.claude/projects/*my-project*/*.jsonl | head -20
-
-# search across all projects
-rg -i "baz validation" ~/.claude/projects/*/*.jsonl
-
-# extract and search assistant content (slower but cleaner)
-for f in ~/.claude/projects/*my-project*/*.jsonl; do
-  jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' "$f" 2>/dev/null | rg -i "foo" -C1
-done
+csr -f <path.jsonl> -q preprod_session       # show matches + 2 surrounding messages
+csr -f <path.jsonl> -q cookie -C 5           # more context around matches
+csr -f <path.jsonl> --no-filter              # dump entire conversation clean
 ```
 
-### Find files created in sessions
+Strips tool results, diffs, and system reminders. Marks matching messages with `<<`.
+
+### Chaining css + csr
+
+Use `--paths` on `css` to pipe the top result into `csr`:
 
 ```bash
-# list all files created across sessions
-grep -h "^- /Users" ~/dev/my-project/.giantmem/history/sessions/*.md | sort -u
+# find sessions about cookies, then read the top hit for "preprod_session"
+csr -f "$(css -q cookie --days 3 --paths | head -1)" -q preprod_session
 
-# find sessions that created md files
-grep -l "\.md$" ~/dev/my-project/.giantmem/history/sessions/*.md
+# pick the 2nd result instead
+csr -f "$(css -q cookie --paths | sed -n 2p)" -q preprod_session
+
+# dump the full conversation of the top hit (no query filter)
+csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 ```
+
+The workflow is: `css` finds which session, `--paths` gives a pipeable path, `csr` reads it clean.
 
 ---
 
@@ -106,11 +89,12 @@ grep -l "\.md$" ~/dev/my-project/.giantmem/history/sessions/*.md
 
 | Goal | Command |
 |------|---------|
-| Find where I discussed X | `/session-search "X"` |
+| Find where I discussed X | `css -q "X"` |
+| Drill into a specific match | `csr -f "$(css -q X --paths \| head -1)" -q "Y"` |
 | What files did I create for feature Y | `/ws-history-search Y` then check "Files Touched" |
 | Find a doc Opus wrote | `grep -r "topic" ~/dev/project/.giantmem/` |
 | List recent work in project | `/ws-history` |
-| Resume a specific session | `claude --resume <session-id>` |
+| Resume a specific session | `cd <project-dir> && claude --resume <session-id>` |
 
 ---
 
