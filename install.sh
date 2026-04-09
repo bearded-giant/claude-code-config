@@ -1,13 +1,28 @@
 #!/bin/bash
 # install.sh -- set up claude-code-config and its dependencies
-# usage: ./install.sh [--clone-dir ~/dev]
+# run from wherever you cloned claude-code-config:
+#   git clone <repo> ~/wherever/claude-code-config
+#   cd ~/wherever/claude-code-config && ./install.sh
+#
+# giant-tooling clones as a sibling by default. override with:
+#   ./install.sh --tooling-dir ~/other/path/giant-tooling
 set -euo pipefail
 
-CLONE_DIR="${1:-$HOME/dev}"
+CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_PARENT="$(dirname "$CONFIG_DIR")"
+
+# parse args
+TOOLING_DIR=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --tooling-dir) TOOLING_DIR="$2"; shift 2 ;;
+        *) echo "unknown arg: $1"; exit 1 ;;
+    esac
+done
+TOOLING_DIR="${TOOLING_DIR:-$CONFIG_PARENT/giant-tooling}"
+
 CONFIG_REPO="git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git"
 TOOLING_REPO="https://github.com/bearded-giant/giant-tooling.git"
-CONFIG_DIR="$CLONE_DIR/claude-code-config"
-TOOLING_DIR="$CLONE_DIR/giant-tooling"
 
 red()   { printf '\033[0;31m%s\033[0m\n' "$*"; }
 green() { printf '\033[0;32m%s\033[0m\n' "$*"; }
@@ -50,9 +65,7 @@ clone_if_missing() {
     fi
 }
 
-echo "setting up repos in $CLONE_DIR..."
-mkdir -p "$CLONE_DIR"
-clone_if_missing "$CONFIG_REPO"  "$CONFIG_DIR"  "claude-code-config"
+echo "setting up giant-tooling..."
 clone_if_missing "$TOOLING_REPO" "$TOOLING_DIR" "giant-tooling"
 echo ""
 
@@ -108,7 +121,7 @@ if [ "$needs_env" -eq 1 ]; then
     echo ""
     echo "add these to your $shell_rc:"
     echo ""
-    echo "  export GIANT_TOOLING_DIR=\"\$HOME/dev/giant-tooling\""
+    echo "  export GIANT_TOOLING_DIR=\"$TOOLING_DIR\""
     echo "  source \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\""
     echo ""
     echo "  # search aliases"

@@ -16,15 +16,21 @@ The workspace library (`workspace-lib.sh`) lives in giant-tooling and is symlink
 ## Install
 
 ```bash
-git clone git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git ~/dev/claude-code-config
-cd ~/dev/claude-code-config
+git clone git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git
+cd claude-code-config
 ./install.sh
+```
+
+Clone it wherever you want. The install script detects its own location and clones giant-tooling as a sibling directory. To put giant-tooling somewhere else:
+
+```bash
+./install.sh --tooling-dir ~/my/path/giant-tooling
 ```
 
 The install script handles everything:
 
 1. Checks prerequisites (git, stow, python3)
-2. Clones [giant-tooling](https://github.com/bearded-giant/giant-tooling) to `~/dev/giant-tooling` if missing
+2. Clones [giant-tooling](https://github.com/bearded-giant/giant-tooling) as a sibling directory if missing
 3. Creates symlink: `lib/workspace/` -> `giant-tooling/workspace/`
 4. Runs stow to wire `~/.claude`
 5. Builds the initial search index
