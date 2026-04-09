@@ -1,6 +1,6 @@
-# Claude Code Configuration
+# BG's Claude Code Configuration
 
-Personal Claude Code configuration with custom commands, hooks, agents, skills, and plugins. Managed via GNU stow from `~/dev/claude-code-config` and symlinked to `~/.claude`.
+My personal Claude Code configuration with custom commands, hooks, agents, skills, and plugins. Managed via GNU stow from `~/dev/claude-code-config` and symlinked to `~/.claude`.
 
 ## Dependencies
 
