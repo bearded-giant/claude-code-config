@@ -147,6 +147,12 @@
         "run_apex_test",
         "--allow-non-ga-tools"
       ]
+    },
+    "giantmem-search": {
+      "command": "python3",
+      "args": [
+        "/Users/bryan/dev/giant-tooling/giantmem-archive/mcp-search-server.py"
+      ]
     }
   }
 }

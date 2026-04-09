@@ -1,125 +1,143 @@
 # Claude Code Configuration
 
-Personal Claude Code configuration with custom commands, hooks, and workflows.
+Personal Claude Code configuration with custom commands, hooks, agents, skills, and plugins. Managed via GNU stow from `~/dev/claude-code-config` and symlinked to `~/.claude`.
 
-## Installation
+## Dependencies
 
-Clone and symlink to `~/.claude`:
+This config is **not** standalone. It requires a companion repo for workspace lifecycle, archive search, and worktree management.
+
+| Repo | What it provides |
+|------|-----------------|
+| [claude-code-config](https://gitlab.rechargeapps.net/bryan.grimes/claude-code-config) (this repo) | CLAUDE.md, hooks, commands, agents, skills, settings, MCP configs |
+| [giant-tooling](https://github.com/bearded-giant/giant-tooling) | Workspace library, giantmem-archive, domain search, worktree helpers |
+
+The workspace library (`workspace-lib.sh`) lives in giant-tooling and is symlinked into this repo at `lib/workspace/`. Session hooks, slash commands, and archive scripts all depend on it.
+
+## Install
 
 ```bash
-git clone https://github.com/youruser/claude-code-config.git
-ln -s /path/to/claude-code-config ~/.claude
+git clone git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git ~/dev/claude-code-config
+cd ~/dev/claude-code-config
+./install.sh
 ```
 
-Or with GNU stow (if in dotfiles):
+The install script handles everything:
+
+1. Checks prerequisites (git, stow, python3)
+2. Clones [giant-tooling](https://github.com/bearded-giant/giant-tooling) to `~/dev/giant-tooling` if missing
+3. Creates symlink: `lib/workspace/` -> `giant-tooling/workspace/`
+4. Runs stow to wire `~/.claude`
+5. Builds the initial search index
+6. Prints any shell env lines you need to add
+
+After install, restart Claude Code.
+
+### Shell setup
+
+The install script will tell you what to add. Typically:
+
 ```bash
-cd ~/dotfiles
-stow claude-code
+export GIANT_TOOLING_DIR="$HOME/dev/giant-tooling"
+source "$GIANT_TOOLING_DIR/workspace/workspace-lib.sh"
+
+alias gmq='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-search.py'
+alias giantmem-archive='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-archive.sh'
+alias domains='$GIANT_TOOLING_DIR/domain-search/domains'
 ```
+
+### Prerequisites
+
+Required: git, stow, python3 (3.10+), Claude Code CLI
+
+Optional: fzf (interactive search picker), bat (search previews)
 
 ## Structure
 
 ```
 .claude/
   CLAUDE.md              # global instructions (loaded every session)
-  settings.json          # permissions and tool config
-  commands/              # custom slash commands
-  agents/                # agent configurations
-  hooks/                 # lifecycle hooks
-  scripts/               # utility scripts
-  skills/                # reusable skill definitions
+  settings.json          # permissions, hooks, MCP servers, env vars
+  commands/              # 40+ slash commands
+  agents/                # 10 specialized agent definitions
+  hooks/                 # Python/JS lifecycle hooks
+  scripts/               # utility scripts (session-search, sync-preprod)
+  skills/                # multi-file skill definitions
+  plugins/               # plugin config and runtime
   mcp/                   # MCP server configs
+  lib/workspace/         # -> giant-tooling/workspace/ (symlink)
+  docs/                  # reference docs
 ```
+
+## Hook Pipeline
+
+All hooks are Python (stdlib only) except statusline (Node.js). Configured in `settings.json`.
+
+| Event | Hook | Purpose |
+|-------|------|---------|
+| SessionStart | `memory_session_start.py` | Injects session primer from memory API |
+| SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
+| UserPromptSubmit | `memory_inject.py` | Queries memory API for relevant memories |
+| PreCompact | `memory_curate.py` | Triggers memory curation before compaction |
+| SessionEnd | `memory_curate.py` | Triggers memory curation on session end |
+| SessionEnd | `workspace_session_end.py` | Extracts session summary, indexes into search DB |
+| PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories |
 
 ## Key Commands
 
-### History & Discovery
+### Search and History
 
 | Command | Purpose |
 |---------|---------|
+| `/session-search` | Search conversation content across all projects |
+| `/session-history` | List JSONL sessions |
 | `/ws-history` | Show recent workspace sessions |
 | `/ws-history-search` | Search workspace session files |
-| `/session-history` | List JSONL sessions across projects |
-| `/session-search` | Search conversation content globally |
 
-### Analysis (Read-Only)
+### Analysis (read-only)
 
 | Command | Purpose |
 |---------|---------|
-| `/swarm <task>` | Hierarchical multi-model analysis with parallel Haiku workers |
+| `/swarm <task>` | Parallel multi-model analysis with Haiku workers |
 | `/arch-discover` | Map architecture before refactoring |
 | `/arch-brainstorm` | Two-phase architecture decisions |
 
-### Execution (Read-Write)
+### Execution (read-write)
 
 | Command | Purpose |
 |---------|---------|
 | `/swarm-exec <plan>` | Parallel execution with validation (never commits) |
-| `/scope` | Create phased scope documents for migrations |
+| `/scope` | Phased scope documents for migrations |
+
+### Features
+
+| Command | Purpose |
+|---------|---------|
+| `/new-feature <name>` | Scaffold a feature folder |
+| `/plan-feature` | Explore code domains, draft implementation plan |
+| `/list-features` | Show feature registry |
+| `/complete-feature` | Mark feature complete, update tracking |
 
 ### Workspace
 
 | Command | Purpose |
 |---------|---------|
-| `/ws-init` | Initialize scratch workspace |
+| `/ws-init` | Initialize `.giantmem/` workspace |
 | `/ws-edit` | Edit workspace file |
 | `/ws-note` | Add note to workspace |
+| `/ws-archive` | Archive workspace to `~/giantmem_archive/` |
 
-## Swarm System
+## Archive Search
 
-Two-command system for analysis and execution:
-
-```
-/arch-discover src/      # map the territory
-/swarm analyze src/      # deep parallel analysis
-write plan               # based on findings
-/swarm review plan.md    # validate plan
-/swarm-exec plan.md      # execute (creates branch, never commits)
-git diff                 # you review
-git commit               # you commit
-```
-
-### /swarm (Analysis)
-
-Spawns 3-8 Haiku workers in parallel, each analyzing an aspect. Opus validator synthesizes findings. Iterates until convergence (max 5).
+Unified FTS5 search across workspace archives, session transcripts, and domain knowledge. See [giant-tooling/docs/search-usage.md](https://github.com/bearded-giant/giant-tooling/blob/main/docs/search-usage.md) for full usage.
 
 ```bash
-/swarm analyze src/auth/ for OAuth2 migration risks
-/swarm review design.md against requirements.md
-/swarm compare Redis vs Memcached for sessions
+gmq search "jwt refresh"                # search everything
+gmq search "jwt refresh" -s session     # sessions only
+gmq search "auth flow" --topic auth     # by session topic
+gmq stats                               # index breakdown
 ```
 
-### /swarm-exec (Execution)
-
-Implements plans with parallel workers. Creates safety branch, runs tests, validates changes.
-
-**Safeguards:**
-- NEVER commits (you review and commit)
-- NEVER pushes (you push when ready)
-- Creates `swarm-exec/{timestamp}` branch
-- Stops if working tree is dirty
-
-```bash
-/swarm-exec .giantmem/plans/add-preferences-api.md
-```
-
-## Hooks
-
-Lifecycle hooks in `hooks/`:
-- `startup.sh` - runs on session start
-- Pre/post tool hooks available
-
-## Requirements
-
-- Claude Code CLI
-- PAL MCP (optional, for Gemini/Codex enhancement)
-- Git
-
-## Customization
-
-1. Edit `CLAUDE.md` for global instructions
-2. Add commands to `commands/`
-3. Modify `settings.json` for permissions
+Also available as MCP tool `search_archive` for agent use.
 
 ## License
 

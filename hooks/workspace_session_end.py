@@ -847,6 +847,20 @@ def main():
         if parts:
             print(f"Workspace: {', '.join(parts)}", file=sys.stderr)
 
+        # index this session into the search db (incremental, ~1s)
+        search_script = Path(os.environ.get(
+            'GIANT_TOOLING_DIR', str(Path.home() / "dev/giant-tooling")
+        )) / "giantmem-archive/giantmem-search.py"
+        if search_script.exists():
+            try:
+                subprocess.Popen(
+                    ["python3", str(search_script), "ingest", "--sessions-only"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except Exception:
+                pass
+
     except Exception:
         pass
 
