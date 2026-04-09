@@ -30,8 +30,10 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-# path to workspace-lib.sh - uses GIANT_TOOLING_DIR env var with fallback
-WORKSPACE_LIB = Path(os.environ.get('GIANT_TOOLING_DIR', str(Path.home() / "dev/giant-tooling"))) / "workspace/workspace-lib.sh"
+# path to workspace-lib.sh - local copy in claude-code-config/lib, fallback to giant-tooling
+WORKSPACE_LIB = Path(os.environ.get('WORKSPACE_LIB', str(Path.home() / ".claude/lib/workspace/workspace-lib.sh")))
+if not WORKSPACE_LIB.exists():
+    WORKSPACE_LIB = Path(os.environ.get('GIANT_TOOLING_DIR', str(Path.home() / "dev/giant-tooling"))) / "workspace/workspace-lib.sh"
 
 
 def bootstrap_workspace(cwd: str) -> bool:

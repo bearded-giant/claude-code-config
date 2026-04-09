@@ -4,7 +4,7 @@ Bootstrap workspace in current directory.
 
 1. Run workspace bootstrap:
 ```bash
-source ~/dev/giant-tooling/workspace/workspace-lib.sh && workspace_bootstrap
+source ~/.claude/lib/workspace/workspace-lib.sh && workspace_bootstrap
 ```
 
 This will:

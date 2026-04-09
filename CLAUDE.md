@@ -19,6 +19,7 @@ This is a Claude Code configuration repo (`~/.claude`) managed via GNU stow from
   skills/                # multi-file skill definitions (c4-diagrams, mcp-builder)
   plugins/               # plugin config and runtime (config.json, installed_plugins.json)
   mcp/                   # MCP server configs (project-server.js)
+  lib/workspace/         # workspace lifecycle library (workspace-lib.sh, init, migrate)
   docs/                  # reference docs (feature-commands, session-search-guide)
 ```
 
@@ -38,7 +39,7 @@ All hooks are Python (stdlib only, no external deps) except statusline (Node.js)
 | PreToolUse (Write/Edit) | `guard_protected_paths.py` | Blocks writes to `archive/`, `plugins/cache/`, `node_modules/` |
 | Stop | `debug_stop_check.py` | Debug hook for unexpected stops |
 
-**External dependencies:** Memory hooks require a local memory API at `localhost:8765` (graceful no-op if unavailable). Workspace hooks use `~/dev/giant-tooling/workspace/workspace-lib.sh` for bootstrap (fallback: inline init).
+**External dependencies:** Memory hooks require a local memory API at `localhost:8765` (graceful no-op if unavailable). Workspace hooks use `lib/workspace/workspace-lib.sh` (bundled in this repo).
 
 ### Statusline
 
