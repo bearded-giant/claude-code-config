@@ -21,7 +21,6 @@ while [[ $# -gt 0 ]]; do
 done
 TOOLING_DIR="${TOOLING_DIR:-$CONFIG_PARENT/giant-tooling}"
 
-CONFIG_REPO="git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git"
 TOOLING_REPO="https://github.com/bearded-giant/giant-tooling.git"
 
 red()   { printf '\033[0;31m%s\033[0m\n' "$*"; }

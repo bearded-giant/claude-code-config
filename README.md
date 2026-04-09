@@ -8,7 +8,7 @@ This config is **not** standalone. It requires a companion repo for workspace li
 
 | Repo | What it provides |
 |------|-----------------|
-| [claude-code-config](https://gitlab.rechargeapps.net/bryan.grimes/claude-code-config) (this repo) | CLAUDE.md, hooks, commands, agents, skills, settings, MCP configs |
+| [claude-code-config](https://github.com/bearded-giant/claude-code-config) (this repo) | CLAUDE.md, hooks, commands, agents, skills, settings, MCP configs |
 | [giant-tooling](https://github.com/bearded-giant/giant-tooling) | Workspace library, giantmem-archive, domain search, worktree helpers |
 
 The workspace library (`workspace-lib.sh`) lives in giant-tooling and is symlinked into this repo at `lib/workspace/`. Session hooks, slash commands, and archive scripts all depend on it.
@@ -16,7 +16,7 @@ The workspace library (`workspace-lib.sh`) lives in giant-tooling and is symlink
 ## Install
 
 ```bash
-git clone git@gitlab.rechargeapps.net:bryan.grimes/claude-code-config.git
+git clone https://github.com/bearded-giant/claude-code-config.git
 cd claude-code-config
 ./install.sh
 ```
