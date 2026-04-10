@@ -159,7 +159,9 @@ new:
 ```
 ```
 
-8. Create meta.json:
+8. Create {name}-notes.md as an empty file (no content, no placeholders).
+
+9. Create meta.json:
 
 ```json
 {
@@ -190,7 +192,7 @@ When frontend is enabled:
 }
 ```
 
-9. **Update features.json cache**
+10. **Update features.json cache**
 
    Read `.giantmem/features/features.json`, add the new feature entry:
 
@@ -219,11 +221,11 @@ When frontend is enabled:
 
    Write the updated JSON back to `.giantmem/features/features.json`.
 
-10. Update .giantmem/features/_index.md:
+11. Update .giantmem/features/_index.md:
    - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
    - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} | {FE if frontend enabled, otherwise -} |`
 
-11. Display the created structure and confirm:
+12. Display the created structure and confirm:
    - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
    - If frontend enabled: confirm the frontend worktree was created and show the path.
