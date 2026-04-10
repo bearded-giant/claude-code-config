@@ -477,6 +477,7 @@ If not satisfied, discard:
 - Run tests after each validation
 - Stop if critical review issues persist
 - Workers make minimal changes (no scope creep)
+- **Never output time or effort estimates** (hours, days, weeks) or complexity ratings in any output
 - **Always generate QA report** if input is from `features/{name}/`
 - **Update _index.md status** on successful completion
 

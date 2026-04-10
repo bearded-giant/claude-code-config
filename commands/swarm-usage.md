@@ -276,6 +276,7 @@ First iteration establishes baseline. Real insights often come in iterations 2-3
 
 | Command | Purpose |
 |---------|---------|
+| /swarm-plan | Convert analysis/research into exec plan |
 | /swarm-exec | Execute plans (read-write counterpart) |
 | /arch-discover | Systematic architecture mapping |
 | /arch-brainstorm | Two-phase architecture decisions |
@@ -285,9 +286,8 @@ First iteration establishes baseline. Real insights often come in iterations 2-3
 ```bash
 /arch-discover       -> map the territory
 /swarm analyze       -> deep dive on specific areas
-write plan           -> based on findings
-/swarm review        -> validate plan
-/swarm-exec          -> implement (separate command)
+/swarm-plan          -> convert findings to exec plan
+/swarm-exec          -> implement plan
 ```
 
-Swarm analyzes. Swarm-exec implements.
+Swarm analyzes. Swarm-plan structures. Swarm-exec implements.

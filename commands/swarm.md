@@ -84,6 +84,21 @@ Extract file/directory references. Use Glob to resolve ambiguous references. Rea
 
 Report: `Task: [type] | Files: [count] | Template: [name] | Feature: [name or none]`
 
+### Create Output Directory
+
+Create the output directory immediately so worker output can be captured as it arrives:
+
+Directory name: `swarm-{descriptive-topic}` (e.g., `swarm-workspace-lib-patterns`)
+
+Location:
+- If feature detected: `.giantmem/features/{name}/swarm-{topic}/`
+- Otherwise: `.giantmem/research/swarm-{topic}/`
+
+```bash
+SWARM_OUT="{chosen location}"
+mkdir -p "$SWARM_OUT"
+```
+
 ## Phase 1: Load Template
 
 Read: `commands/swarm-templates/{type}.md`
@@ -163,15 +178,29 @@ You are a [WORKER_MODEL] Worker analyzing: [ASPECT NAME]
   "consult_model": "[CONSULT_MODEL or null]",
   "consult_insight": "key insight from consultation if used"
 }
+
+IMPORTANT: Never include time estimates (hours, days, weeks) or effort/complexity
+ratings in your output. Focus on findings, evidence, and recommendations.
 ```
 
 Report: `Workers dispatched: [N] ([WORKER_MODEL], consult=[CONSULT_MODEL|none])`
 
 ## Phase 3: Collect Reports
 
-Wait for all workers. Parse JSON responses.
+### Capturing Worker Output
 
-Report summary of each worker's verdict/confidence and whether consultation was used.
+**CRITICAL**: After each worker agent completes, IMMEDIATELY write its full output to disk:
+
+```
+Write to: $SWARM_OUT/worker-{aspect}.json
+Content: the complete worker response (the JSON output schema)
+```
+
+If the worker returns unstructured text instead of JSON, write it as-is to `$SWARM_OUT/worker-{aspect}.txt`.
+
+Do NOT rely on conversation context alone -- agent results disappear on compaction. The file is the source of truth.
+
+After all workers complete, report summary of each worker's verdict/confidence and whether consultation was used.
 
 ## Phase 4: Spawn Opus Validator
 
@@ -229,6 +258,17 @@ Previous metrics: [if iteration > 1]
 }
 ```
 
+### Capturing Validator Output
+
+**CRITICAL**: After the validator agent completes, IMMEDIATELY write its full output to disk:
+
+```
+Write to: $SWARM_OUT/validator-{iteration}.json
+Content: the complete validator response
+```
+
+Same rule as workers -- do NOT rely on conversation context. The file is the source of truth.
+
 ## Phase 5: Convergence Check
 
 Read validator's convergence status.
@@ -244,23 +284,11 @@ If continuing, focus workers on aspects blocking convergence.
 
 ## Phase 6: Final Output
 
-### Create Swarm Output Directory
+Worker and validator JSON files are already written to `$SWARM_OUT/` (captured in Phases 3-4). Now add the human-readable artifacts.
 
-Directory name: `swarm-{descriptive-topic}` (e.g., `swarm-workspace-lib-patterns`)
+### Write Remaining Artifacts
 
-Location:
-- If feature detected: `.giantmem/features/{name}/swarm-{topic}/`
-- Otherwise: `.giantmem/research/swarm-{topic}/`
-
-### Write All Artifacts
-
-1. **Worker outputs** (if --save-workers=true, which is default):
-   - `worker-{aspect}.json` for each worker
-
-2. **Validator synthesis**:
-   - `validator-synthesis.json`
-
-3. **README.md** with manifest:
+1. **README.md** with manifest:
    ```markdown
    # Swarm: [Topic]
 
@@ -293,8 +321,9 @@ Consultations: [count] calls to [CONSULT_MODEL]
 - Min 2 iterations before convergence check
 - Orchestrator does NOT analyze (delegate everything)
 - Workers spawned IN PARALLEL (single message, multiple Task calls)
-- **Always save worker artifacts** for retention
+- **Always save worker artifacts** for retention -- capture to disk immediately, not at the end
 - **Swarms are feature-related** - always try to identify feature first
+- **Never output time or effort estimates** (hours, days, weeks) or complexity ratings in any output. No "estimated effort", no "implementation complexity: high". Findings and recommendations only.
 
 ## Error Handling
 

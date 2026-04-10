@@ -135,12 +135,11 @@ Model must exist before service. Service before API.
 
 ```
 1. /swarm analyze src/related-area/    # understand current state
-2. Draft plan based on analysis        # you write the plan
-3. /swarm review plan.md               # validate plan
-4. /swarm-exec plan.md                 # execute plan
-5. Review changes: git diff            # you inspect
-6. Run tests manually if desired       # you verify
-7. Commit: git add -A && git commit    # you commit
+2. /swarm-plan analysis-output.md      # convert analysis to exec plan
+3. /swarm-exec plan.md                 # execute plan
+4. Review changes: git diff            # you inspect
+5. Run tests manually if desired       # you verify
+6. Commit: git add -A && git commit    # you commit
 ```
 
 ## Tips
@@ -266,6 +265,7 @@ Your options:
 | Command | Purpose |
 |---------|---------|
 | /swarm | Analyze (read-only) |
+| /swarm-plan | Convert analysis/research/ideas into exec plan |
 | /swarm-exec | Execute (read-write) |
 | /feature-report | Goal-backward feature verification (exists/substantive/wired) |
 | /arch-discover | Map architecture |
@@ -276,8 +276,8 @@ Your options:
 ```
 /arch-discover       -> understand system
 /arch-brainstorm     -> decide approach
-write plan           -> document steps
-/swarm review        -> validate plan
+/swarm analyze       -> examine target area
+/swarm-plan          -> convert to exec plan
 /swarm-exec          -> implement plan
 you commit           -> finalize
 ```

@@ -66,12 +66,12 @@ Questions:
 - Migration path if wrong choice?
 
 ### cost
-Focus: licensing, infrastructure, development time
+Focus: licensing, infrastructure, operational overhead
 Questions:
 - Licensing costs?
 - Infrastructure requirements?
-- Development time difference?
-- Total cost of ownership?
+- Operational overhead difference?
+- Hidden costs or gotchas?
 
 ## Worker Output Schema
 
