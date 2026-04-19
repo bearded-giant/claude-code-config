@@ -90,6 +90,43 @@ function fmtCountdown(resets_at, now) {
   return ` ~${h}h${m.toString().padStart(2, '0')}m`;
 }
 
+// --- model + effort ---
+
+function modelLabel(data) {
+  const m = data.model || {};
+  const raw = m.display_name || m.id || '';
+  if (!raw) return '';
+  // shorten: "Claude Opus 4.7 (1M context)" -> "opus-4.7"
+  const s = raw.toLowerCase()
+    .replace(/claude[\s-]*/g, '')
+    .replace(/\s*\(.*?\)\s*/g, '')
+    .replace(/\s+/g, '-')
+    .trim();
+  return s;
+}
+
+function readEffort(data) {
+  // priority: stdin data > settings.json > env var
+  const fromData = data?.effort_level || data?.effortLevel || data?.model?.effort_level;
+  if (fromData) return String(fromData);
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude', 'settings.json'), 'utf8'));
+    if (s.effortLevel) return String(s.effortLevel);
+  } catch (e) {}
+  return process.env.CLAUDE_CODE_EFFORT_LEVEL || '';
+}
+
+function effortLabel(data) {
+  const e = readEffort(data).toLowerCase();
+  if (!e) return '';
+  let color = DIM;
+  if (e === 'xhigh' || e === 'ultra') color = RED;
+  else if (e === 'high') color = ORANGE;
+  else if (e === 'medium') color = YELLOW;
+  else if (e === 'low' || e === 'minimal') color = GREEN;
+  return `${color}${e}${RST}`;
+}
+
 // --- git info ---
 
 function getGitInfo(dir) {
@@ -423,7 +460,16 @@ process.stdin.on('end', () => {
 
     const ctx = contextGauge(data);
     const usage = usageGauges();
-    const line1 = `${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
+
+    const model = modelLabel(data);
+    const effort = effortLabel(data);
+    let modelPart = '';
+    if (model || effort) {
+      const inner = [model && `${MAGENTA}${model}${RST}`, effort].filter(Boolean).join(`${DIM}\u00B7${RST}`);
+      modelPart = `${inner} ${DIM}\u2502${RST} `;
+    }
+
+    const line1 = `${modelPart}${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
 
     // minimal: one line only
     if (cfg.style === 'minimal' || !cfg.line2) {
