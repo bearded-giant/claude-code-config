@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+Before answering any question, reason step by step. Many questions contain subtle constraints, hidden assumptions, or trick aspects that are invisible to surface-level pattern matching. Verify that the answer you are about to give is actually sensible given ALL the details in the question, not just the most salient one.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## About This Repo

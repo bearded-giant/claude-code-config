@@ -79,6 +79,26 @@
         "lastUpdated": "2026-03-24T21:22:00.696Z",
         "gitCommitSha": "61c0597779bd2d670dcd4fbbf37c66aa19eb2ce6"
       }
+    ],
+    "caveman@caveman": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/caveman/caveman/c2ed24b3e5d4",
+        "version": "c2ed24b3e5d4",
+        "installedAt": "2026-04-15T15:08:55.142Z",
+        "lastUpdated": "2026-04-15T15:08:55.142Z",
+        "gitCommitSha": "c2ed24b3e5d412cd0c25197b2bc9af587621fd99"
+      }
+    ],
+    "kai@kai": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/kai/kai/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-04-18T00:52:18.668Z",
+        "lastUpdated": "2026-04-18T00:52:18.668Z",
+        "gitCommitSha": "962ecfdafc4d0c8d61743c7ae97a3f9c25895e1e"
+      }
     ]
   }
 }

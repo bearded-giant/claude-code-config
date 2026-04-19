@@ -64,8 +64,11 @@ User remains in control. Swarm makes changes, user decides what to keep.
 
 All worker and validator outputs are persisted to disk so you can review raw details.
 
+**Location rules (never use `/tmp` — files lost on restart):**
+- If input is from `features/{name}/`: `SWARM_OUT=".giantmem/features/{name}/swarm-output/{timestamp}"`
+- Otherwise: `SWARM_OUT=".giantmem/swarm-output/{timestamp}"`
+
 ```bash
-SWARM_OUT="/tmp/swarm-exec/{timestamp}"
 mkdir -p "$SWARM_OUT"
 ```
 
@@ -454,7 +457,7 @@ Or: "None -- plan executed as written"
 
 ## Raw Output
 All worker and validator output files:
-  ls /tmp/swarm-exec/{timestamp}/
+  ls $SWARM_OUT/
 
 ## Your Next Steps (swarm does NOT commit/push)
 
