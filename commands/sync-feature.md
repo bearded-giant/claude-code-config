@@ -70,13 +70,14 @@ Status: active
 
 6. **Update feature metadata**
 
-   **meta.json** — add/update `sync_refs` array:
+   **meta.json** — add/update `sync_refs` array + init `sync_last_read`:
    ```json
    {
-     "sync_refs": ["<abs-sync-path>"]
+     "sync_refs": ["<abs-sync-path>"],
+     "sync_last_read": "<current-UTC-ISO-timestamp>"
    }
    ```
-   Merge with existing array; dedupe.
+   Merge `sync_refs` with existing array; dedupe. Set `sync_last_read` to `date -u +"%Y-%m-%dT%H:%M:%SZ"` — init mode has nothing prior to read, attach mode user should run `/read-sync` next if they want peer's prior state.
 
    **facts.md** — add (or update) under `## Identifiers`:
    ```
