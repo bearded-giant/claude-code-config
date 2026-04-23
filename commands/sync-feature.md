@@ -1,6 +1,6 @@
 ---
 description: "Create or attach a cross-repo sync file for a feature. Shared file lives at ~/giantmem_archive/sync/ and is referenced from each participant feature's metadata."
-argument-hint: "<topic-slug> [--path <abs-path>]"
+argument-hint: "<topic-slug> [--new [feature-name]] [--path <abs-path>]"
 ---
 
 Init or attach a cross-repo sync file for coordinating two+ Claude Code sessions working the same feature in different repos/worktrees. The sync file lives OUTSIDE any repo, at `~/giantmem_archive/sync/<topic>.md`. Each participating feature's `meta.json` + `facts.md` get a pointer to it.
@@ -8,6 +8,7 @@ Init or attach a cross-repo sync file for coordinating two+ Claude Code sessions
 ## Arguments
 
 - `topic-slug`: kebab-case identifier shared across sessions (e.g., `2-1-orchstrator-svc`). Required.
+- `--new [feature-name]`: (optional) if no `in_progress` feature exists, scaffold one first via `/new-feature`. `feature-name` defaults to `topic-slug`. Collapses the "new feature + sync init" two-step into one call per session.
 - `--path <abs-path>`: (optional) override default location. Use when attaching to a sync file that already lives elsewhere.
 
 ## Behavior (idempotent)
@@ -26,7 +27,9 @@ One command, two modes, auto-detected:
 2. **Identify current feature**
    - Read `.giantmem/features/features.json` in current workspace.
    - Find entry with `"status": "in_progress"`. That is the participant feature.
-   - If no active feature, error: "No in_progress feature found. Run /start-feature or /new-feature first."
+   - If no active feature:
+     - **With `--new`**: invoke `/new-feature <feature-name>` (default `feature-name = topic-slug`) to scaffold a feature in this repo. Follow its prompts (branch name, base branch, frontend). On completion, re-read `features.json` and use the newly-created `in_progress` feature. Then continue with step 3.
+     - **Without `--new`**: error: "No in_progress feature found. Run /start-feature or /new-feature first, or re-run with `--new` to scaffold one."
 
 3. **Identify current repo**
    - `git rev-parse --show-toplevel` for absolute repo path.
@@ -88,10 +91,16 @@ Status: active
    - Add `"sync_refs": ["<abs-sync-path>"]` to the current feature's entry (dedupe if present).
 
 8. **Output summary**
-   - Mode used (init / attach)
+   - Mode used (init / attach / scaffold+init / scaffold+attach)
    - Sync file path
    - Current participants (parsed from header)
-   - Reminder: peer session should run `/sync-feature <topic-slug>` from its own repo to attach.
+   - **Peer copy-paste block** (only in init mode, when this session is first):
+     ```
+     Peer session — cd into the other repo, start claude, then run:
+       /sync-feature <topic-slug> --new
+     (drop --new if peer repo already has an in_progress feature to attach)
+     ```
+   - In attach mode: remind user peer session can `/read-sync` to pick up state.
 
 ## Detach / delist
 

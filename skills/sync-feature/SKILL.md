@@ -15,10 +15,26 @@ Two or more Claude Code sessions working the same feature in different repos/wor
 
 | Command | Purpose |
 |---------|---------|
-| `/sync-feature <topic>` | Init file or attach current feature (idempotent) |
+| `/sync-feature <topic> [--new [name]]` | Init file or attach current feature (idempotent). `--new` scaffolds a feature first if none `in_progress`. |
 | `/read-sync [--full]` | Pull deltas since last read. Updates `sync_last_read` |
 | `/update-sync [section content]` | Push update. Interactive menu or direct args |
 | `/sync-stop [topic]` | Archive file, strip refs from current feature |
+
+## Cold-start flow (no feature in either repo yet)
+
+Two commands total, one per session:
+
+```
+# Session A (repo A)
+/sync-feature 2-1-orch --new
+# → scaffolds feature "2-1-orch" in repo A, inits sync file, prints peer copy-paste
+
+# Session B (repo B)
+/sync-feature 2-1-orch --new
+# → scaffolds feature "2-1-orch" in repo B, attaches to existing sync file
+```
+
+If feature already `in_progress` in a repo, drop `--new` there. Same slug both sides — that's how they find each other.
 
 **The skill never tails, polls, or auto-reads.** Reads and writes only happen via these commands. This keeps token usage bounded and control in the user's hands.
 
