@@ -138,6 +138,26 @@ See `/swarm-exec-usage` for full documentation.
 
 ---
 
+## Cross-Repo Pairing
+
+Single-session pattern. Main thread owns plan, sub-agents do deep dives in peer repo. Replaces deprecated `/sync-feature`.
+
+| Command | Purpose |
+|---------|---------|
+| `/pair-repo {abs-path} [--role owner\|caller\|sibling]` | Attach peer repo, capture metadata, prime session |
+| `/pair-repo --unpair {name}` | Remove peer from record |
+| `/peer-scout {name} "<brief>" [--mode explore\|edit\|parallel] [--agent {type}]` | Dispatch sub-agent into paired repo |
+
+```
+/pair-repo /Users/bryan/dev/billing-api --role caller
+/peer-scout billing-api "how does webhook auth validate JWTs?"
+/peer-scout "find all callers of /api/v2/subs/update" --mode parallel
+```
+
+Peer record lives at `.giantmem/features/{active}/peers.md` (or `.giantmem/context/peers.md` if no active feature).
+
+---
+
 ## Code Quality
 
 | Command | Purpose |

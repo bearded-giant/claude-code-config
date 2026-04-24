@@ -170,5 +170,7 @@
         "/Users/bryan/dev/giant-tooling/giantmem-archive/mcp-search-server.py"
       ]
     }
-  }
+  },
+  "verbose": true,
+  "preferredNotifChannel": "terminal_bell"
 }
