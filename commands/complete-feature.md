@@ -1,6 +1,6 @@
 ---
 description: "Mark a feature complete: update spec, facts, index, and current plan"
-argument-hint: "[feature-name] (optional, inferred from plans/current.md)"
+argument-hint: "[feature-name] [--quick] (feature optional, inferred from plans/current.md)"
 ---
 
 # Complete Feature
@@ -10,6 +10,28 @@ Mark a feature as complete by updating all workspace tracking files.
 ## Arguments
 
 - feature: (optional) Feature name in kebab-case. If not provided, infer from `.giantmem/plans/current.md` or ask.
+- `--quick`: (optional) Skip full ceremony. Only update status to complete, set completed date, and update feature index + features.json. Use when feature was finished elsewhere or full update isn't needed.
+
+## Quick Mode
+
+If `--quick` flag is passed, run only these steps:
+
+1. **Identify the feature** (same as step 1 below)
+2. **Read minimal state**: `spec.md`, `_index.md`, `features.json`, `meta.json` (if exists)
+3. **Update spec.md**: change `status: in_progress` to `status: complete`, add `completed: {today's date}` after `created:` line. Do NOT modify acceptance criteria, scope, architecture, or files sections.
+4. **Update `_index.md`**: change status to `complete`
+5. **Update `features.json`**: set `status: complete`, `last_session: {today's date}`
+6. **Update `meta.json`** (if exists): set `status: complete`, `last_session: {today's date}`
+7. **Report**:
+   ```
+   Feature '{feature}' marked complete (quick mode).
+   Updated: spec.md (status + completed date), _index.md, features.json, meta.json
+   Skipped: facts.md, plans/current.md, domain refresh, frontend check
+   ```
+
+Skip all remaining steps below. Done.
+
+## Full Mode (default)
 
 ## Steps
 
