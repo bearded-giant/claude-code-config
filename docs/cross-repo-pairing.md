@@ -163,6 +163,12 @@ No equivalent record is written to the peer repo. Coordination state is one-dire
 - Peer repo is too large for even a sub-agent to navigate usefully — consider adding `domains/` JSONs to peer via its own `/plan-feature` workflow first.
 - Contract change is trivial (rename, comment) — edit directly in parent, let peer catch up on its own schedule.
 
+## Internals
+
+Both commands delegate peer metadata capture to `~/.claude/scripts/peer-probe <repo-path>`. The probe outputs key=value lines (git_root, short_name, branch, dirty, layout, has_claude_md, active_feature) and handles `features.json` in any shape: list-of-dicts (`{"features": [...]}`), dict-keyed-by-name (`{"features": {...}}`), or top-level dict. Requires `jq`.
+
+If you previously saw Claude spawn 6+ bash calls with inline `python -c` during `/pair-repo` and hit `AttributeError: 'list' object has no attribute 'items'` on cross-repo schema drift — that path is closed. The probe is the single source.
+
 ## Migration from `/sync-feature`
 
 The old commands (`/sync-feature`, `/read-sync`, `/update-sync`, `/sync-stop`) and the `sync-feature` skill have been removed. Old feature metadata fields `sync_refs`, `sync_last_read`, and the `sync_file:` line in `facts.md` are inert — safe to delete but not required to. The sync files under `~/giantmem_archive/sync/` are untouched by this change; delete manually if no longer needed.

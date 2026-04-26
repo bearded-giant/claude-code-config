@@ -429,6 +429,42 @@ function fmtAgents(agents) {
   return parts.join(' ');
 }
 
+// --- giantmem status (cached) ---
+
+function giantmemStatus(dir) {
+  const cachePath = path.join(STATE_DIR, 'giantmem-status.json');
+  const ttlMs = 30 * 1000;
+  try {
+    const st = fs.statSync(cachePath);
+    if (Date.now() - st.mtimeMs < ttlMs) {
+      const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+      if (cached.__dir === dir) return cached;
+    }
+  } catch (e) { /* miss */ }
+  try {
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+  } catch (e) {}
+  // fire detached: child writes the cache file itself, parent exits immediately.
+  // wrap in nohup + sh so the child survives parent exit on macos.
+  try {
+    const bin = path.join(os.homedir(), '.local/bin/giantmem');
+    const escDir = dir.replace(/'/g, "'\\''");
+    const escCache = cachePath.replace(/'/g, "'\\''");
+    const cmd = `(${bin} status --root '${escDir}' --stale-days 30 --write-cache '${escCache}' </dev/null >/dev/null 2>&1 & disown) 2>/dev/null`;
+    const child = require('child_process').spawn('/bin/bash', ['-c', cmd], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+  } catch (e) {}
+  // return last cached (may be from a different dir; statusline tolerates that)
+  try {
+    return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
 // --- main ---
 
 let input = '';
@@ -513,6 +549,15 @@ process.stdin.on('end', () => {
     if (cfg.agents) {
       const agentStr = fmtAgents(transcript.agents);
       if (agentStr) parts.push(agentStr);
+    }
+
+    // giantmem status (cached 30s, never blocks)
+    const gm = giantmemStatus(dir);
+    if (gm) {
+      const segs = [];
+      if (gm.active_feature) segs.push(`${ORANGE}feat:${gm.active_feature}${RST}`);
+      if (gm.live_docs_today) segs.push(`${DIM}gm:${RST}${GREEN}${gm.live_docs_today}${RST}${DIM}/d${RST}`);
+      if (segs.length) parts.push(segs.join(`${DIM} ${RST}`));
     }
 
     const sep = ` ${DIM}\u2502${RST} `;

@@ -18,9 +18,11 @@ Run a sub-agent scoped to a paired peer repo. Default: `Explore` agent for read-
 ## Steps
 
 1. **Locate peers.md**
-   - Active feature in `features.json` → `.giantmem/features/{active}/peers.md`.
-   - Else → `.giantmem/context/peers.md`.
+   - Resolve parent active feature via `~/.claude/scripts/peer-probe $(git rev-parse --show-toplevel)` — single Bash call. Read `active_feature` line.
+   - Value != `-` → `.giantmem/features/<active_feature>/peers.md`.
+   - Value == `-` → `.giantmem/context/peers.md`.
    - If missing or empty: error "No paired repos. Run /pair-repo <path> first." Stop.
+   - **Do NOT** inline-python parse features.json. Use the probe.
 
 2. **Resolve peer**
    - Parse `peers.md` for `## <name>` sections. Extract `path`, `role`, `branch`, `active_feature`.

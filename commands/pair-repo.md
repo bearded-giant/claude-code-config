@@ -21,18 +21,28 @@ Two Claude sessions coordinating via shared file failed in practice: stale views
 
 ## Steps
 
-1. **Validate peer path**
-   - Run `git -C <peer-path> rev-parse --show-toplevel`. If non-zero exit, error: "Not a git repo: <path>". Stop.
-   - Normalize to absolute canonical path (output of `rev-parse --show-toplevel`).
-   - Reject if peer path == current repo path (`git rev-parse --show-toplevel`). "Peer must be a different repo."
+1. **Probe peer repo** (single call — do NOT chain inline `python -c` or multiple bash invocations)
 
-2. **Capture peer metadata** (one-shot, terse)
-   - Peer short name: `basename <peer-path>`.
-   - Peer branch: `git -C <peer-path> rev-parse --abbrev-ref HEAD`.
-   - Peer status (dirty?): `git -C <peer-path> status --porcelain | wc -l`.
-   - Peer top-level layout: `ls <peer-path>` (one line).
-   - Peer's CLAUDE.md path if exists: `<peer-path>/CLAUDE.md`.
-   - Peer's `.giantmem/features/features.json` active feature (if any): parse, grab `in_progress` name.
+   Run `~/.claude/scripts/peer-probe <peer-path>` via ONE Bash call.
+
+   Script outputs key=value lines:
+   ```
+   git_root=<abs-path>
+   short_name=<basename>
+   branch=<branch>
+   dirty=<yes|no>
+   layout=<ls oneline>
+   has_claude_md=<yes|no>
+   active_feature=<name or "-">
+   ```
+
+   Handles features.json in any shape (list-of-dicts, dict-keyed-by-name, or wrapper `{"features": ...}`). Missing files yield `-`. Missing `jq` yields `?jq_missing` (install `jq` or skip that field).
+
+   Script exits non-zero if `error=not_a_directory` or `error=not_a_git_repo`. On error, stop with message; do not continue.
+
+   Compare `git_root` with current repo's `git rev-parse --show-toplevel`. If equal, error: "Peer must be a different repo." Stop.
+
+   **Do NOT** manually re-run `git -C ...`, `ls`, or inline-python parse features.json. The probe is the single source. This guardrail exists because prior runs cascaded 6+ bash calls with inline Python that broke on schema drift.
 
 3. **Ensure peer dir is accessible**
    - Check `settings.json` + `settings.local.json` `permissions.additionalDirectories`. If peer path (or a parent of it) already listed: OK.
@@ -44,9 +54,9 @@ Two Claude sessions coordinating via shared file failed in practice: stale views
 
 4. **Persist peer record**
 
-   Determine scope:
-   - Active feature exists (`in_progress` in `.giantmem/features/features.json`) → write to `.giantmem/features/{active}/peers.md`.
-   - No active feature → write to `.giantmem/context/peers.md`.
+   Determine scope by running `~/.claude/scripts/peer-probe $(git rev-parse --show-toplevel)` (same script, now on parent repo). Read `active_feature` line.
+   - Value != `-` → write to `.giantmem/features/<active_feature>/peers.md`.
+   - Value == `-` → write to `.giantmem/context/peers.md`.
 
    Append (or create) an entry block:
    ```markdown

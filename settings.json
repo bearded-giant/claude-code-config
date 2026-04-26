@@ -46,6 +46,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/ensure_personal_claude.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session_prime.py"
           }
         ]
       }
@@ -60,6 +64,10 @@
           {
             "type": "command",
             "command": "date +%s > /tmp/claude-compact-ts"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/precompact_capture.py"
           }
         ]
       }
@@ -74,6 +82,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/workspace_session_end.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session_end_ingest.py"
           }
         ]
       }
@@ -95,6 +107,17 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/guard_protected_paths.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/live_index.py"
           }
         ]
       }
@@ -165,10 +188,8 @@
       ]
     },
     "giantmem-search": {
-      "command": "python3",
-      "args": [
-        "/Users/bryan/dev/giant-tooling/giantmem-archive/mcp-search-server.py"
-      ]
+      "command": "/Users/bryan/.local/bin/giantmem",
+      "args": ["mcp", "serve"]
     }
   },
   "verbose": true,
