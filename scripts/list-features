@@ -14,8 +14,18 @@ if [ ! -d "$features_dir" ]; then
 fi
 
 if [ ! -f "$cache" ]; then
+  has_features=0
+  for d in "$features_dir"/*/; do
+    [ -d "$d" ] || continue
+    has_features=1
+    break
+  done
+  if [ "$has_features" -eq 0 ]; then
+    echo "no features yet in $features_dir"
+    exit 0
+  fi
   echo "no features.json cache at: $cache" >&2
-  echo "run a feature command to initialize the cache" >&2
+  echo "feature subdirs exist but cache is missing -- run a feature command to initialize" >&2
   exit 1
 fi
 

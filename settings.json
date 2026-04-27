@@ -118,6 +118,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/live_index.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/caveman_artifact_nudge.py"
           }
         ]
       }
