@@ -172,6 +172,8 @@
   "effortLevel": "xhigh",
   "channelsEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "verbose": true,
+  "preferredNotifChannel": "terminal_bell",
   "feedbackSurveyState": {
     "lastShownTime": 1754071973699
   },
@@ -193,9 +195,11 @@
     },
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     }
   },
-  "verbose": true,
-  "preferredNotifChannel": "terminal_bell"
+  "model": "opus[1m]"
 }

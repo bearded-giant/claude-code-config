@@ -347,6 +347,21 @@ When `.giantmem/` exists, ALL documentation, plans, research, and analysis MUST 
 
 **CRITICAL: Feature-scoped routing applies here.** When a feature is `in_progress`, plans, research, reviews, and filebox output go inside the active feature directory. See the feature-scoped output routing table in `<feature_management>` for exact paths.
 
+### Open Questions Block
+
+When a doc has unresolved questions for the user, put them at the TOP under `## Open Questions for User`. Before any TOC, summary, or content. Buried questions get missed.
+
+Format: numbered list, one question per line, mark blocking vs non-blocking.
+
+Example:
+```markdown
+## Open Questions for User
+1. [BLOCKING] Should auth tokens expire at 1h or 24h?
+2. [non-blocking] Prefer Redis or Postgres for session store?
+```
+
+Remove the section once answered. Don't leave stale questions.
+
 ### Directory Format and Verbosity
 
 **Global directories (always at `.giantmem/` level):**
