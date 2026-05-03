@@ -125,6 +125,17 @@ def parse_usage(raw):
             "used_pct": min(round(util), 100),
             "resets_at": window.get("resets_at"),
         }
+    # spend cap (Enterprise): float utilization, monthly_limit in currency units
+    eu = raw.get("extra_usage")
+    if isinstance(eu, dict) and eu.get("is_enabled") and eu.get("monthly_limit"):
+        util = eu.get("utilization", 0.0)
+        result["spend_cap"] = {
+            "used_pct": min(round(util * 10) / 10, 100.0),
+            "used": eu.get("used_credits", 0.0),
+            "limit": eu.get("monthly_limit"),
+            "currency": eu.get("currency", "USD"),
+            "resets_at": eu.get("resets_at"),
+        }
     return result
 
 
@@ -215,30 +226,7 @@ def main():
         release_lock()
 
 
-CONFIG_FILE = os.path.join(CACHE_DIR, "config.json")
-
-
-def load_config():
-    try:
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
-
-
-def save_config(cfg):
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(cfg, f, indent=2)
-
-
-WINDOW_KEYS = ("5h", "7d")
-
-
 def cmd_list():
-    cfg = load_config()
-    visible = cfg.get("visible")
-    windows = cfg.get("windows")
     try:
         with open(CACHE_FILE) as f:
             cache = json.load(f)
@@ -246,89 +234,17 @@ def cmd_list():
         print("no cache yet -- run without flags first")
         sys.exit(1)
 
-    print("orgs:")
     for org in cache.get("orgs", []):
         label = org.get("label", "?")
-        shown = visible is None or label in visible
-        marker = "*" if shown else " "
-        fh = org.get("five_hour", {}).get("used_pct", "-")
-        sd = org.get("seven_day", {}).get("used_pct", "-")
-        print(f"  [{marker}] {label:<12}  5h: {fh}%  7d: {sd}%")
-
-    print("\nwindows:")
-    for w in WINDOW_KEYS:
-        shown = windows is None or w in windows
-        marker = "*" if shown else " "
-        print(f"  [{marker}] {w}")
-
-    filters = []
-    if visible is not None:
-        filters.append(f"orgs: {', '.join(visible)}")
-    if windows is not None:
-        filters.append(f"windows: {', '.join(windows)}")
-    print(f"\n{'filters: ' + ' | '.join(filters) if filters else 'no filters set'}")
-
-
-def cmd_toggle(name):
-    cfg = load_config()
-
-    if name in WINDOW_KEYS:
-        windows = cfg.get("windows")
-        all_windows = list(WINDOW_KEYS)
-        if windows is None:
-            windows = [w for w in all_windows if w != name]
-        elif name in windows:
-            windows.remove(name)
-            if not windows:
-                windows = None
+        sc = org.get("spend_cap")
+        if sc:
+            used = sc.get("used", 0)
+            limit = sc.get("limit", 0)
+            pct = sc.get("used_pct", 0)
+            cur = sc.get("currency", "USD")
+            print(f"  {label:<14}  {pct}%  {used:.0f}/{limit} {cur}")
         else:
-            windows.append(name)
-            if set(windows) >= set(all_windows):
-                windows = None
-        cfg["windows"] = windows
-        save_config(cfg)
-        shown = windows is None or name in (windows or [])
-        print(f"{name}: {'shown' if shown else 'hidden'}")
-        return
-
-    visible = cfg.get("visible")
-    try:
-        with open(CACHE_FILE) as f:
-            cache = json.load(f)
-        all_labels = [o.get("label") for o in cache.get("orgs", [])]
-    except (FileNotFoundError, json.JSONDecodeError):
-        all_labels = []
-
-    if visible is None:
-        visible = [l for l in all_labels if l != name]
-    elif name in visible:
-        visible.remove(name)
-        if not visible:
-            visible = None
-    else:
-        visible.append(name)
-        if all_labels and set(visible) >= set(all_labels):
-            visible = None
-
-    cfg["visible"] = visible
-    save_config(cfg)
-    shown = visible is None or name in (visible or [])
-    print(f"{name}: {'shown' if shown else 'hidden'}")
-
-
-def cmd_only(label):
-    cfg = load_config()
-    cfg["visible"] = [label]
-    save_config(cfg)
-    print(f"showing only: {label}")
-
-
-def cmd_show_all():
-    cfg = load_config()
-    cfg.pop("visible", None)
-    cfg.pop("windows", None)
-    save_config(cfg)
-    print("showing all orgs and windows")
+            print(f"  {label:<14}  no spend cap")
 
 
 if __name__ == "__main__":
@@ -346,12 +262,6 @@ if __name__ == "__main__":
             sys.exit(1)
     elif args[0] == "--list":
         cmd_list()
-    elif args[0] == "--toggle" and len(args) > 1:
-        cmd_toggle(args[1])
-    elif args[0] == "--only" and len(args) > 1:
-        cmd_only(args[1])
-    elif args[0] == "--show-all":
-        cmd_show_all()
     else:
-        print("usage: usage-fetch.py [--dump|--list|--toggle <label>|--only <label>|--show-all]")
+        print("usage: usage-fetch.py [--dump|--list]")
         sys.exit(1)

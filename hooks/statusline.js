@@ -201,7 +201,14 @@ function contextGauge(data) {
   return ` ${color}${pie(usedPct)} ${untilCompact}%${RST}`;
 }
 
-// --- rate limit usage ---
+// --- spend cap gauge ---
+
+function nextMonthResetEpoch() {
+  // first of next month at 00:00 UTC (Enterprise spend cap resets calendar-monthly)
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0);
+  return next / 1000;
+}
 
 function usageGauges() {
   try {
@@ -219,42 +226,15 @@ function usageGauges() {
       child.unref();
     }
 
-    let visibleFilter = null;
-    let windowFilter = null;
-    try {
-      const cfgFile = path.join(os.homedir(), '.cache', 'claude-usage', 'config.json');
-      const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
-      if (Array.isArray(cfg.visible)) visibleFilter = cfg.visible;
-      if (Array.isArray(cfg.windows)) windowFilter = cfg.windows;
-    } catch (e) {}
+    const org = (cache.orgs || []).find(o => o.spend_cap && o.spend_cap.limit);
+    if (!org) return '';
+    const sc = org.spend_cap;
 
-    const show5h = !windowFilter || windowFilter.includes('5h');
-    const show7d = !windowFilter || windowFilter.includes('7d');
-
-    let result = '';
-    const orgs = (cache.orgs || []).filter(
-      o => !visibleFilter || visibleFilter.some(v => o.label?.toLowerCase().includes(v.toLowerCase()))
-    );
-    for (const org of orgs) {
-      const fh = org.five_hour;
-      const sd = org.seven_day;
-      if (!fh && !sd) continue;
-
-      let parts = [];
-      if (show5h && fh && fh.used_pct != null) {
-        const p = Math.min(100, Math.max(0, fh.used_pct));
-        parts.push(`${colorForPct(p)}5h ${pie(p)} ${p}%${fmtCountdown(fh.resets_at, now)}${RST}`);
-      }
-      if (show7d && sd && sd.used_pct != null) {
-        const p = Math.min(100, Math.max(0, sd.used_pct));
-        parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${fmtCountdown(sd.resets_at, now)}${RST}`);
-      }
-      if (parts.length) {
-        const label = orgs.length > 1 ? `${DIM}${org.label}${RST} ` : '';
-        result += ` \u2502 ${label}${parts.join(' ')}`;
-      }
-    }
-    return result;
+    const p = Math.min(100, Math.max(0, sc.used_pct || 0));
+    const pctStr = p < 10 ? p.toFixed(1) : String(Math.round(p));
+    const resetAt = sc.resets_at || nextMonthResetEpoch();
+    const countdown = fmtCountdown(resetAt, now);
+    return ` \u2502 ${colorForPct(p)}cap ${pie(p)} ${pctStr}%${countdown}${RST}`;
   } catch (e) { return ''; }
 }
 
