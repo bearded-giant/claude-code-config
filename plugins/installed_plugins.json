@@ -99,6 +99,16 @@
         "lastUpdated": "2026-04-18T00:52:18.668Z",
         "gitCommitSha": "962ecfdafc4d0c8d61743c7ae97a3f9c25895e1e"
       }
+    ],
+    "kai-review@kai": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/kai/kai-review/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-05-04T20:55:54.333Z",
+        "lastUpdated": "2026-05-04T20:55:54.333Z",
+        "gitCommitSha": "962ecfdafc4d0c8d61743c7ae97a3f9c25895e1e"
+      }
     ]
   }
 }

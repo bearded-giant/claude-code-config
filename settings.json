@@ -31,6 +31,7 @@
       "/Users/bryan/"
     ]
   },
+  "model": "claude-opus-4-6",
   "hooks": {
     "SessionStart": [
       {
@@ -151,7 +152,8 @@
     "lua-lsp@claude-plugins-official": true,
     "discord@claude-plugins-official": true,
     "caveman@caveman": true,
-    "kai@kai": true
+    "kai@kai": true,
+    "kai-review@kai": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
@@ -200,6 +202,5 @@
         "serve"
       ]
     }
-  },
-  "model": "opus[1m]"
+  }
 }
