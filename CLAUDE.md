@@ -61,14 +61,13 @@ All hooks are Python (stdlib only, no external deps) except statusline (Node.js)
 
 ## General Guidelines
 
-- Prioritize action over exploration. When the user asks for a specific output (curl commands, scripts, code changes), produce the output first, then explore the codebase only if needed to refine. Don't spend time reading files before attempting a direct answer.
-- When the user references specific code or asks about codebase behavior, investigate first (see below). But when the ask is "generate X", generate it.
+Decision rule for action-vs-exploration:
 
-## CRITICAL: Document Output Rules
-
-**When asked to create documentation, analysis, plans, or research - ALWAYS write to `.giantmem/` subdirectories. NEVER output long-form content only in chat.**
-
-If `.giantmem/` doesn't exist, ask user to run `/ws-init` first.
+| Ask shape | Default |
+|-----------|---------|
+| "Generate X" / "write Y" / "give me a curl for Z" | Action first. Produce output, refine after. Do not pre-read files. |
+| "Why does X" / "How does Y work" / "What's wrong with Z" | Investigate first. Read referenced files before answering. No speculation. |
+| User names a specific file or symbol | MUST Read it before proposing edits. |
 
 ## Session Behavior
 
@@ -77,16 +76,14 @@ Your context window will be automatically compacted as it approaches its limit, 
 </context_management>
 
 <session_recovery>
-When starting a session or recovering from context refresh:
+On session start or context refresh, IF files exist, read in order:
 
-1. Read `.giantmem/WORKSPACE.md` for project context
-2. Check `.giantmem/features/features.json` for feature cache (or `_index.md` as fallback)
-3. Identify the active feature (status `in_progress` in features.json)
-4. Check `.giantmem/domains/_index.json` for domain knowledge base (load relevant domain JSONs for active feature)
-5. If active feature exists, check `features/{active-feature}/plans/current.md` for session work; otherwise check `.giantmem/plans/current.md`
-6. Review recent git log for changes
-7. Verify current state before making changes
-   </session_recovery>
+1. `.giantmem/WORKSPACE.md` — project context
+2. `.giantmem/features/features.json` — find active feature (status `in_progress`)
+3. Active feature's `plans/current.md` if active feature exists, else `.giantmem/plans/current.md`
+
+Skip steps where file does not exist. Do not stat/read every directory ritually. Verify current state with git only when about to edit.
+</session_recovery>
 
 <feature_management>
 Features are organized in `.giantmem/features/` with semantic folder names.
@@ -138,12 +135,16 @@ Domains are repo-level, not feature-scoped. Created by `/plan-feature`, updated 
 - `/feature-report [feature]` - generate validation report
 
 **IMPORTANT - "Create a plan" disambiguation:**
-When user says "create a plan" or similar, ALWAYS ask:
-> Is this a **feature** (persistent, spans sessions) or **session work** (transient, current task only)?
-- Feature → use `/new-feature` → writes to `features/{name}/spec.md`
-- Session work → if active feature exists, write to `features/{active-feature}/plans/current.md`; otherwise `plans/current.md`
+When user says "create a plan", "plan this out", "draft a plan", or similar, MUST emit AskUserQuestion BEFORE any file write:
 
-Do not assume. User may forget which context they're in.
+```
+Question: Is this a feature (persistent, spans sessions) or session work (transient, current task only)?
+Options:
+  1. feature → /new-feature → features/{name}/spec.md
+  2. session work → plans/current.md (or active feature's plans/current.md)
+```
+
+Do not assume. Do not write the plan first then ask. Ask first, write second. User often forgets which context they're in.
 
 **Feature-scoped output routing:**
 
@@ -174,14 +175,17 @@ When no feature is `in_progress`, use top-level `.giantmem/` subdirectories as b
 - Not all projects use features. When a project has `.giantmem/features/`, use that system. Commands: `/list-features`, `/new-feature`, `/plan-feature`, `/update-domains`, `/reopen-feature`, `/pause-feature`, `/complete-feature`. When modifying feature-related scripts, ensure consistency with existing feature commands and conventions.
 
 <doc_sync>
-When making changes that affect user-facing behavior (new commands, changed invocations, renamed flags, new options, modified workflows), check the workspace for docs that need updating:
+Triggers (any of these → MUST run sync in same edit batch, do not wait to be asked):
+- Renamed/removed/added a slash command, skill, agent, or hook
+- Renamed/removed/added a CLI flag, env var, or config key
+- Changed an invocation signature (arg order, required → optional, etc.)
 
-- README, quickstart guides, cheat sheets, usage docs
-- Look in repo root and `docs/` or `.giantmem/` for `.md` files with usage examples or command references
-- Update invocations, flag names, examples, and any other details that changed
-- Do this as part of the same edit session - don't wait to be asked
-- If a doc references something you just renamed/removed/added, fix it inline
-- Keep the doc's existing tone and format - just patch the relevant lines
+Sync procedure:
+1. `grep -r '<old-name>'` across repo root, `docs/`, `.giantmem/`, `commands/`, `agents/`, `skills/`, `README*`
+2. Patch each ref inline — keep existing tone and format
+3. Include patches in same commit as the rename/removal
+
+Skip sync only if the change is internal (private helper rename, refactor with no external surface).
 </doc_sync>
 
 <investigate_before_answering>
@@ -218,11 +222,21 @@ This system uses GNU stow for dotfiles management.
 
 ## Communication Style
 
-- No emojis in any code, scripts, or documentation
-- Chat responses: direct and technical
-- Documentation and written content: casual, informal tone by default. Write like a senior dev explaining to a colleague, not like formal technical writing. Avoid stiff phrasing, corporate language, or overly structured prose. Only use formal tone when the user explicitly asks for it.
-- No bullet points in long-form or external docs (READMEs, guides, writeups). Use numbered lists, prose, tables, or other structures instead. Bullet lists make docs look like slide decks. Internal workspace docs (`.giantmem/`) and chat responses follow the Concise Output Rules below instead.
-- **Wizard-style prompts**: When features/skills need multiple inputs (branch name, base branch, etc.), present them as numbered menu options one at a time, not as a combined free-text question. User selects 1/2/3 etc.
+### Tone
+
+- Chat: direct, technical, terse
+- Long-form docs (READMEs, guides, writeups): casual, informal. Senior dev explaining to a colleague. No corporate phrasing, no stiff structure
+- Formal tone only when user explicitly asks
+
+### Format
+
+- NEVER use emojis in code, scripts, docs (any context)
+- Long-form / external docs: NO bullet lists. Use numbered lists, prose, or tables. Bullets make docs look like slide decks
+- Workspace docs (`.giantmem/`) and chat: bullets allowed per Concise Output Rules below
+
+### Wizard-Style Prompts
+
+When a feature/skill needs multiple inputs (branch name, base branch, etc.), MUST present as numbered menu, ONE question at a time. User selects 1/2/3. Never combine into a single free-text question.
 
 ## Concise Output Rules
 
@@ -230,9 +244,9 @@ When the user asks for "concise" output or summary, follow these format constrai
 
 | Ask Type | Format |
 |----------|--------|
-| Question | 1-2 sentences + up to 8 bullet points of detail |
-| Analysis | Max 2 paragraphs + summary bullet points |
-| Pros and cons | 4-6 sentence summary + table (not lists) |
+| Question | 1-2 sentences + up to 5 bullets |
+| Analysis | Max 2 short paragraphs + up to 5 summary bullets |
+| Pros and cons | 3-4 sentence summary + table (not lists) |
 
 **Workspace docs (`.giantmem/`):** "Concise" means the same constraints as chat responses apply to markdown files:
 - Bullet points and tables over prose
@@ -242,14 +256,26 @@ When the user asks for "concise" output or summary, follow these format constrai
 ## Code Comment Rules
 
 <code_comment_rules>
-When writing or editing code (excluding tests):
+Default: write ZERO comments. Code self-documents via names.
 
-- Only add comments for crucial or complex logic
-- Remove any superfluous comments (obvious operations, self-documenting code)
-- All comments must be lowercase
-- Never add docstrings unless explicitly requested
-- Tests are exempt - comments are fine there
-  </code_comment_rules>
+Add a comment ONLY when the WHY is non-obvious: hidden constraint, subtle invariant, workaround for a specific bug, behavior that would surprise a reader. If removing the comment would not confuse a future reader, do not write it.
+
+Forbidden patterns (do not emit, even once):
+- Comments that restate WHAT the code does (`# loop over users`, `# return result`, `# helper for X`)
+- Section banners (`# === Setup ===`, `# --- helpers ---`, `### Constants`)
+- Task/PR/ticket refs (`# added for X feature`, `# fix for ticket-123`, `# used by Y`)
+- Trailing inline comments after assignments (`x = foo()  # get foo`)
+- Docstrings — never add unless user explicitly asks
+- Multi-line comment blocks or multi-paragraph docstrings — one short line max
+- "Removed X" / "TODO: cleanup" / backwards-compat placeholder comments
+
+Style when a comment IS warranted:
+- lowercase
+- one line
+- state the WHY, not the WHAT
+
+Tests exempt — comments fine there.
+</code_comment_rules>
 
 ## Languages & Conventions
 
@@ -269,65 +295,26 @@ When writing or editing code (excluding tests):
 
 ## Test Creation and Modification
 
-- must run any tests you create or update to ensure they pass
-- if how to run for a given project is not clear check the CLAUDE.md file for the project or ask the user for clarification
+- MUST run any tests created or modified to confirm they pass before reporting done
+- If how to run for a given project is unclear, read the project CLAUDE.md or ask user. Do not guess test command
 
-## Test Running
+## Agent Tool Use
 
-- tests are ran with docker
-- `docker compose run --rm test pytest -s --disable-warnings {test file}`
-- Example: `docker compose run test pytest -s --disable-warnings tests/services/merchant_auth/test_merchant_two_factor_integration.py`
+<agent_triggers>
+MUST spawn Task agent (Explore subagent) when:
+- Searching for unknown pattern across > 5 files
+- Mapping a flow that requires > 3 sequential greps/reads
+- Finding all usages of a symbol across the repo
 
-## Working Modes
+MUST spawn Task agent (debugger subagent) when user reports a stack trace, test failure, or unexplained behavior requiring multi-file trace.
 
-### Mode: "sync to preprod"
+MUST spawn Task agent for refactors touching > 5 files (batched edits, consistency check).
 
-When user says this phrase, enter auto-sync mode where:
-
-- After any file edit/update that's NOT in .gitignore
-- Automatically sync the file to preprod using `~/.claude/scripts/sync-preprod`
-- Show a brief confirmation like "→ Synced: customcheckout/api/blueprint.py"
-- Continue in this mode until user says "stop syncing" or similar
-
-Example workflow:
-
-```
-User: "working local sync to preprod"
-Claude: Entering auto-sync mode. Files will sync to preprod on save.
-
-[After editing a file]
-Claude: [makes the edit]
-→ Synced: customcheckout/api/merchant_two_factor_auth.py
-```
-
-### "sync to preprod" / "sync to prestage" (one-shot)
-
-When user says "sync to preprod" or "sync to prestage" outside of auto-sync mode, sync all dirty and untracked non-test files:
-
-1. Get dirty files: `git diff --name-only` + `git ls-files --others --exclude-standard`
-2. Filter out: `tests/`, `test_*` files, `.gitignore`d paths
-3. Sync each remaining file using `~/.claude/scripts/sync-preprod` (or `sync-prestage`)
-4. Show summary of what was synced
-
-Use `sync-preprod` for preprod, `sync-prestage` for prestage. Both scripts handle path resolution for cc-wt worktrees automatically.
-
-## Smart Agent Triggers
-
-**Proactively use the Task tool with specialized agents when:**
-
-- **Searching for code patterns across multiple files**: Use Task agent to search efficiently
-- **Refactoring >5 files**: Use Task agent with batched operations for consistency
-- **Debugging test failures**: Use Task agent to run tests and analyze failures systematically
-- **Complex multi-step operations**: Use Task agent when a task requires 4+ coordinated steps
-- **Finding all usages of a function/class**: Use Task agent for comprehensive codebase search
-- **Implementing features across layers**: Use Task agent to modify model, API, and frontend together
-
-Examples of when to automatically trigger:
-
-- User: "Find all places where we call validateCredentials" → Use Task agent
-- User: "Rename this function everywhere" → Use Task agent
-- User: "Why is this test failing?" → Use Task agent to investigate
-- User: "Add this field to the model and API" → Use Task agent for multi-layer changes
+MUST NOT spawn agents for:
+- Single-file edits with known path
+- One-shot bash commands
+- Direct Read of a file the user named
+</agent_triggers>
 
 ## Git Rules
 
@@ -403,25 +390,7 @@ NOTE: `context/discoveries.md` is deprecated. Use `context/patterns.md` for cura
 
 ### Directory Selection
 
-BEFORE writing any document, determine the correct path:
-
-1. Check if a feature is `in_progress` in `features.json` → that is the **active feature**
-2. If active feature exists, feature-scoped outputs go to `features/{active-feature}/` subdirs
-3. If no active feature, use top-level `.giantmem/` subdirs
-
-**Always global:**
-- **Starting a new feature?** → `/new-feature {name}` to scaffold, then `features/{name}/spec.md`
-- **Planning a feature?** → `/plan-feature` to explore code domains and draft plan
-- **Recording beta flags, config?** → `features/{name}/facts.md`
-- **Explored a code domain?** → `domains/{domain}.json` (created by `/plan-feature`, updated by `/update-domains`)
-- **Learned architectural pattern?** → `context/patterns.md` (curated, not append-only)
-- **Prompt template to reuse?** → `prompts/{name}.md`
-
-**Feature-scoped (inside active feature dir when one exists):**
-- **Active session work?** → `{feature}/plans/current.md` or `plans/current.md`
-- **Researching external topic?** → `{feature}/research/{topic}.md` or `research/{topic}.md`
-- **Reviewing code quality?** → `{feature}/reviews/{subject}.md` or `reviews/{subject}.md`
-- **Temporary data, exports, samples?** → `{feature}/filebox/` or `filebox/`
+Routing rules live in `<feature_management>` above (feature-scoped routing table + always-global list). Use that as canonical source. This section covers format and naming only.
 
 ### Format Examples
 

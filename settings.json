@@ -31,7 +31,6 @@
       "/Users/bryan/"
     ]
   },
-  "model": "claude-opus-4-6",
   "hooks": {
     "SessionStart": [
       {
