@@ -226,15 +226,45 @@ function usageGauges() {
       child.unref();
     }
 
-    const org = (cache.orgs || []).find(o => o.spend_cap && o.spend_cap.limit);
-    if (!org) return '';
-    const sc = org.spend_cap;
+    let visibleFilter = null;
+    try {
+      const cfgFile = path.join(os.homedir(), '.cache', 'claude-usage', 'config.json');
+      const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+      if (Array.isArray(cfg.visible)) visibleFilter = cfg.visible;
+    } catch (e) {}
 
-    const p = Math.min(100, Math.max(0, sc.used_pct || 0));
-    const pctStr = p < 10 ? p.toFixed(1) : String(Math.round(p));
-    const resetAt = sc.resets_at || nextMonthResetEpoch();
-    const countdown = fmtCountdown(resetAt, now);
-    return ` \u2502 ${colorForPct(p)}cap ${pie(p)} ${pctStr}%${countdown}${RST}`;
+    const orgs = (cache.orgs || [])
+      .filter(o => o.five_hour || o.seven_day || o.spend_cap)
+      .filter(o => !visibleFilter || visibleFilter.includes(o.label));
+    if (!orgs.length) return '';
+
+    let result = '';
+    for (const org of orgs) {
+      const parts = [];
+
+      const fh = org.five_hour;
+      if (fh && fh.used_pct != null) {
+        const p = Math.min(100, Math.max(0, fh.used_pct));
+        parts.push(`${colorForPct(p)}5h ${pie(p)} ${p}%${fmtCountdown(fh.resets_at, now)}${RST}`);
+      }
+      const sd = org.seven_day;
+      if (sd && sd.used_pct != null) {
+        const p = Math.min(100, Math.max(0, sd.used_pct));
+        parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${fmtCountdown(sd.resets_at, now)}${RST}`);
+      }
+      const sc = org.spend_cap;
+      if (sc && sc.limit) {
+        const p = Math.min(100, Math.max(0, sc.used_pct || 0));
+        const pctStr = p < 10 ? p.toFixed(1) : String(Math.round(p));
+        const resetAt = sc.resets_at || nextMonthResetEpoch();
+        parts.push(`${colorForPct(p)}cap ${pie(p)} ${pctStr}%${fmtCountdown(resetAt, now)}${RST}`);
+      }
+
+      if (!parts.length) continue;
+      const label = orgs.length > 1 ? `${DIM}${org.label}${RST} ` : '';
+      result += ` \u2502 ${label}${parts.join(' ')}`;
+    }
+    return result;
   } catch (e) { return ''; }
 }
 

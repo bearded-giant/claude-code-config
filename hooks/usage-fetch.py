@@ -14,6 +14,7 @@ import urllib.request
 
 CACHE_DIR = os.path.expanduser("~/.cache/claude-usage")
 CACHE_FILE = os.path.join(CACHE_DIR, "cache.json")
+CONFIG_FILE = os.path.join(CACHE_DIR, "config.json")
 LOCK_FILE = os.path.join(CACHE_DIR, ".lock")
 COOKIE_DB = os.path.expanduser(
     "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Cookies"
@@ -99,12 +100,24 @@ def api_get(cookies, path):
         return json.loads(resp.read())
 
 
+LABEL_OVERRIDES = {
+    "recharge, inc": "rc-inc",
+    "recharge, team": "rc-team",
+}
+
+def is_personal(org):
+    name = (org.get("name") or "").lower()
+    return "'s organization" in name
+
+
 def org_label(org):
     caps = org.get("capabilities", [])
     if "claude_max" in caps:
         return "max"
-    name = org.get("name", "")
-    # strip common suffixes like "'s Organization"
+    name = (org.get("name") or "").strip()
+    key = name.lower().rstrip(".")
+    if key in LABEL_OVERRIDES:
+        return LABEL_OVERRIDES[key]
     if "'s Organization" in name:
         name = name.split("@")[0] if "@" in name else name.split("'s")[0]
     return name.lower()[:12]
@@ -187,9 +200,12 @@ def main():
         if not cookies.get("sessionKey"):
             sys.exit(1)
 
-        # fetch org list and filter to chat-capable orgs
+        # fetch org list and filter to chat-capable business orgs (drop personal)
         all_orgs = api_get(cookies, "/api/organizations")
-        chat_orgs = [o for o in all_orgs if "chat" in o.get("capabilities", [])]
+        chat_orgs = [
+            o for o in all_orgs
+            if "chat" in o.get("capabilities", []) and not is_personal(o)
+        ]
 
         orgs = []
         for org in chat_orgs:
@@ -226,7 +242,33 @@ def main():
         release_lock()
 
 
+def load_config():
+    try:
+        with open(CONFIG_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_config(cfg):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    tmp = CONFIG_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(cfg, f, indent=2)
+    os.rename(tmp, CONFIG_FILE)
+
+
+def all_labels():
+    try:
+        with open(CACHE_FILE) as f:
+            return [o.get("label") for o in json.load(f).get("orgs", [])]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
 def cmd_list():
+    cfg = load_config()
+    visible = cfg.get("visible")
     try:
         with open(CACHE_FILE) as f:
             cache = json.load(f)
@@ -234,17 +276,73 @@ def cmd_list():
         print("no cache yet -- run without flags first")
         sys.exit(1)
 
+    print("orgs:")
     for org in cache.get("orgs", []):
         label = org.get("label", "?")
+        shown = visible is None or label in visible
+        marker = "*" if shown else " "
+        fh = (org.get("five_hour") or {}).get("used_pct")
+        sd = (org.get("seven_day") or {}).get("used_pct")
         sc = org.get("spend_cap")
+        bits = []
+        if fh is not None:
+            bits.append(f"5h:{fh}%")
+        if sd is not None:
+            bits.append(f"7d:{sd}%")
         if sc:
-            used = sc.get("used", 0)
-            limit = sc.get("limit", 0)
-            pct = sc.get("used_pct", 0)
-            cur = sc.get("currency", "USD")
-            print(f"  {label:<14}  {pct}%  {used:.0f}/{limit} {cur}")
-        else:
-            print(f"  {label:<14}  no spend cap")
+            bits.append(f"cap:{sc.get('used_pct',0)}%")
+        print(f"  [{marker}] {label:<14}  {'  '.join(bits) or '-'}")
+    print(f"\nvisible: {visible if visible is not None else 'all'}")
+
+
+def cmd_toggle(name):
+    cfg = load_config()
+    visible = cfg.get("visible")
+    labels = all_labels()
+    if visible is None:
+        visible = [l for l in labels if l != name]
+    elif name in visible:
+        visible.remove(name)
+        if not visible:
+            visible = None
+    else:
+        visible.append(name)
+        if labels and set(visible) >= set(labels):
+            visible = None
+    cfg["visible"] = visible
+    save_config(cfg)
+    shown = visible is None or name in (visible or [])
+    print(f"{name}: {'shown' if shown else 'hidden'}")
+
+
+def cmd_only(label):
+    cfg = load_config()
+    cfg["visible"] = [label]
+    save_config(cfg)
+    print(f"showing only: {label}")
+
+
+def cmd_show_all():
+    cfg = load_config()
+    cfg.pop("visible", None)
+    save_config(cfg)
+    print("showing all orgs")
+
+
+SWITCH_TARGETS = ["rc-team", "rc-inc"]
+
+
+def cmd_switch():
+    cfg = load_config()
+    visible = cfg.get("visible") or []
+    current = next((l for l in SWITCH_TARGETS if l in visible), None)
+    if current == "rc-team":
+        nxt = "rc-inc"
+    else:
+        nxt = "rc-team"
+    cfg["visible"] = [nxt]
+    save_config(cfg)
+    print(f"switched to: {nxt}")
 
 
 if __name__ == "__main__":
@@ -262,6 +360,14 @@ if __name__ == "__main__":
             sys.exit(1)
     elif args[0] == "--list":
         cmd_list()
+    elif args[0] == "--toggle" and len(args) > 1:
+        cmd_toggle(args[1])
+    elif args[0] == "--only" and len(args) > 1:
+        cmd_only(args[1])
+    elif args[0] == "--show-all":
+        cmd_show_all()
+    elif args[0] == "--switch":
+        cmd_switch()
     else:
-        print("usage: usage-fetch.py [--dump|--list]")
+        print("usage: usage-fetch.py [--dump|--list|--toggle <label>|--only <label>|--show-all|--switch]")
         sys.exit(1)

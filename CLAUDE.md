@@ -334,6 +334,8 @@ When `.giantmem/` exists, ALL documentation, plans, research, and analysis MUST 
 
 **CRITICAL: Feature-scoped routing applies here.** When a feature is `in_progress`, plans, research, reviews, and filebox output go inside the active feature directory. See the feature-scoped output routing table in `<feature_management>` for exact paths.
 
+**CRITICAL: Never write to repo `docs/` unprompted.** Repo `docs/` is for stack-level shipped documentation, owned by humans and gated through review. Ad-hoc reference docs, mode comparisons, flow writeups, and any doc Claude generates from chat go to `.giantmem/context/<topic>.md` (or the active feature's `research/`). Only place output in `docs/` if the user explicitly asks for a shipped doc there.
+
 ### Open Questions Block
 
 When a doc has unresolved questions for the user, put them at the TOP under `## Open Questions for User`. Before any TOC, summary, or content. Buried questions get missed.
