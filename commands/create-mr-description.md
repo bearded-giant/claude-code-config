@@ -4,7 +4,7 @@ Create a GitLab merge request description file for the current branch.
 
 Write to the current feature dir .`giantmem/{feature}/mr-description.md` if no active feature then write to `.giantmem/mr-description.md` if .giantmem/ exists, otherwise `mr-description.md` in project root. Always overwrite if exists.
 
-After writing the file, print the file path AND the full markdown content in chat so the user can copy it directly.
+After writing the file, print the full markdown content in chat, then the file path on its own line at the end so it's easy to copy.
 
 ## Steps
 
@@ -16,9 +16,10 @@ After writing the file, print the file path AND the full markdown content in cha
 2. Get branch context:
    - Current branch name
    - All commits on this branch (use `git log <base_branch>..HEAD`)
-   - Changed files in the branch
-   - Do not write the changed files in the description - the diff will handle that
-   - Use the branch context for the summary only
+   - Read the diff for understanding, but the description is a conceptual overview, not a text diff
+   - Do not list changed files — the MR diff handles that
+   - Do not include test files or test changes in the description
+   - Do not reference specific code (file paths, function names, variable names) unless critical to understanding the change
 
 3. Scan for betaflags (ONLY in branch diff, not whole codebase):
    - Run `git diff <base_branch>..HEAD` to get the actual diff content
@@ -35,17 +36,17 @@ After writing the file, print the file path AND the full markdown content in cha
 5. Write the description file with this structure:
 
 ```markdown
-# Description
+# description
 
 - what the branch does
 - why it exists
 - any other key context (one bullet per idea)
 
-## Betaflags
+## betaflags
 
 - `flag_name` - what it gates
 
-## Example Requests
+## example requests
 
 [Curl examples for new/modified endpoints, or omit section if no API changes]
 [Include example response body when inferable from code context]
@@ -61,3 +62,9 @@ After writing the file, print the file path AND the full markdown content in cha
 - This is a rough draft to supplement the diff, not formal documentation
 - Bullet lists start with lower case letters
 - No periods at the end of a bullet point
+- Conceptual overview only — describe what changed and why, not how the code implements it
+- No code references (file paths, function names, class names) unless critical for reviewer context
+
+## Post-Processing
+
+After writing the description, run it through caveman compression: tighten phrasing, drop filler words, keep all technical substance.
