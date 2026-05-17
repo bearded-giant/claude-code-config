@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# headersHelper for the watchtower MCP server.
+# Called by Claude Code on each connection — outputs {"Authorization": "Bearer <jwt>"}.
+#
+# Token lifecycle:
+#   - JWTs are issued by customcheckout's internal_session endpoint (30-day TTL, sliding).
+#   - Cached at ~/.claude/watchtower-token and reused until < 1 day remains.
+#   - Re-exchange is automatic: Google access token -> customcheckout -> new JWT.
+#   - On failure (gcloud unavailable, network error) outputs {} — requests proceed
+#     without auth. Safe while AUTH_REQUIRED=false; will 401 once enforcement is on.
+#
+# Note: headersHelper is invoked by Claude Code via shell, so ~ in plugin.json expands.
+set -euo pipefail
+
+TOKEN_FILE="${HOME}/.claude/watchtower-token"
+PROD_API="https://api.prod.rechargeapps.net"
+
+_token_valid() {
+    local token="$1"
+    python3 - "${token}" << 'EOF'
+import sys, base64, json, time
+
+token = sys.argv[1]
+parts = token.split('.')
+if len(parts) != 3:
+    sys.exit(1)
+
+payload = parts[1]
+# -len % 4 yields 0 when already aligned, avoiding spurious padding errors
+payload += '=' * (-len(payload) % 4)
+try:
+    data = json.loads(base64.urlsafe_b64decode(payload))
+    exp = data.get('exp', 0)
+    # Refresh when less than 1 day remains
+    sys.exit(0 if (exp - time.time()) > 86400 else 1)
+except Exception:
+    sys.exit(1)
+EOF
+}
+
+_exchange_token() {
+    local google_token
+    google_token=$(gcloud auth print-access-token 2>/dev/null) || return 1
+
+    local response
+    response=$(curl -sf --max-time 10 -X POST "${PROD_API}/admin/auth/internal_session" \
+        -H "X-Recharge-Service-Token: ${google_token}" \
+        -H "Content-Type: application/json" \
+        -d '{}') || return 1
+
+    echo "${response}" | python3 -c "
+import json, sys
+try:
+    print(json.load(sys.stdin)['token'])
+except (KeyError, ValueError) as e:
+    print(f'watchtower-auth: failed to parse token response: {e}', file=sys.stderr)
+    sys.exit(1)
+" || return 1
+}
+
+# Use cached token if still valid
+if [[ -f "${TOKEN_FILE}" ]]; then
+    cached=$(cat "${TOKEN_FILE}")
+    if _token_valid "${cached}"; then
+        echo "{\"Authorization\": \"Bearer ${cached}\"}"
+        exit 0
+    fi
+fi
+
+# Re-exchange
+token=$(_exchange_token) || {
+    echo "{}"
+    exit 0
+}
+
+# Write atomically with correct permissions — avoids brief world-readable window
+mkdir -p "$(dirname "${TOKEN_FILE}")"
+tmp=$(mktemp "${TOKEN_FILE}.XXXXXX")
+chmod 600 "${tmp}"
+printf '%s' "${token}" > "${tmp}"
+mv "${tmp}" "${TOKEN_FILE}"
+
+echo "{\"Authorization\": \"Bearer ${token}\"}"
