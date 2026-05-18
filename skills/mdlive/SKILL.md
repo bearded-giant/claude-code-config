@@ -1,10 +1,13 @@
 ---
 name: mdlive
 description: >-
-  Preview markdown with mdlive when content is long or likely to be
-  iterated with the user (tables, diagrams, multi-section docs). Skip
-  preview for short markdown that is easy to read directly in the
-  terminal.
+  Preview markdown with mdlive in a live-reloading browser. Auto-fires
+  after writing any .md to .giantmem/ that is >40 lines OR contains a
+  Mermaid diagram OR contains 2+ tables OR is likely to iterate with
+  the user (plans, designs, kaizen docs, reports). Also triggers when
+  user says "preview", "render", "show me in browser", "open this".
+  Skip for short conversational replies, single snippets, or markdown
+  that fits in the terminal.
 ---
 
 # mdlive

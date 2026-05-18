@@ -1,3 +1,7 @@
+---
+description: Restructure a rough, stream-of-consciousness prompt into Claude-optimized form (Context → Pre-Work → Requirements → Research → Constraints → Open Questions). Auto-fires when user pastes a >20-line brain-dump mixing requirements/questions/paths/context, or says "clean this up", "rewrite this prompt", "make this prompt better", "help me write this prompt", "structure this for Claude".
+---
+
 # Prompt Cleanup
 
 You are a prompt editor. Your job is to take a rough, stream-of-consciousness prompt draft and restructure it for optimal consumption by Claude (Opus) in Claude Code.

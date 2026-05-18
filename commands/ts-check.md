@@ -1,5 +1,5 @@
 ---
-description: Run TypeScript lint, typecheck, and tests for modified files
+description: Run TypeScript lint, typecheck, and tests on modified files (pnpm + turbo monorepos). Handles `.nvmrc` Node switching. Auto-fires before reporting a TS/React-touching task done — i.e., after editing any `.ts`/`.tsx` file, before final summary to user. Skip only if user explicitly disabled or the change is doc-only.
 allowed-tools: Bash, Grep, Glob, Read
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Run Python formatting and tests for modified files
+description: Run Python quality checks (black/ruff/pytest, optional isort/pylint) on modified files. Auto-fires before reporting a Python-touching task done — i.e., after editing any `.py` file in this repo, before final summary to user. Skip only if user explicitly disabled or the change is doc-only.
 allowed-tools: Bash, Grep, Glob, Read, AskUserQuestion
 ---
 

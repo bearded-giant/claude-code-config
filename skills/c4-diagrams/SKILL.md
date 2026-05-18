@@ -1,6 +1,6 @@
 ---
 name: c4-diagrams
-description: Use this skill when asked to create architecture diagrams, system diagrams, C4 diagrams, or visualize code/feature flows. Generates Mermaid C4 diagrams at Context and Container levels by default.
+description: Generate Mermaid C4 architecture diagrams (Context L1 + Container L2 by default). Triggers when user says "diagram this", "show me the architecture", "how does X talk to Y", "map this system", "draw a flow chart", or describes a system that has 3+ moving parts. Auto-fires when planning a refactor or onboarding to a new codebase area.
 ---
 
 # C4 Architecture Diagrams

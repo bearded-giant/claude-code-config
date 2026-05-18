@@ -4,10 +4,8 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/ws-history` | Show recent workspace sessions |
-| `/ws-history-search {query}` | Search workspace session files |
-| `/session-history` | List JSONL sessions across projects |
-| `/session-search {query}` | Search conversation content globally |
+| `/ws-history` | Show recent workspace sessions or `--search <q>` to grep |
+| `/session-search {query}` | Search conversation content globally; `--list` for listing |
 
 ## Architecture
 
@@ -22,10 +20,9 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/swarm` | Hierarchical multi-model analysis |
-| `/swarm-usage` | Full swarm documentation |
-| `/swarm-exec` | Parallel execution with validation |
-| `/swarm-exec-usage` | Full swarm-exec documentation |
+| `/swarm` | Hierarchical multi-model analysis (usage inline at bottom of file) |
+| `/swarm-plan` | Convert analysis/research into exec plan |
+| `/swarm-exec` | Parallel execution with validation (usage inline at bottom of file) |
 
 ## Feature Management
 
@@ -42,8 +39,6 @@
 | Skill | Purpose |
 |-------|---------|
 | `/ws-init` | Bootstrap .giantmem/ structure |
-| `/ws-note {text}` | Add timestamped note to WORKSPACE.md |
-| `/ws-edit` | Open WORKSPACE.md |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
 
@@ -53,7 +48,6 @@
 |-------|---------|
 | `/ts-check` | TypeScript lint, typecheck, tests |
 | `/py-check` | Python formatting and tests |
-| `/no-comments {files}` | Strip superfluous comments |
 
 ## Search & Analysis
 
@@ -65,7 +59,8 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/create-mr` | Generate GitLab MR description |
+| `/create-mr-description` | Generate GitLab MR description |
+| `/server-logs <env> [N]` | Tail preprod/prestage server.log |
 
 ## Development
 

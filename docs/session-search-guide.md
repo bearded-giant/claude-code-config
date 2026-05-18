@@ -14,13 +14,13 @@ Show recent sessions from `.giantmem/history/sessions.md`:
 /ws-history abc12345     # show session details by ID
 ```
 
-### /ws-history-search
+### /ws-history --search
 
 Search workspace session files for keywords:
 
 ```bash
-/ws-history-search foo-service
-/ws-history-search "validation"
+/ws-history --search foo-service
+/ws-history --search "validation"
 ```
 
 Searches: user prompts, files touched, commands run, discoveries.
@@ -29,14 +29,14 @@ Searches: user prompts, files touched, commands run, discoveries.
 
 ## Global Commands (all projects)
 
-### /session-history
+### /session-search --list
 
 List JSONL sessions from `~/.claude/projects/`:
 
 ```bash
-/session-history                  # all recent sessions
-/session-history my-project       # filter by project name
-/session-history 30               # last 30 sessions
+/session-search --list                          # all recent sessions
+/session-search --list --project my-project     # filter by project name
+/session-search --list --limit 30               # last 30 sessions
 ```
 
 ### /session-search (`css`)
@@ -91,7 +91,7 @@ The workflow is: `css` finds which session, `--paths` gives a pipeable path, `cs
 |------|---------|
 | Find where I discussed X | `css -q "X"` |
 | Drill into a specific match | `csr -f "$(css -q X --paths \| head -1)" -q "Y"` |
-| What files did I create for feature Y | `/ws-history-search Y` then check "Files Touched" |
+| What files did I create for feature Y | `/ws-history --search Y` then check "Files Touched" |
 | Find a doc Opus wrote | `grep -r "topic" ~/dev/project/.giantmem/` |
 | List recent work in project | `/ws-history` |
 | Resume a specific session | `cd <project-dir> && claude --resume <session-id>` |
@@ -115,5 +115,5 @@ The workflow is: `css` finds which session, `--paths` gives a pipeable path, `cs
 - Session files contain: user prompts, files modified/created/read, bash commands, discoveries
 - JSONL files contain: full conversation including Claude's thinking and responses
 - Use `/session-search` when looking for Claude's explanations
-- Use `/ws-history-search` when looking for what files were touched
+- Use `/ws-history --search` when looking for what files were touched
 - Session IDs are 8-char hex (e.g., `abc12345`) - use full UUID for `claude --resume`

@@ -94,10 +94,9 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 
 | Command | Purpose |
 |---------|---------|
-| `/session-search` | Search conversation content across all projects |
-| `/session-history` | List JSONL sessions |
-| `/ws-history` | Show recent workspace sessions |
-| `/ws-history-search` | Search workspace session files |
+| `/session-search` | Search/list Claude JSONL sessions across projects (use `--list` for listing) |
+| `/ws-history` | Show recent workspace sessions or `--search <q>` to grep |
+| `/server-logs <env> [N]` | Grab N lines of preprod/prestage server logs |
 
 ### Analysis (read-only)
 
@@ -128,8 +127,6 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 | Command | Purpose |
 |---------|---------|
 | `/ws-init` | Initialize `.giantmem/` workspace |
-| `/ws-edit` | Edit workspace file |
-| `/ws-note` | Add note to workspace |
 | `/ws-archive` | Archive workspace to `~/giantmem_archive/` |
 
 ## Archive Search

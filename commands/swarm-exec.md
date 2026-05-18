@@ -521,4 +521,79 @@ To inspect partial work:
   git diff main..swarm-exec/{timestamp}
 ```
 
+---
+
+## Usage
+
+```
+/swarm-exec <plan file or inline description>
+```
+
+### Examples
+
+```bash
+/swarm-exec .giantmem/plans/add-preferences-api.md
+/swarm-exec .giantmem/plans/refactor-auth-to-oauth2.md
+/swarm-exec "add health check endpoint at /api/health returning {status: ok}"
+```
+
+### Plan file format (recommended)
+
+```markdown
+# Add User Preferences API
+
+## Goal
+Users store/retrieve preference key-value pairs.
+
+## Files to Create
+- models/preferences.py
+- services/preferences.py
+- api/preferences.py
+
+## Files to Modify
+- api/__init__.py
+
+## Tests
+- tests/test_preferences.py
+- tests/test_preferences_api.py
+
+## Dependencies
+Model → Service → API.
+
+## Success Criteria
+- New tests pass
+- Existing tests pass
+```
+
+## What it's NOT for
+
+- Exploratory work → use `/swarm` to analyze first
+- Unclear requirements → plan first
+- Single-file changes → just edit directly
+
+## Critical safeguards
+
+Swarm-exec NEVER commits, pushes, or merges. NEVER modifies files outside plan. NEVER deletes unless plan says so.
+
+Before changes: checks for uncommitted work (stops if dirty), creates `swarm-exec/{timestamp}` branch, all changes isolated.
+
+You always have:
+```bash
+git checkout main
+git branch -D swarm-exec/{timestamp}       # discard
+git diff main..swarm-exec/{timestamp}      # inspect
+```
+
+## Tips
+
+1. **Plan first, execute second.** Vague plans struggle.
+2. **Be specific about files.** Path > description.
+3. **Include test expectations.** Without them, swarm can't validate.
+4. **Always diff the branch** before committing.
+5. **Iterate on the branch** if first run is close — `/swarm-exec` again with fixes, or fix manually.
+
+## Workflow
+
+`/arch-discover` → `/arch-brainstorm` → `/swarm analyze` → `/swarm-plan` → `/swarm-exec` → you review/test/commit.
+
 Plan: $ARGUMENTS

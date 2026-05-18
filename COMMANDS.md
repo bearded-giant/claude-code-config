@@ -9,29 +9,29 @@
 | `/ws-history` | Show recent sessions from .giantmem/history/ |
 | `/ws-history {n}` | Show last n sessions |
 | `/ws-history {id}` | Show full session details |
-| `/ws-history-search {query}` | Search session files for keywords |
+| `/ws-history --search {query}` | Grep session files for keywords |
 
 ```bash
 /ws-history
 /ws-history 20
 /ws-history abc123
-/ws-history-search foo-service
+/ws-history --search foo-service
 ```
 
 ### Global Session History (all projects)
 
 | Command | Purpose |
 |---------|---------|
-| `/session-history` | List recent JSONL sessions |
-| `/session-history {project}` | Filter by project name |
 | `/session-search {query}` | Search conversation content |
-| `/session-search {query} {project}` | Search within project |
+| `/session-search {query} --project {name}` | Search within project |
+| `/session-search --list` | List recent JSONL sessions |
+| `/session-search --list --project {name}` | List sessions in a project |
 
 ```bash
-/session-history
-/session-history my-project
 /session-search "bar validation"
-/session-search "baz config" my-project
+/session-search "baz config" --project my-project
+/session-search --list
+/session-search --list --project my-project
 ```
 
 ---
@@ -93,7 +93,7 @@ Spawns 3-8 Haiku workers in parallel for deep analysis. Opus validates.
 /swarm compare redis vs memcached for sessions
 ```
 
-See `/swarm-usage` for full documentation.
+Full usage (flags, model trade-offs, tips) inline in `commands/swarm.md`.
 
 ### /swarm-exec (Execution)
 
@@ -103,7 +103,7 @@ Parallel implementation with validation. Creates safety branch, never commits.
 /swarm-exec .giantmem/plans/add-foo-api.md
 ```
 
-See `/swarm-exec-usage` for full documentation.
+Full usage (plan format, safeguards, tips) inline in `commands/swarm-exec.md`.
 
 ---
 
@@ -131,8 +131,6 @@ See `/swarm-exec-usage` for full documentation.
 | Command | Purpose |
 |---------|---------|
 | `/ws-init` | Bootstrap .giantmem/ structure |
-| `/ws-note {text}` | Add note to WORKSPACE.md |
-| `/ws-edit` | Open WORKSPACE.md |
 | `/ws-archive` | Archive to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules |
 
@@ -164,12 +162,10 @@ Peer record lives at `.giantmem/features/{active}/peers.md` (or `.giantmem/conte
 |---------|---------|
 | `/ts-check` | Run TypeScript lint, typecheck, tests |
 | `/py-check` | Run Python formatting and tests |
-| `/no-comments {files}` | Strip superfluous comments |
 
 ```
 /ts-check
 /py-check
-/no-comments src/foo.py src/bar.py
 ```
 
 ---
@@ -186,4 +182,5 @@ Peer record lives at `.giantmem/features/{active}/peers.md` (or `.giantmem/conte
 
 | Command | Purpose |
 |---------|---------|
-| `/create-mr` | Generate GitLab MR description |
+| `/create-mr-description` | Generate GitLab MR description |
+| `/server-logs <env> [N]` | Tail preprod/prestage server.log |

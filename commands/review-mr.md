@@ -1,5 +1,5 @@
 ---
-description: Review an MR and draft a casual Slack/MR response from a Principal Engineer perspective
+description: Review an MR and draft a casual Slack/MR response from a Principal Engineer perspective. Auto-fires when user pastes a gitlab.rechargeapps.net/-/merge_requests/N URL, types `project!number` (e.g. `customcheckout!44`), shares an MR diff >50 lines, or asks "what do you think of this MR", "review this", "thoughts on this PR". Skip for non-Recharge GitHub PRs (use kai-review:review-code instead).
 ---
 
 # Review MR

@@ -355,4 +355,47 @@ Consultations: [count] calls to [CONSULT_MODEL]
 - For thorough analyses on your dime: `haiku+codex` (parallel + spot consults)
 - For company to pay: `codex` workers (accepts sequential trade-off)
 
+---
+
+## Usage examples
+
+```bash
+# Default (haiku, parallel, you pay)
+/swarm analyze src/auth/
+
+# Codex workers (company pays, sequential)
+/swarm codex analyze src/auth/
+
+# Mixed: haiku workers + codex consultation
+/swarm haiku+codex analyze src/payments/ for refactor risks
+
+# Review against spec
+/swarm review src/api/routes.py against docs/api-spec.md
+
+# Comparison
+/swarm compare PostgreSQL vs MongoDB for our task queue
+```
+
+Shorthand: `codex` = `--worker=codex`. `codex+haiku` = `--worker=codex --consult=haiku`. `haiku+codex` = inverse.
+
+## What it's NOT for
+
+- Simple questions → ask directly
+- Single-file edits → use Edit
+- Quick lookups → use Grep/Glob
+- Writing code → use `/swarm-exec` instead
+- Time-sensitive tasks → iterations take time
+
+## Tips
+
+1. **Scope explicitly** — `src/services/billing/` beats "the codebase".
+2. **Reference files** — workers find them faster than searching.
+3. **State the goal** — "prepare for OAuth2 migration" focuses workers.
+4. **Choose model on cost/speed** — see Model Reference table above.
+5. **Expect iteration** — real insights often emerge in iterations 2-3.
+
+## Workflow
+
+`/arch-discover` → map territory → `/swarm analyze` → deep dive → `/swarm-plan` → structure plan → `/swarm-exec` → implement.
+
 Task: $ARGUMENTS

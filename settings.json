@@ -32,7 +32,7 @@
       "/Users/bryan/"
     ]
   },
-  "model": "claude-opus-4-6",
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {

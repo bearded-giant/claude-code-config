@@ -1,3 +1,7 @@
+---
+description: Create a GitLab merge request description (Summary / Test plan / etc.) for the current branch. Writes to active feature dir, .giantmem/, or repo root. Auto-fires when user says "draft MR description", "write up an MR", "ready for MR", "create MR description", or after a successful `git push -u origin <feature-branch>` when on a non-base branch. Skip if branch is base (main/master/stage).
+---
+
 Create a GitLab merge request description file for the current branch.
 
 ## Output

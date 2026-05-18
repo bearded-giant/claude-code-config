@@ -105,4 +105,48 @@ After writing the doc, present a summary:
 
 Remind the user they can iterate with `/kaizen-review`.
 
+## Setup
+
+Set `KAIZEN_TEMPLATES_DIR` once in shell config (refuses to run without it):
+
+```bash
+export KAIZEN_TEMPLATES_DIR=~/dev/docs_and_designs/templates
+```
+
+## Examples
+
+Greenfield:
+```
+/kaizen "merchants need bulk-edit for subscription frequencies" --type=feature
+```
+
+With codebase grounding:
+```
+/kaizen ~/dev/python/cc-wt/flask-session "session records accumulate in Redis causing logout loops" --type=fix
+```
+
+With input docs:
+```
+/kaizen ~/dev/python/cc-wt/flask-session --docs=.giantmem/research/session_analysis.md,.giantmem/features/redis-sessions/spec.md "consolidate session storage" --type=refactor
+```
+
+Light doc:
+```
+/kaizen ~/dev/python/cc-wt/flask-session "add session expiry TTL" --type=feature --light
+```
+
+## Getting the most out of /kaizen
+
+1. **Front-load the problem statement.** Single biggest quality lever. `"fix sessions"` produces a generic doc. Several sentences with specific pain points, user types, and system names produces a reviewable doc.
+2. **Pass existing docs with `--docs`.** PRDs, prior kaizen docs, research notes get pulled into key points, data models, and scope. Prevents re-inventing context.
+3. **Point at the codebase.** Without it, invented names. With it, actual table names, column types, endpoint paths, response shapes. The doc becomes verifiable against implementation.
+4. **Use `--type` for structure.** feature = grouped by user flow; fix = how-it-works-today / issues / fixes; refactor = current vs target architecture.
+5. **Iterate with `/kaizen-review`, don't regenerate.** First pass won't be perfect. Review preserves what's good, touches only what you ask.
+6. **Use `--light` for small changes.** Skips edge case coverage. Good for bug fixes or strong-context teams.
+7. **Answer interactive questions specifically.** Known decisions, exemptions, scope boundaries feed Background and Key Points directly.
+
+## See also
+
+`/kaizen-review <doc_path> [codebase_path] "<what to change>"` — iterate on a generated doc. Examples in `commands/kaizen-review.md`.
+
 $ARGUMENTS

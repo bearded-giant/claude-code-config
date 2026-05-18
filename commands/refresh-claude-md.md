@@ -1,3 +1,7 @@
+---
+description: Refresh the project's CLAUDE.md with current codebase state — targeted re-init that preserves user-authored sections. Auto-fires when CLAUDE.md is older than 30 days AND the user just added new commands/hooks/skills/agents, when major directory restructuring happened, or when user says "CLAUDE.md feels stale", "regen claude.md", "the docs are out of date", "redo the project notes". Also handles worktree CLAUDE.md propagation.
+---
+
 Refresh the project's CLAUDE.md with current codebase state, like a targeted re-init.
 
 ## Worktree Detection

@@ -1,28 +1,33 @@
-Search Claude JSONL conversation content across projects.
+---
+description: Search or list Claude JSONL sessions across all projects. Triggers when user says "find that session about X", "where did I talk about Y", "list my recent claude sessions", "show sessions in project Z", or wants to resume an old conversation.
+allowed-tools: Bash
+---
 
-Run the search script and display results to the user:
-
-```bash
-~/.claude/scripts/session-search $ARGUMENTS
-```
+Search Claude JSONL conversation content across projects, or list recent sessions by project.
 
 ## Argument Parsing
 
-The script handles all argument parsing. Pass `$ARGUMENTS` through directly.
+Pass `$ARGUMENTS` directly to the script. Script handles parsing.
 
-Examples the user might type:
-- `/session-search cookie` -- search last 30 days
-- `/session-search cookie --days 7` -- search last 7 days
-- `/session-search cookie --project agent-chat` -- filter to project
-- `/session-search "preprod session" --all` -- search all time
-- `/session-search cookie --limit 5` -- cap results
+- `--list [--project X] [--limit N]` → list mode: enumerate recent sessions (no content search)
+- `<query> [flags]` → search mode (default)
 
-The script uses named args. Map user input to `--query`:
-- `/session-search cookie` -> `--query cookie`
-- `/session-search cookie --days 7` -> `--query cookie --days 7`
+Common flags:
+- `--days N` → recency window (default 30)
+- `--all` → all time
+- `--project <substring>` → filter by project path substring
+- `--limit N` → cap results
 
-## What to Show
+Examples:
+- `/session-search cookie` → search last 30 days for "cookie"
+- `/session-search cookie --days 7` → search last 7 days
+- `/session-search "preprod session" --all` → search all time
+- `/session-search --list --project agent-chat` → list recent sessions in agent-chat
+- `/session-search --list --limit 5` → 5 most recent across all projects
 
-Run the script and display its output verbatim. The script handles formatting, ranking, and resume commands. Do not add extra commentary unless the user asks follow-up questions.
+## Steps
+
+1. Run: `~/.claude/scripts/session-search $ARGUMENTS`
+2. Display output verbatim. Script handles formatting, ranking, and resume hints.
 
 ARGUMENTS: $ARGUMENTS

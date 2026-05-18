@@ -1,6 +1,6 @@
 ---
 name: mcp-builder
-description: Use this skill when building MCP (Model Context Protocol) servers. This includes creating new MCP servers in TypeScript or Python, implementing tools with proper schemas, setting up transports, and following MCP best practices for tool design, error handling, and documentation.
+description: Build MCP (Model Context Protocol) servers in TypeScript or Python — tool design, schemas, transports, error handling, evaluations. Auto-fires when files import `@modelcontextprotocol/sdk` or `mcp.server`, when user edits files in `mcp/` directories, or asks to "build an MCP", "add a tool to MCP", "expose X as MCP". Skip for general API/SDK work unrelated to MCP.
 ---
 
 # MCP Server Development Guide

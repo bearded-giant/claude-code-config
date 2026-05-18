@@ -1,3 +1,7 @@
+---
+description: Quick lookup of feature facts (beta flags, config keys, endpoints, test commands) from .giantmem/features/{name}/facts.md. Auto-fires before answering "what beta flag is X", "how do I test feature Y", "what's the config key for Z", "where's the endpoint for the W feature", "how do I run the tests for X" — match against features.json before guessing.
+---
+
 Quick lookup of feature facts (beta flags, config, endpoints, test commands).
 
 ## Arguments
