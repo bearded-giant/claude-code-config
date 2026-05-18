@@ -1,74 +1,122 @@
 ---
-description: Create a GitLab merge request description (Summary / Test plan / etc.) for the current branch. Writes to active feature dir, .giantmem/, or repo root. Auto-fires when user says "draft MR description", "write up an MR", "ready for MR", "create MR description", or after a successful `git push -u origin <feature-branch>` when on a non-base branch. Skip if branch is base (main/master/stage).
+description: Create a GitLab merge request description for the current branch. Writes to active feature dir, .giantmem/, or repo root. Auto-fires when user says "draft MR description", "write up an MR", "ready for MR", "create MR description", or after a successful `git push -u origin <feature-branch>` when on a non-base branch. Skip if branch is base (main/master/stage).
 ---
 
 Create a GitLab merge request description file for the current branch.
 
-## Output
+## Output location
 
-Write to the current feature dir .`giantmem/{feature}/mr-description.md` if no active feature then write to `.giantmem/mr-description.md` if .giantmem/ exists, otherwise `mr-description.md` in project root. Always overwrite if exists.
+- Active feature: `.giantmem/features/{feature}/mr-description.md`
+- Else if `.giantmem/` exists: `.giantmem/mr-description.md`
+- Else: `mr-description.md` in project root
 
-After writing the file, print the full markdown content in chat, then the file path on its own line at the end so it's easy to copy.
+Always overwrite. After writing, print the markdown in chat, then the file path on its own line.
 
 ## Steps
 
-1. Determine base branch:
-   - Check project CLAUDE.md for `mr_base_branch: <branch>` setting
-   - If not found, ask user which branch to compare against (master, stage, main, etc.)
-   - Save their choice to project CLAUDE.md as `mr_base_branch: <branch>` for future runs
+1. **Base branch**: check project CLAUDE.md for `mr_base_branch: <branch>`. If absent, ask user. Save their choice as `mr_base_branch: <branch>`.
 
-2. Get branch context:
-   - Current branch name
-   - All commits on this branch (use `git log <base_branch>..HEAD`)
-   - Read the diff for understanding, but the description is a conceptual overview, not a text diff
-   - Do not list changed files — the MR diff handles that
-   - Do not include test files or test changes in the description
-   - Do not reference specific code (file paths, function names, variable names) unless critical to understanding the change
+2. **Branch context**: current branch, commits via `git log <base>..HEAD`, full diff via `git diff <base>..HEAD`. Read diff for understanding.
 
-3. Scan for betaflags (ONLY in branch diff, not whole codebase):
-   - Run `git diff <base_branch>..HEAD` to get the actual diff content
-   - Search the diff output for added lines (`+`) containing `BetaService` imports or `is_enabled(` calls
-   - Do NOT grep the entire codebase - only check what's in the diff
-   - Note which betaflags were added (the string passed to is_enabled)
-   - If no betaflags, omit the Betaflags section entirely
+3. **Group changes into clusters**: each logical change (often one commit, sometimes multiple related commits) becomes one cluster of bullets. Multi-commit branches with distinct themes get multiple clusters separated by blank lines or `### subheading` lines.
 
-4. Identify API endpoints:
-   - Look for new/modified Flask routes in the changes
-   - Generate curl examples using `api.rechargeapps.com` as base URL
-   - Include example response bodies from context when possible (read route handlers, serializers, or tests to infer response shape)
+4. **Betaflags (diff only, NOT whole codebase)**: scan added lines for `BetaService` imports or `is_enabled(` calls. Note flag strings. Omit section if none.
 
-5. Write the description file with this structure:
+5. **API endpoints**: find new/modified Flask routes. Generate curl examples using `api.rechargeapps.com`. Include example response body when inferable.
+
+## Output structure
 
 ```markdown
 # description
 
-- what the branch does
-- why it exists
-- any other key context (one bullet per idea)
+<optional 1-2 sentence summary if branch theme isn't obvious from bullets. Otherwise skip.>
+
+- key change one with the why baked in
+- another change in same cluster, file refs (file.py) and field types (is_admin (bool)) OK
+- third bullet, can have commas and clauses, no need to split
+
+### optional subheading for second commit/theme
+
+- first bullet of next cluster
+- second bullet, can cite symbol like TokensController.validate_claims → 404 on chat endpoints
+- third bullet on same cluster
 
 ## betaflags
 
-- `flag_name` - what it gates
+- `flag_name` — what it gates
 
 ## example requests
 
-[Curl examples for new/modified endpoints, or omit section if no API changes]
-[Include example response body when inferable from code context]
+curl -X POST https://api.rechargeapps.com/... \
+  -H "X-Recharge-Access-Token: $TOKEN" \
+  -d '{...}'
+
+example response:
+{...}
 ```
 
-## Style
+## Style — bullets are the format
 
-- Ultra-concise bullet points over prose
-- One idea per bullet
-- If a sentence would need a comma, split it into two bullets instead
-- No compound sentences
-- Keep it scannable - someone skimming the MR should get the gist in seconds
-- This is a rough draft to supplement the diff, not formal documentation
-- Bullet lists start with lower case letters
-- No periods at the end of a bullet point
-- Conceptual overview only — describe what changed and why, not how the code implements it
-- No code references (file paths, function names, class names) unless critical for reviewer context
+**Bullets, not prose paragraphs.** User has consistently wanted bullets for MR descriptions. Previous attempts at prose were wrong direction.
 
-## Post-Processing
+Bullet style:
+- lowercase first letter
+- no trailing period
+- substantive: pack what + why into one bullet, commas/clauses OK
+- include code refs when they help the reviewer: file paths (`tokens_controller.py`), function names (`TokensController.validate_claims`), endpoints (`/api/chat_integration`), field names with types (`is_admin (bool)`, `user_email (string)`)
+- include the "why" inline when it's not obvious: `sentinel caused NoResultFound in TokensController.validate_claims → 404 on chat endpoints`
+- arrows OK: `→` for cause/effect, `=` for equivalence
+- past tense or present, match what reads naturally
 
-After writing the description, run it through caveman compression: tighten phrasing, drop filler words, keep all technical substance.
+Cluster style:
+- group related bullets together (no blank lines within cluster)
+- separate clusters with blank lines
+- multi-commit branches: optional `### short header` per cluster
+- single-commit/single-theme branches: one cluster, no header
+
+What NOT to do:
+- no prose paragraphs in description body — bullets only
+- no "this MR adds", "this PR introduces", "this branch implements" — drop the meta phrase, start with the verb: "adds X", "enables Y"
+- no splitting one substantive bullet into three thin ones
+- no listing changed files (the diff handles that)
+- no test file references (skip test changes in the description)
+
+## Example output
+
+```markdown
+# description
+
+- enables downstream services (Clay) to distinguish admin vs merchant callers
+- adds is_admin (bool) and user_email (string) to orchestrator inbound chat request
+- note: customcheckout resolves both at the agent_chat endpoint and sends in the POST body
+
+- values flow through ContextVars so any tool or hook can read them during a turn
+- ask_clay tool forwards both to support-agent's /api/chat_integration
+
+- purely additive, defaults (is_admin=False, user_email=None) make it backward-compatible
+
+### fix JWT claims for agent chat internal token minting
+
+- remove duplicate store_id claim — already in base JWT from recharge_api_token_dto
+- skip account_id claim when using sentinel 9999999 fallback (admin staff without matching account)
+- sentinel caused NoResultFound in TokensController.validate_claims → 404 on chat endpoints
+- remove stale comment in tokens_controller.py (redundant with outer is_internal guard)
+- preserve defense-in-depth: account existence + user_id validation still runs for internal tokens with real account IDs
+- only scope-subset check bypassed for internal callers (unchanged from original design)
+
+### v2.2 chat path
+
+- passed chart data straight to frontend with no fallback — analytics tables were invisible
+- added markdown table conversion with proper value formatting (currency, integers, percentages) handling the column format from the orchestrator
+- threaded charting beta flag through both POST and GET message paths so tables render consistently on send and history reload
+```
+
+## Section omission
+
+- No betaflags in diff → omit `## betaflags` entirely
+- No new/modified endpoints → omit `## example requests` entirely
+- Single-theme branch → no `###` subheadings, one bullet cluster
+
+## Post-processing
+
+After writing, tighten phrasing — drop filler words, keep bullet structure. Do NOT convert bullets to prose. Do NOT split substantive bullets into thin ones. Do NOT add periods. Do NOT add "this MR" prefixes.

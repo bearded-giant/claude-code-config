@@ -32,7 +32,7 @@
       "/Users/bryan/"
     ]
   },
-  "model": "opus[1m]",
+  "model": "Opus",
   "hooks": {
     "SessionStart": [
       {
