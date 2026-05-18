@@ -47,12 +47,17 @@ Always overwrite. After writing, print the markdown in chat, then the file path 
 
 ## example requests
 
+```bash
 curl -X POST https://api.rechargeapps.com/... \
   -H "X-Recharge-Access-Token: $TOKEN" \
   -d '{...}'
+```
 
 example response:
+
+```json
 {...}
+```
 ```
 
 ## Style — bullets are the format
@@ -79,7 +84,7 @@ What NOT to do:
 - no "this MR adds", "this PR introduces", "this branch implements" — drop the meta phrase, start with the verb: "adds X", "enables Y"
 - no splitting one substantive bullet into three thin ones
 - no listing changed files (the diff handles that)
-- no test file references (skip test changes in the description)
+- **NO tests in the description.** Skip test files entirely. Do NOT add an "integration tests" / "unit tests" / "test coverage" cluster. Do NOT mention `tests/...` paths. Do NOT describe what the tests cover. Reviewers see test files in the diff — they don't need a recap. This rule is absolute, no exceptions.
 
 ## Example output
 
@@ -116,6 +121,33 @@ What NOT to do:
 - No betaflags in diff → omit `## betaflags` entirely
 - No new/modified endpoints → omit `## example requests` entirely
 - Single-theme branch → no `###` subheadings, one bullet cluster
+
+## Curl formatting — REQUIRED
+
+Every curl command MUST be inside a fenced code block (` ```bash ` or ` ``` `). Never inline. Never bare. Even single-line curls.
+
+Continuation lines use `\` at end. Indent continuation with 2 spaces.
+
+```bash
+curl -sS https://api.rechargeapps.com/api/internal/zendesk_mcp/support_tickets?limit=5 \
+  -H "X-Recharge-Service-Auth: recharge-mcp-zendesk:$TOKEN"
+```
+
+Multiple example curls: each in its own fenced block, separated by blank line + optional one-line label.
+
+```bash
+curl -sS https://api.rechargeapps.com/api/internal/zendesk_mcp/support_tickets/mcp_json_description \
+  -H "X-Recharge-Service-Auth: recharge-mcp-zendesk:$TOKEN"
+```
+
+```bash
+curl -sS -X POST https://api.rechargeapps.com/api/internal/zendesk_mcp/support_tickets/mcp_translate \
+  -H "X-Recharge-Service-Auth: recharge-mcp-zendesk:$TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "shipping refunds in Q1 2026"}'
+```
+
+Example response (when included): separate fenced ` ```json ` block right after the curl block.
 
 ## Post-processing
 

@@ -153,7 +153,8 @@ MUST NOT spawn agents for:
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
-- commit + push without re-confirmation when user invokes `/commit`, `/commit-push-pr`, says "ship it", "commit and push", or after explicit "yes commit"
+- commit + push without re-confirmation when user invokes `/commit`, `/commit-push-pr`, or says "commit and push" / "yes commit"
+- "ship it" = commit + push + run `create-mr-description` (full chain, no re-confirm between steps)
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - use `create-mr-description` skill for MR/PR descriptions
 - never add Claude Code attribution or Co-Authored-By
