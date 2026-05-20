@@ -1,0 +1,84 @@
+{
+    "title": "{{DASHBOARD_TITLE}}",
+    "description": "{{DASHBOARD_DESCRIPTION}}",
+    "inputs": {
+        "input_global_time": {
+            "type": "input.timerange",
+            "options": {
+                "token": "global_time",
+                "defaultValue": "{{DEFAULT_TIME_RANGE}}"
+            },
+            "title": "Time Range"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$global_time.earliest$",
+                        "latest": "$global_time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "dataSources": {
+        "{{DS_ID}}": {
+            "type": "ds.search",
+            "options": {
+                "query": "{{SPL_QUERY}}"
+            },
+            "name": "{{DS_NAME}}"
+        }
+    },
+    "visualizations": {
+        "{{VIZ_ID}}": {
+            "type": "{{VIZ_TYPE}}",
+            "title": "{{PANEL_TITLE}}",
+            "description": "{{PANEL_DESCRIPTION}}",
+            "dataSources": {
+                "primary": "{{DS_ID}}"
+            },
+            "options": {}
+        }
+    },
+    "layout": {
+        "options": {
+            "submitButton": false,
+            "submitOnDashboardLoad": true
+        },
+        "globalInputs": ["input_global_time"],
+        "tabs": {
+            "items": [
+                { "layoutId": "{{TAB_ID}}", "label": "{{TAB_LABEL}}" }
+            ],
+            "options": {
+                "barPosition": "top",
+                "showTabBar": true
+            }
+        },
+        "layoutDefinitions": {
+            "{{TAB_ID}}": {
+                "type": "absolute",
+                "options": {
+                    "display": "auto-scale",
+                    "width": 1440,
+                    "height": 960
+                },
+                "structure": [
+                    {
+                        "item": "{{VIZ_ID}}",
+                        "type": "block",
+                        "position": {
+                            "x": 0,
+                            "y": 0,
+                            "w": 1440,
+                            "h": 300
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
