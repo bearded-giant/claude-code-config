@@ -47,29 +47,36 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    - If it doesn't exist locally but exists on remote: `git fetch origin && git checkout -b {branch_name} origin/{branch_name}`
    - If it doesn't exist anywhere: treat as "no branch" and prompt for creation
 
-3b. **Frontend (dual-repo) prompt**
+3b. **Paired-counterpart prompt**
 
-   After backend branch setup, check if `meta.json` already has `frontend.enabled: true`. If so, skip the prompt and handle the existing frontend config.
+   After main branch setup, check if `meta.json` already has `frontend.enabled: true`. If so, skip the prompt and reuse the existing counterpart config (the `frontend.*` field is the legacy schema name — see `/new-feature` for the note on this).
 
-   If no frontend config exists, ask:
+   **Determine if current repo has a paired counterpart.** Run `git rev-parse --show-toplevel` and match against this bidirectional map:
+
+   | Current path prefix | Paired counterpart root | Counterpart base | Worktree create cmd |
+   |---|---|---|---|
+   | `~/dev/python/cc-wt/` | `~/dev/javascript/frontend-wt/` | `master` | `fewta {branch} master` |
+   | `~/dev/javascript/frontend-wt/` | `~/dev/python/cc-wt/` | `stage` | `cwta {branch} stage` |
+
+   If current worktree path does NOT match a listed prefix → no counterpart. Set `frontend.enabled = false`, skip rest of 3b.
+
+   If counterpart-capable AND no existing config, ask:
 
    ```
-   Does this feature include frontend changes?
-   1. No (backend only)
+   Does this feature include changes in the paired counterpart repo?
+   1. No (this repo only)
    2. Yes
    ```
 
    **If yes:**
-   - Ask for the frontend branch name (default: same as the backend branch name)
-   - The frontend base branch is always `master` — do not ask
-   - Create the frontend worktree: run `fewta {frontend_branch} master` from the shell
-     - `fewta` is the registered frontend worktree command (from `wt-frontend.sh`)
-     - This creates `~/dev/javascript/frontend-wt/{frontend_branch}/` with a fresh worktree
-   - If `fewta` is not available in the shell (command not found), fall back to:
+   - Ask for the counterpart branch name (default: same as current-repo branch).
+   - Counterpart base is fixed per-row in the table above — do not ask.
+   - Try the row's create cmd (e.g., `fewta {branch} master` from cc-wt, `cwta {branch} stage` from frontend-wt).
+   - If helper not on PATH, fall back to:
      ```bash
-     cd ~/dev/javascript/frontend-wt/.bare && git worktree add -b {frontend_branch} ../{frontend_branch} origin/master
+     cd {counterpart_root}.bare && git worktree add -b {counterpart_branch} ../{counterpart_branch} origin/{counterpart_base}
      ```
-   - Update meta.json, facts.md, and features.json with frontend details (see `/new-feature` for the frontend data model)
+   - Update meta.json, facts.md, features.json with counterpart details (legacy `frontend.*` schema — `frontend.enabled=true`, `frontend.branch={counterpart_branch}`, `frontend.base_branch={counterpart_base}`, `frontend.worktree={counterpart_root}{counterpart_branch}`).
 
    **If no:** set `frontend` to `null` in meta.json/features.json.
 
@@ -147,7 +154,7 @@ Transition a pending feature to in_progress. Expands the minimal stub into a ful
    Feature '{feature}' started.
 
    Branch: {branch_name} (from {base_branch})
-   Frontend: {frontend_branch at ~/dev/javascript/frontend-wt/{frontend_branch}, or "no"}
+   Paired counterpart: {frontend.branch at frontend.worktree, or "no"}
 
    Updated:
      - spec.md (status -> in_progress, expanded template)

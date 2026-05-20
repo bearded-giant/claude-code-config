@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ccmd — run a Claude Code slash command non-interactively.
+#
+# Usage:
+#   ccmd <command-name> [args...]
+#
+# Examples:
+#   ccmd complete-feature logging-extras --quick
+#   ccmd new-feature jwt-session --branch=feat/jwt --base=stage --fe
+#
+# Forwards args verbatim into `claude -p "/<cmd> <args>"` so flags like
+# --quick or --fe reach $ARGUMENTS inside the command body instead of
+# being parsed by the claude CLI itself.
+#
+# Extra claude flags (model, permission mode, etc.) can be passed via
+# CCMD_CLAUDE_ARGS, e.g.:
+#   CCMD_CLAUDE_ARGS="--model sonnet --permission-mode acceptEdits" ccmd ...
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: ccmd <command-name> [args...]" >&2
+  exit 64
+fi
+
+cmd=$1
+shift
+
+# shellcheck disable=SC2086  # intentional word-splitting on CCMD_CLAUDE_ARGS
+exec claude ${CCMD_CLAUDE_ARGS:-} -p "/$cmd $*"

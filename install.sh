@@ -105,6 +105,32 @@ stow --restow -t "$HOME/.claude" "$stow_pkg" 2>&1 | grep -v "^$" || true
 green "  stowed: $CONFIG_DIR -> ~/.claude"
 echo ""
 
+# -- symlink scripts/ccmd into ~/.local/bin -----------------------------------
+
+echo "wiring scripts/ccmd into ~/.local/bin..."
+mkdir -p "$HOME/.local/bin"
+ccmd_src="$CONFIG_DIR/scripts/ccmd"
+ccmd_dst="$HOME/.local/bin/ccmd"
+
+if [ ! -f "$ccmd_src" ]; then
+    red "  missing: $ccmd_src"
+elif [ -L "$ccmd_dst" ] && [ "$(readlink "$ccmd_dst")" = "$ccmd_src" ]; then
+    dim "  symlink exists: ~/.local/bin/ccmd -> $ccmd_src"
+elif [ -e "$ccmd_dst" ]; then
+    red "  ~/.local/bin/ccmd exists and points elsewhere (or is a real file)."
+    red "  remove it and re-run, or symlink manually:"
+    red "    ln -sf $ccmd_src $ccmd_dst"
+else
+    ln -s "$ccmd_src" "$ccmd_dst"
+    green "  linked: ~/.local/bin/ccmd -> $ccmd_src"
+fi
+
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) dim "  ~/.local/bin already on PATH" ;;
+    *) red "  ~/.local/bin not on PATH -- add it to your shell rc" ;;
+esac
+echo ""
+
 # -- shell env -----------------------------------------------------------------
 
 echo "checking shell environment..."

@@ -1,6 +1,6 @@
 ---
 description: "Create a new feature folder with templates. Auto-detects status: pending if another feature is in_progress, otherwise in_progress."
-argument-hint: "<name> [builds_on] [base-branch]"
+argument-hint: "<name> [--branch=X] [--base=Y] [--builds-on=Z] [--paired]"
 ---
 
 Create a new feature folder with templates. Status is auto-detected:
@@ -9,9 +9,33 @@ Create a new feature folder with templates. Status is auto-detected:
 
 ## Arguments
 
+`$ARGUMENTS` may arrive in two forms:
+
+**Interactive form** (positional, legacy):
+- `name [builds_on] [base_branch]`
+
+**Non-interactive form** (named flags, for `claude -p` / `ccmd`):
+- `name [--branch=<git-branch>] [--base=<base-branch>] [--builds-on=<parent>] [--paired] [--skip-checkout]`
+
+Parse rules:
+- First positional token = feature name (kebab-case, required)
+- Any `--key=value` token → assign to that key
+- Bare `--paired` flag → counterpart-repo involvement = true (only honored if repo has a linked counterpart, see step 6)
+- Bare `--no-paired` flag → counterpart involvement = false (explicit, this-repo-only)
+- If `--paired` and `--no-paired` both absent AND running interactively → prompt (step 6)
+- If both absent AND running non-interactively (no TTY) → default to this-repo-only
+
+Fields:
 - name: Feature name in kebab-case (e.g., "jwt-session-enforcement")
-- builds_on: (optional) Parent feature this depends on
-- base_branch: (optional) Base branch to create the feature branch from (e.g., `stage`, `main`, `master`). If not provided, prompt the user. Only used for in_progress features.
+- builds_on / --builds-on: (optional) Parent feature this depends on
+- branch_name / --branch: (optional) Git branch name. Defaults to current HEAD (`git rev-parse --abbrev-ref HEAD`). Interactive: prompt with current HEAD as default. Non-interactive: silently use current HEAD.
+- base_branch / --base: (optional) Base branch (e.g., `stage`, `main`, `master`, `develop`). Defaults to repo's remote-default branch (`git symbolic-ref --short refs/remotes/origin/HEAD` → strip `origin/`). If origin HEAD is not set, fall back order: `develop` → `stage` → `main` → `master`, picking the first that exists on `origin`. Interactive: prompt with detected default. Non-interactive: silently use detected default. If nothing resolves, fail: `new-feature: could not detect base branch, pass --base explicitly`.
+- --paired: opt-in flag for paired-repo involvement (cross-repo branch in linked counterpart). Default = this-repo-only.
+- --skip-checkout: opt-in flag to skip all git branch resolution. Only records `--branch` value. Use when caller already has the branch checked out and wants no git side effects. (Mostly redundant now that step 5 auto-detects current HEAD, but still respected.)
+
+**Sanity guard:** if resolved `{branch_name}` equals resolved `{base_branch}`, fail: `new-feature: feature branch and base branch are the same ('{branch}') — refusing to create feature on a base branch`. Override by passing `--branch=` explicitly to a different branch.
+
+**Note on schema naming:** The persisted JSON field is still `frontend.*` (in meta.json and features.json) for back-compat with `/complete-feature`, `/start-feature`, `/list-features`, `/pause-feature`, `/reopen-feature`. The CLI/UX uses `--paired` because the linkage is bidirectional. Treat `frontend` in JSON as a misnomer for "paired counterpart" until those consumers are updated.
 
 ## Steps
 
@@ -86,38 +110,81 @@ created: {today's date}
 - [ ] criterion 1
 ```
 
-5. **Create branch (in_progress only, skip for pending)**
+5. **Resolve and check out branch (in_progress only, skip for pending)**
 
    Branch creation only applies when status is `in_progress`. Pending features defer branch creation to `/start-feature`.
 
-   - Ask the user for a branch name (feature name != branch name on purpose)
-   - If `base_branch` was provided as an argument, use it. Otherwise, ask the user for the base branch (e.g., `stage`, `main`, `master`). Do NOT auto-detect with `git branch -r` — it's too slow on large repos.
-   - Run: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`
-   - If the user says they already have a branch or want to skip, just record the branch name (or leave it empty) and move on
+   **5a. Resolve `{branch_name}`:**
+   - If `--branch` passed, use it.
+   - Else interactive: prompt with current HEAD as default.
+   - Else non-interactive: use current HEAD (`git rev-parse --abbrev-ref HEAD`).
 
-6. **Frontend (dual-repo) prompt (in_progress only, skip for pending)**
+   **5b. Resolve `{base_branch}`:**
+   - If `--base` passed, use it.
+   - Else detect remote default: `git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'`.
+   - If unset, try `develop`, `stage`, `main`, `master` in that order, picking first that `git ls-remote --exit-code --heads origin {candidate}` succeeds on.
+   - Interactive: prompt with detected default. Non-interactive: silently use detected default.
+   - If nothing resolves, fail: `new-feature: could not detect base branch, pass --base explicitly`.
 
-   After backend branch creation, ask:
+   **5c. Sanity guard:**
+   - If `{branch_name}` == `{base_branch}`, fail: `new-feature: feature branch and base branch are the same ('{branch}') — refusing to create feature on a base branch. Pass --branch= explicitly.`
 
-   ```
-   Does this feature include frontend changes?
-   1. No (backend only)
-   2. Yes
-   ```
+   **5d. Branch resolution (auto-detect existing branches):**
 
-   **If yes:**
-   - Ask for the frontend branch name (default: same as the backend branch name)
-   - The frontend base branch is always `master` — do not ask
-   - Create the frontend worktree: run `fewta {frontend_branch} master` from the shell
-     - `fewta` is the registered frontend worktree command (from `wt-frontend.sh`)
-     - This creates `~/dev/javascript/frontend-wt/{frontend_branch}/` with a fresh worktree
-   - If `fewta` is not available in the shell (command not found), fall back to:
+   1. Check current branch: `git rev-parse --abbrev-ref HEAD`. If it matches `{branch_name}`, branch is already checked out — record it and move on, do not run any git commands.
+   2. Else check local: `git show-ref --verify --quiet refs/heads/{branch_name}`. If found → `git checkout {branch_name}`.
+   3. Else check remote: `git ls-remote --exit-code --heads origin {branch_name}`. If found → `git fetch origin {branch_name} && git checkout -b {branch_name} origin/{branch_name}`.
+   4. Else create from base: `git fetch origin {base} && git checkout -b {branch_name} origin/{base}`.
+   5. If `--skip-checkout` flag present, short-circuit 1-4 — only record the branch name, run no git commands.
+
+   Report which branch (always), base (always), and whether a new branch was created vs reused.
+
+6. **Paired-counterpart prompt (in_progress only, skip for pending)**
+
+   **6a. Determine if current repo has a paired counterpart.**
+
+   `--paired` means this feature requires a parallel branch in a linked sibling repo (cross-repo). Intra-repo UI/harness work does NOT use `--paired`.
+
+   Run `git rev-parse --show-toplevel` and match against this hardcoded bidirectional map:
+
+   | Current path prefix | Paired counterpart root | Counterpart base | Worktree create cmd |
+   |---|---|---|---|
+   | `~/dev/python/cc-wt/` | `~/dev/javascript/frontend-wt/` | `master` | `fewta {branch} master` |
+   | `~/dev/javascript/frontend-wt/` | `~/dev/python/cc-wt/` | `stage` | `cwta {branch} stage` |
+
+   (`fewta` / `cwta` come from `~/dotfiles/shell/scripts/worktrees/wt-frontend.sh` and `wt-customcheckout.sh` — registered via `wt_register fewt` / `wt_register cwt`, where `<prefix>a` is the "add worktree" verb.)
+
+   The `--base` flag refers to the CURRENT-repo base branch. The counterpart base is fixed per-row in the table above.
+
+   If current worktree path does NOT start with a listed prefix → no counterpart available. Skip the rest of step 6, set `frontend.enabled = false`, move on. Do not prompt, even if `--paired` was passed (warn user the flag was ignored).
+
+   **6b. Counterpart-capable repo, resolve intent.**
+
+   - If `--no-paired` present → this-repo-only. Set `frontend.enabled = false`. Done.
+   - If `--paired` present → counterpart involvement. Continue to 6c.
+   - If neither flag present:
+     - Interactive: prompt
+       ```
+       Does this feature include changes in the paired counterpart repo?
+       1. No (this repo only)
+       2. Yes
+       ```
+     - Non-interactive (no TTY): default to this-repo-only. Set `frontend.enabled = false`. Done.
+
+   **6c. Counterpart involvement — create paired worktree.**
+
+   - Look up the row for the current repo. `{counterpart_root}` and `{counterpart_base}` come from that row.
+   - If interactive, ask for counterpart branch name (default: same as current-repo branch). Non-interactive: use current-repo branch name.
+   - Try the row's worktree create cmd (e.g., `fewta {branch} master` for BE→FE, `cwta {branch} stage` for FE→BE).
+   - If the helper is not on PATH, fall back to:
      ```bash
-     cd ~/dev/javascript/frontend-wt/.bare && git worktree add -b {frontend_branch} ../{frontend_branch} origin/master
+     cd {counterpart_root}.bare && git worktree add -b {counterpart_branch} ../{counterpart_branch} origin/{counterpart_base}
      ```
-   - Record the frontend details (see steps 7-9 for where they go)
-
-   **If no:** set `frontend` to `null` in meta.json/features.json.
+   - Record in JSON (using legacy `frontend.*` field name — see note in Arguments):
+     - `frontend.enabled = true`
+     - `frontend.branch = {counterpart_branch}`
+     - `frontend.base_branch = {counterpart_base}`
+     - `frontend.worktree = {counterpart_root}{counterpart_branch}`
 
 7. Create facts.md:
 
@@ -129,11 +196,12 @@ created: {today's date}
 branch: {branch_name or "pending"}
 base: {base_branch or "tbd"}
 
-## Frontend
+## Paired Counterpart
 
-frontend: {true or false}
-frontend_branch: {frontend_branch or "n/a"}
-frontend_worktree: {~/dev/javascript/frontend-wt/{frontend_branch} or "n/a"}
+paired: {true or false}
+counterpart_branch: {counterpart_branch or "n/a"}
+counterpart_worktree: {counterpart_root + counterpart_branch, or "n/a"}
+counterpart_base: {counterpart_base or "n/a"}
 
 ## Identifiers
 
@@ -179,15 +247,15 @@ new:
 }
 ```
 
-When frontend is enabled:
+When paired counterpart is enabled (field name stays `frontend` for back-compat):
 
 ```json
 {
   "frontend": {
     "enabled": true,
-    "branch": "{frontend_branch}",
-    "base_branch": "master",
-    "worktree": "~/dev/javascript/frontend-wt/{frontend_branch}"
+    "branch": "{counterpart_branch}",
+    "base_branch": "{counterpart_base}",
+    "worktree": "{counterpart_root}{counterpart_branch}"
   }
 }
 ```
@@ -207,9 +275,9 @@ When frontend is enabled:
        "beta_flag": "",
        "frontend": {
          "enabled": true/false,
-         "branch": "{frontend_branch or ""}",
-         "base_branch": "master",
-         "worktree": "~/dev/javascript/frontend-wt/{frontend_branch}"
+         "branch": "{counterpart_branch or ""}",
+         "base_branch": "{counterpart_base or ""}",
+         "worktree": "{counterpart_root + counterpart_branch, or ""}"
        },
        "created": "{today's date}",
        "last_session": "{today's date}"
@@ -223,9 +291,9 @@ When frontend is enabled:
 
 11. Update .giantmem/features/_index.md:
    - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
-   - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} | {FE if frontend enabled, otherwise -} |`
+   - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} | {paired counterpart branch if enabled, otherwise -} |`
 
 12. Display the created structure and confirm:
    - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
-   - If frontend enabled: confirm the frontend worktree was created and show the path.
+   - If paired counterpart enabled: confirm the counterpart worktree was created and show the path.

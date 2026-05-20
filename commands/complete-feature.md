@@ -26,7 +26,7 @@ If `--quick` flag is passed, run only these steps:
    ```
    Feature '{feature}' marked complete (quick mode).
    Updated: spec.md (status + completed date), _index.md, features.json, meta.json
-   Skipped: facts.md, plans/current.md, domain refresh, frontend check
+   Skipped: facts.md, plans/current.md, domain refresh, paired-counterpart check
    ```
 
 Skip all remaining steps below. Done.
@@ -117,14 +117,15 @@ Skip all remaining steps below. Done.
    - Update `.giantmem/domains/_index.json` with refreshed dates and feature references
    - If no domains were changed, skip silently
 
-10. **Check frontend status (if dual-repo feature)**
+10. **Check paired-counterpart status (if cross-repo feature)**
 
-   Read the feature's `meta.json` or `features.json` entry. If `frontend.enabled` is `true`:
+   Read the feature's `meta.json` or `features.json` entry. If `frontend.enabled` is `true` (legacy field name — represents any paired counterpart, BE or FE):
 
-   - Check if the frontend worktree still exists at the recorded path (`~/dev/javascript/frontend-wt/{frontend_branch}`)
-   - Remind the user that the frontend branch needs its own MR/PR separately
-   - Report the frontend branch name and worktree path so they can handle it
-   - Do NOT remove the frontend worktree or branch — that's the user's responsibility
+   - Read `frontend.worktree` from the JSON — this is the absolute counterpart worktree path (no longer hardcoded to `~/dev/javascript/frontend-wt/`)
+   - Check if that path still exists on disk
+   - Remind the user that the counterpart branch needs its own MR/PR separately
+   - Report `frontend.branch` and `frontend.worktree` so they can handle it
+   - Do NOT remove the counterpart worktree or branch — that's the user's responsibility
 
 11. **Report**
 
@@ -140,7 +141,7 @@ Skip all remaining steps below. Done.
      - domains: {list of refreshed domains, or "none (no domain changes detected)"}
 
    Unchecked criteria: {count or "none"}
-   Frontend: {frontend_branch at ~/dev/javascript/frontend-wt/{frontend_branch} — needs separate MR, or "n/a"}
+   Paired counterpart: {frontend.branch at frontend.worktree — needs separate MR, or "n/a"}
    ```
 
 ## Rules

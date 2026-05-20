@@ -18,13 +18,13 @@ List all features in the current workspace from the features cache.
 3. Display a table with these columns, sorted by last_session descending (most recent first):
 
 ```
-| Feature | Status | Branch | FE | Last Modified |
+| Feature | Status | Branch | Paired | Last Modified |
 ```
 
-The `FE` column shows:
-- The frontend branch name if `frontend.enabled` is `true`
+The `Paired` column shows the paired counterpart branch (cross-repo linkage). Schema field is still `frontend.*` for back-compat — see `/new-feature` note.
+- The counterpart branch name (`frontend.branch`) if `frontend.enabled` is `true`
 - `-` if frontend is `null` or `frontend.enabled` is `false`
 
 4. If the cache is empty, display "no features found".
 
-5. If user asks about a specific feature, read its `spec.md` and `facts.md` from `.giantmem/features/{name}/`. When the feature has frontend enabled, also show the frontend worktree path.
+5. If user asks about a specific feature, read its `spec.md` and `facts.md` from `.giantmem/features/{name}/`. When the feature has a paired counterpart enabled, also show `frontend.worktree` (counterpart worktree path).
