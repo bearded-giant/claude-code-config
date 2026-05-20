@@ -92,7 +92,7 @@ Refuse to give PASS verdict when:
 
 **Don't use this agent for**:
 - Pure unit test runs → `py-check` / `ts-check`
-- MR/PR review → `review-mr` / `kai:review-code`
+- MR/PR review → `kai-review:review-code` / `kai:review-adversarial`
 - Pre-ship adversarial review → `grill` skill
 - Static analysis only → `simplify` skill
 

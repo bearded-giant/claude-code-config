@@ -22,7 +22,15 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:docs.claude-mem.ai)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "mcp__plugin_kai_ai-tools-directory",
+      "mcp__plugin_kai_atlassian",
+      "mcp__plugin_kai_dba-mcp-prod",
+      "mcp__plugin_kai_dba-mcp-stage",
+      "mcp__plugin_kai_google-sheets",
+      "mcp__plugin_kai_watchtower",
+      "mcp__gong",
+      "mcp__zendesk"
     ],
     "ask": [
       "Bash(git:push)"
@@ -154,7 +162,8 @@
     "discord@claude-plugins-official": true,
     "caveman@caveman": true,
     "kai-review@kai": true,
-    "kai@kai": true
+    "kai@kai": true,
+    "slack@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "caveman": {

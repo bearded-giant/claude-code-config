@@ -1,6 +1,6 @@
 ---
 name: grill
-description: Adversarial pre-ship review of the local branch diff vs base. Skeptical staff engineer review — logic errors, edge cases, race conditions, missing tests, breaking changes, security, perf. Outputs SHIP IT / NEEDS WORK / BLOCK. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use review-mr or kai:review-adversarial for those).
+description: Adversarial pre-ship review of the local branch diff vs base. Skeptical staff engineer review — logic errors, edge cases, race conditions, missing tests, breaking changes, security, perf. Outputs SHIP IT / NEEDS WORK / BLOCK. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai-review:review-code or kai:review-adversarial for those).
 ---
 
 Adversarial pre-ship review. Don't let user ship until changes pass scrutiny.
@@ -8,7 +8,7 @@ Adversarial pre-ship review. Don't let user ship until changes pass scrutiny.
 ## When to use
 
 - **This skill**: local branch, uncommitted or pre-push. Goal = catch issues before MR opened.
-- **review-mr**: posted GitLab MR exists, need Principal Engineer response.
+- **kai-review:review-code**: posted GitLab MR exists, need full code review.
 - **kai:review-adversarial**: posted MR, verify description claims against diff.
 - **caveman-review**: posted PR, ultra-compressed line-by-line feedback.
 
