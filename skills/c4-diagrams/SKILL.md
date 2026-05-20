@@ -1,6 +1,6 @@
 ---
 name: c4-diagrams
-description: Generate Mermaid C4 architecture diagrams (Context L1 + Container L2 by default). Triggers when user says "diagram this", "show me the architecture", "how does X talk to Y", "map this system", "draw a flow chart", or describes a system that has 3+ moving parts. Auto-fires when planning a refactor or onboarding to a new codebase area.
+description: Generate Mermaid C4 architecture diagrams (Context L1 + Container L2 by default; L3 only on explicit request). Triggers when user says "diagram this", "show me the architecture", "how does X talk to Y", "map this system", "draw a flow chart", "C4 diagram", or invokes the skill explicitly. Skip if user only wants prose explanation, not visual.
 ---
 
 # C4 Architecture Diagrams

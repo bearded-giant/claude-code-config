@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-Before answering any question, reason step by step. Many questions contain subtle constraints, hidden assumptions, or trick aspects invisible to surface-level pattern matching. Verify the answer you are about to give is sensible given ALL details, not just the most salient one.
-
 Global behavior for `~/.claude` (stowed from `~/dev/claude-code-config`). Repo internals, hook pipeline, key commands → see `README.md`.
 
 ## General Guidelines
@@ -10,9 +8,11 @@ Decision rule for action-vs-exploration:
 
 | Ask shape | Default |
 |---|---|
-| "Generate X" / "write Y" / "give me a curl for Z" | Action first. Produce output, refine after. Do not pre-read files. |
+| "Generate X" / "write Y" / "give me a curl for Z" | Action first. Produce output, skip scaffolding reads. |
 | "Why does X" / "How does Y work" / "What's wrong with Z" | Investigate first. Read referenced files. No speculation. |
 | User names a specific file or symbol | MUST Read it before proposing edits. |
+
+Across all rows: never propose edits to a file you have not read in this session.
 
 <context_management>
 Context auto-compacts as it approaches limits. Continue indefinitely. Do not stop early for token concerns. Be persistent, complete tasks fully.
@@ -25,28 +25,25 @@ On session start or context refresh, IF files exist, read in order:
 2. `.giantmem/features/features.json` — find active feature (status `in_progress`)
 3. Active feature's `plans/current.md` if exists, else `.giantmem/plans/current.md`
 
-Skip steps where file missing. Do not stat every directory ritually.
+Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-3.
 </session_recovery>
 
 ## Feature & Workspace Output
 
-Two on-demand skills carry the heavy rules:
+Two skills carry the full rules and auto-fire on triggers:
+- **`feature-management`** — feature folder lifecycle, "create a plan" disambiguation, feature-scoped output routing
+- **`workspace-rules`** — `.giantmem/` directory selection, format, verbosity, anti-patterns, file naming
 
-- **`feature-management` skill** — feature folder lifecycle, "create a plan" disambiguation, feature-scoped output routing. Auto-fires on feature commands and "create a plan".
-- **`workspace-rules` skill** — `.giantmem/` directory selection, format, verbosity, anti-patterns, file naming. Auto-fires before any `.giantmem/**` write.
-
-Trust the skills. Don't reload these rules into root context.
-
-Quick reminder of the only invariants worth keeping in root:
-- When feature has status `in_progress`, plans/research/reviews/filebox go inside that feature dir
-- Never write to repo `docs/` unprompted — goes to `.giantmem/context/` or active feature's `research/`
+Root invariants (apply before skill fires, and as fallback if skill misses):
+- When a feature has status `in_progress`, plans/research/reviews/filebox go inside that feature dir
+- Never write to repo `docs/` unprompted — route to `.giantmem/context/` or the active feature's `research/`
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write
 
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
 - Renamed/removed/added a slash command, skill, agent, or hook
 - Renamed/removed/added a CLI flag, env var, or config key
-- Changed an invocation signature
+- Changed the args, flags, return shape, or trigger phrase of a public command/skill/script
 
 Procedure:
 1. `grep -r '<old-name>'` across repo root, `docs/`, `.giantmem/`, `commands/`, `agents/`, `skills/`, `README*`
@@ -55,12 +52,6 @@ Procedure:
 
 Skip if change is internal (private helper rename, no external surface).
 </doc_sync>
-
-<investigate_before_answering>
-Never speculate about code you have not opened. If user references a specific file, read it. Investigate relevant files BEFORE answering. Do not propose edits to files you haven't read.
-</investigate_before_answering>
-
-`$HOME/giantmem_archive/` is allowed-dir — critical for archive search and retrieval.
 
 ## Stow Dotfiles — Rules
 
@@ -75,15 +66,15 @@ System uses GNU stow. NEVER edit files in `~/.config` or other home locations di
 
 ### Tone
 
-- Chat: direct, technical, terse
-- Long-form docs (READMEs, guides, writeups): casual, informal. Senior dev to colleague. No corporate phrasing, no stiff structure
+- Chat and internal docs (CLAUDE.md, agents, skills, commands, `.giantmem/`): direct, technical, terse
+- Published docs (READMEs, guides shipped to other devs/users): casual, informal — senior dev to colleague. No corporate phrasing, no stiff structure.
 - Formal only when user explicitly asks
 
 ### Format
 
 - NEVER use emojis in code, scripts, docs (any context)
-- Long-form / external docs: NO bullet lists. Use numbered lists, prose, or tables
-- Workspace docs (`.giantmem/`) and chat: bullets allowed per concise rules
+- **Published docs** — READMEs and guides shipped to other devs/users: NO bullet lists. Use numbered lists, prose, or tables.
+- **Internal docs** — CLAUDE.md, agents/, skills/, commands/, `.giantmem/`, chat: bullets allowed per Concise Output Rules below.
 
 ### Wizard-Style Prompts
 
@@ -134,16 +125,16 @@ snake_case, not kebab-case. Example: `/api/admin/auth/validate_credentials` (cor
 
 <agent_triggers>
 MUST spawn Task agent (Explore subagent) when:
-- Searching unknown pattern across > 5 files
-- Mapping a flow that requires > 3 sequential greps/reads
+- An initial grep returns > 5 hits that each need follow-up Reads
+- A trace requires > 3 sequential greps/reads to map
 - Finding all usages of a symbol across the repo
 
-MUST spawn Task agent (debugger subagent) when user reports stack trace, test failure, or unexplained behavior requiring multi-file trace.
+MUST spawn Task agent (debugger subagent) when user reports a stack trace, test failure, or unexplained behavior requiring a multi-file trace.
 
-MUST spawn Task agent for refactors touching > 5 files (batched edits, consistency check).
+MUST spawn Task agent for refactors expected to touch > 5 files (batched edits, consistency check).
 
 MUST NOT spawn agents for:
-- Single-file edits with known path
+- Single-file edits with a known path
 - One-shot bash commands
 - Direct Read of a file the user named
 </agent_triggers>

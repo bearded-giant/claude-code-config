@@ -4,7 +4,7 @@ description: Two-phase architecture analysis - analyze constraints and risks bef
 
 # Architecture Brainstorm
 
-Analyze architecture decisions thoroughly before proposing solutions.
+Analyze constraints and risks before proposing solutions. Two phases: investigate → recommend.
 
 > **Workflow step 2 of 3:** discover → brainstorm → scope
 > Prereq: Run /arch-discover first if system is unfamiliar.
@@ -47,17 +47,14 @@ After receiving answers:
 3. Identify risks and mitigations for recommended approach
 
 **Output:**
-- Write analysis to .giantmem/plans/{topic}_analysis.md (snake_case)
-- Append key architectural decisions to .giantmem/context/discoveries.md:
-  ```
-  - YYYY-MM-DD HH:MM: [architecture] decision summary
-  ```
+- Write analysis to `.giantmem/plans/{topic}_analysis.md` (snake_case)
+- Add any reusable architectural decisions to `.giantmem/context/patterns.md` (see `workspace-rules` skill)
 
 ## Output Style
 
-- Be thorough but concise
-- Focus on root causes, not symptoms
-- Tie recommendations to specific constraints discussed
+- Concise. Bullets/tables over prose.
+- Focus on root causes, not symptoms.
+- Tie recommendations to specific constraints discussed.
 
 ## Next Step
 

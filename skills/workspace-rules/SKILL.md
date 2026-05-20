@@ -8,8 +8,8 @@ Output rules for `.giantmem/` workspace. Loads on-demand.
 ## Critical rules
 
 1. **Feature-scoped routing applies.** When a feature is `in_progress`, plans/research/reviews/filebox go inside the active feature dir. See [[feature-management]] for routing table.
-2. **Never write to repo `docs/` unprompted.** Repo `docs/` is shipped doc, human-owned. Ad-hoc Claude output goes to `.giantmem/context/<topic>.md` or active feature's `research/`.
-3. **Never output long-form content only in chat.** If `.giantmem/` exists, write to appropriate subdir.
+2. **Never write to repo `docs/` unprompted.** Repo `docs/` is shipped doc, human-owned. Route Claude-generated output to `.giantmem/context/<topic>.md` or the active feature's `research/`.
+3. **Never output long-form content only in chat.** If `.giantmem/` exists and output is >40 lines or has tables/diagrams, write to the correct subdir per the routing tables below.
 
 ## Open Questions block
 
@@ -60,7 +60,6 @@ Remove the section once answered.
 - Dump everything into `plans/` — use correct directory
 - Filler text ("Great!", "Let's begin by...")
 - Multiple files when one suffices
-- Section headers in `discoveries.md` (append-only)
 
 ## File naming
 

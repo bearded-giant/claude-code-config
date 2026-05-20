@@ -1,6 +1,6 @@
 ---
 name: auth0-expert
-description: Use this agent when working with Auth0 configuration, integration, or troubleshooting. This includes Auth0 dashboard setup, OAuth2.0/OIDC flows, social login, SSO, MFA, Rules/Hooks, and debugging Auth0 issues.\n\nExamples:\n<example>\nContext: User needs to configure Auth0\nuser: "Set up social login with Google in Auth0"\nassistant: "I'll use the auth0-expert agent to configure social login properly"\n</example>\n<example>\nContext: User has Auth0 issues\nuser: "Why is my Auth0 callback failing?"\nassistant: "Let me use the auth0-expert agent to investigate this Auth0 issue"\n</example>
+description: Auth0 configuration, OAuth 2.0 / OIDC flows, social login, SSO, MFA, Rules/Hooks, callback debugging. Use when the user mentions Auth0 by name, says "configure social login", "OIDC flow", "SSO with Okta/Google", "Auth0 callback failing", "Auth0 Rule/Action", or asks about Universal Login. Skip for generic OAuth without an Auth0 component.
 model: opus
 color: purple
 ---

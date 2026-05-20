@@ -1,6 +1,6 @@
 ---
 name: bash-expert
-description: Use this agent when writing production-grade Bash scripts, shell automation, or reviewing shell code for safety and best practices. This includes defensive scripting, POSIX compliance, ShellCheck validation, and CI/CD shell automation.\n\nExamples:\n<example>\nContext: User needs a robust shell script\nuser: "Write a deployment script that handles errors properly"\nassistant: "I'll use the bash-expert agent to write a production-grade script with proper error handling"\n</example>\n<example>\nContext: User wants script review\nuser: "Is this bash script safe for production?"\nassistant: "Let me use the bash-expert agent to review this script for safety issues"\n</example>
+description: Production-grade Bash scripts — `set -euo pipefail`, trap cleanup, POSIX compliance, ShellCheck-clean, safe quoting. Use when the user says "write a bash script", "shell script for X", "deployment script", "harden this script", "is this bash safe", "ShellCheck this", or pastes a shell script for review. Skip for one-line interactive commands.
 model: opus
 color: gray
 ---

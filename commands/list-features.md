@@ -1,3 +1,7 @@
+---
+description: List all features in the current workspace from the features cache. Auto-fires when user invokes /list-features, asks "what features are there", "show my features", "list active features", or "what's in progress".
+---
+
 List all features in the current workspace from the features cache.
 
 ## Steps

@@ -1,3 +1,7 @@
+---
+description: Toggle Claude Code statusline settings (style, line2, tools, agents) via wizard-style menu. Auto-fires when user invokes /statusline or says "configure statusline", "change statusline", "toggle statusline".
+---
+
 Toggle statusline settings via wizard-style menu.
 
 ## Steps

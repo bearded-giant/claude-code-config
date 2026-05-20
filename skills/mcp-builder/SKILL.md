@@ -5,27 +5,27 @@ description: Build MCP (Model Context Protocol) servers in TypeScript or Python 
 
 # MCP Server Development Guide
 
-This skill provides comprehensive guidance for building high-quality MCP servers that enable LLMs to interact with external services through well-designed tools.
+Build MCP servers in TypeScript or Python that expose external services as LLM tools.
 
 ## Four-Phase Development Process
 
-### Phase 1: Deep Research and Planning
+### Phase 1: Research and Planning
 
-Before implementation, thoroughly research:
+Before implementation, capture:
 
-1. **MCP Specification**: Review the core protocol concepts
-2. **Target API Documentation**: Understand endpoints, auth, rate limits
-3. **Existing Patterns**: Check for similar MCP servers as reference
+1. **MCP Specification**: core protocol concepts (transports, schemas, annotations)
+2. **Target API**: endpoints, auth method, rate limits, pagination model
+3. **Existing Patterns**: similar MCP servers to copy from
 
 Key design decisions:
-- **API Coverage**: Balance comprehensive endpoint coverage with specialized workflow tools
-- **Tool Naming**: Use clear, descriptive names with service prefix (e.g., `github_create_issue`)
-- **Context Management**: Design tools returning focused, relevant data with pagination
-- **Error Messages**: Provide actionable guidance with specific next steps
+- **API Coverage**: list the endpoints to expose. Prefer narrow workflow tools over 1:1 endpoint mirroring.
+- **Tool Naming**: clear names with service prefix (e.g., `github_create_issue`)
+- **Context Management**: tools return focused data with pagination
+- **Error Messages**: include actionable next steps
 
 ### Phase 2: Implementation
 
-Reference the appropriate implementation guide:
+Reference the implementation guide for your language:
 - **TypeScript/Node**: @reference/node_mcp_server.md
 - **Python**: @reference/python_mcp_server.md
 - **Best Practices**: @reference/mcp_best_practices.md
@@ -89,4 +89,5 @@ See @reference/evaluation.md for evaluation methodology.
 
 ## Output Location
 
-Write MCP server implementations to appropriate project directories. Write plans and analysis to `.giantmem/plans/` per workspace rules.
+- MCP server code → the project's `mcp/` directory (or `src/mcp/` if convention there).
+- Plans and analysis → `.giantmem/plans/` per `workspace-rules` skill.

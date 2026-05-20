@@ -4,7 +4,7 @@ description: Systematic architecture discovery for understanding complex systems
 
 # Architecture Discovery
 
-Map an existing complex system to understand it before refactoring.
+Map an unfamiliar system (entry points, layers, dependencies, risks) before refactoring.
 
 > **Workflow step 1 of 3:** discover → brainstorm → scope
 
@@ -40,25 +40,15 @@ Map an existing complex system to understand it before refactoring.
 
 ## Output
 
-**Primary output:** .giantmem/context/architecture.md
+**Primary output:** `.giantmem/context/architecture.md`
 - Component map (text or mermaid)
 - Data flow diagram
 - Integration points list
 - Refactor risks and gotchas
 
-**Discoveries:** Append to .giantmem/context/discoveries.md using format:
-```
-- YYYY-MM-DD HH:MM: [category] terse one-line finding
-```
-Categories: architecture, pattern, gotcha, dependency, convention, entry, config
+**Curated patterns:** Add any reusable architectural patterns or gotchas worth keeping to `.giantmem/context/patterns.md` (see `workspace-rules` skill for format).
 
-Example:
-```
-- 2025-01-15 10:22: [architecture] services use dependency injection via containers.py
-- 2025-01-15 10:25: [gotcha] celery tasks must be imported in __init__.py to register
-```
-
-If visual diagrams would help, suggest running /c4-diagrams after.
+For visual diagrams, invoke the `c4-diagrams` skill (auto-fires on "diagram this" / "map this system").
 
 ## Next Step
 

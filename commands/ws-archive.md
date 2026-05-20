@@ -1,3 +1,7 @@
+---
+description: Archive the current workspace `.giantmem/` (or `scratch/`) directory to central `~/giantmem_archive`. Auto-fires when user invokes /ws-archive or says "archive this workspace", "back up giantmem", "stash this session".
+---
+
 Archive workspace directory to central ~/giantmem_archive location.
 
 ## Steps

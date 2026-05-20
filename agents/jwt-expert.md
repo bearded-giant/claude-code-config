@@ -1,6 +1,6 @@
 ---
 name: jwt-expert
-description: Use this agent when implementing JWT token creation, validation, or security. This includes signing algorithms, token structure, expiration strategies, refresh mechanisms, and secure token storage patterns.\n\nExamples:\n<example>\nContext: User needs JWT implementation\nuser: "Implement JWT refresh token rotation"\nassistant: "I'll use the jwt-expert agent to implement secure refresh token rotation"\n</example>\n<example>\nContext: User has JWT questions\nuser: "Should I use RS256 or HS256 for my tokens?"\nassistant: "Let me use the jwt-expert agent to analyze the right signing algorithm"\n</example>
+description: JWT creation, validation, signing algorithms (HS256/RS256/EdDSA), expiration, refresh-token rotation, secure storage. Use when the user says "JWT setup", "JWT refresh rotation", "RS256 vs HS256", "validate JWT claims", "JWT expiration strategy", or asks about token storage (cookie vs localStorage). Skip for non-JWT session systems.
 model: opus
 color: teal
 ---

@@ -17,23 +17,18 @@ using `mdlive`.
 
 ## When to use
 
-Use mdlive whenever you produce markdown that benefits from rendered
-presentation:
+Trigger if ANY of:
+- file is >40 lines
+- file contains a Mermaid diagram
+- file contains 2+ tables
+- file is a plan, design, kaizen doc, or report (likely to iterate with user)
+- user says "preview", "render", "show me in browser", "open this"
 
-- Plans and proposals
-- Architecture or design documents
-- Reports, comparisons, or summaries with tables
-- Anything containing Mermaid diagrams
-- Multi-file documentation sets
-- Any time the user asks to "preview" or "render" markdown
-
-Use mdlive when markdown is more than about 40 to 60 lines, has
-complex formatting, or is likely to go through multiple edit/review
-iterations with the user.
-
-Do **not** use mdlive for short conversational answers, single code
-snippets, trivial one-paragraph responses, or any markdown that fits
-comfortably within a terminal window.
+Do NOT trigger for:
+- short conversational replies
+- single code snippets
+- markdown that fits in the terminal
+- chat-only output (not written to disk)
 
 ## Workflow
 

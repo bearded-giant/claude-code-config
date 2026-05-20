@@ -1,3 +1,7 @@
+---
+description: Generate a QA validation report for a feature using goal-backward verification. Auto-fires when user invokes /feature-report, asks to "QA the feature", "validate feature acceptance", or "verify the feature works".
+---
+
 Generate a QA validation report for a feature using goal-backward verification.
 
 ## Arguments

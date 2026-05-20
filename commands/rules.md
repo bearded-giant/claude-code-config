@@ -13,14 +13,10 @@ description: Re-inject key workspace and output rules plus active feature contex
 - Reviews → `.giantmem/reviews/`
 
 ## Code Style
-- No superfluous comments (only crucial/complex logic)
-- All comments lowercase
-- No docstrings unless requested
-- No emojis
+- See `code_comment_rules` in CLAUDE.md (default ZERO comments, lowercase when warranted, no docstrings, no emojis)
 
 ## Git
-- Short casual commit messages only
-- Confirm before pushing
+- See `git_rules` in CLAUDE.md. `/commit`, `/commit-push-pr`, "commit and push", "ship it" → no re-confirmation between steps.
 
 ## Active Feature Reload
 

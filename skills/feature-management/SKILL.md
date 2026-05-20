@@ -107,4 +107,4 @@ Read in order if files exist:
 2. `.giantmem/features/features.json` — find active feature
 3. Active feature's `plans/current.md`, else `.giantmem/plans/current.md`
 
-Skip steps where file missing. Don't stat every directory ritually.
+If step 1's file is missing, skip steps 2-3.

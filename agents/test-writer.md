@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Use this agent when you need to generate tests for Python code, particularly pytest tests for Flask APIs, SQLAlchemy models, or data processing functions. This includes creating unit tests, integration tests, fixture design, mocking strategies, and test organization following project conventions.\n\nExamples:\n<example>\nContext: User needs tests for a new API endpoint\nuser: "Write tests for the new /api/merchants/validate endpoint"\nassistant: "I'll use the test-writer agent to generate comprehensive pytest tests for this endpoint"\n<commentary>\nSince the user needs API tests, use the test-writer agent to follow project testing patterns.\n</commentary>\n</example>\n<example>\nContext: User wants to test a service function\nuser: "Add tests for the calculate_merchant_fees function"\nassistant: "Let me use the test-writer agent to create pytest tests with appropriate fixtures and edge cases"\n<commentary>\nThe user needs unit tests for a function, so use the test-writer agent.\n</commentary>\n</example>
+description: Generate pytest tests for Python code — Flask APIs, SQLAlchemy models, data processing fns. Unit + integration, fixture design, mocking strategy, test org per project conventions. Use when the user says "write tests for X", "add pytest tests", "test this endpoint", "test coverage for Y", or after implementing a function and asking for tests. Skip for one-line trivial assertions.
 model: sonnet
 color: green
 ---

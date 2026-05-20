@@ -1,6 +1,6 @@
 ---
 name: api-designer
-description: Use this agent when you need to design or implement Flask API endpoints, blueprint organization, request/response schemas, or API architecture. This includes endpoint design, route naming, input validation, error handling patterns, and RESTful conventions following project standards.\n\nExamples:\n<example>\nContext: User needs a new API endpoint\nuser: "I need an endpoint to bulk update merchant settings"\nassistant: "I'll use the api-designer agent to design this endpoint following project API conventions"\n<commentary>\nSince the user needs API design, use the api-designer agent to ensure consistent patterns.\n</commentary>\n</example>\n<example>\nContext: User wants to refactor API structure\nuser: "How should I organize the admin API routes?"\nassistant: "Let me use the api-designer agent to analyze existing patterns and recommend organization"\n<commentary>\nAPI architecture decisions benefit from the api-designer agent's analysis.\n</commentary>\n</example>
+description: Design Flask API endpoints, blueprint organization, request/response schemas, validation, error handling, and RESTful conventions. Use when the user says "design endpoint", "new API route", "organize routes", "add endpoint", "bulk update endpoint", or asks how to structure an API. Skip for non-Flask APIs or pure data work (use data-analytics-processor instead).
 model: sonnet
 color: orange
 ---

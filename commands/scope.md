@@ -4,7 +4,7 @@ description: Create phased scope document for large refactors and stack migratio
 
 # Refactor Scope Document
 
-Create a comprehensive scope document for a large refactor or migration.
+Create a phased scope document for a refactor or migration. Each phase has tasks, dependencies, and a verification checkpoint.
 
 > **Workflow step 3 of 3:** discover → brainstorm → scope
 

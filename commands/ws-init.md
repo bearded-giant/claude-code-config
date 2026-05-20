@@ -1,3 +1,7 @@
+---
+description: Bootstrap `.giantmem/` workspace structure in the current directory. Auto-fires when user invokes /ws-init or says "init workspace", "set up giantmem here", "bootstrap workspace".
+---
+
 Bootstrap workspace in current directory.
 
 ## Steps
