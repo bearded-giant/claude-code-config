@@ -107,6 +107,24 @@ Tests exempt — comments fine there.
 - New files: default Python unless user specifies otherwise
 - Use existing project style conventions
 
+## Code Intelligence (LSP)
+
+LSP tool enabled for Python (pyright), TypeScript, Rust, Lua. All ops take `filePath` + 1-based `line` + `character`, so locate the symbol with Grep/Read first, then call LSP for navigation.
+
+Use LSP for:
+- `goToDefinition` / `goToImplementation` — jump to source
+- `findReferences` — all usages across workspace
+- `workspaceSymbol` — find where a symbol is defined by name
+- `documentSymbol` — list symbols in a file (faster than reading whole file)
+- `hover` — type/signature without opening the file
+- `prepareCallHierarchy` → `incomingCalls` / `outgoingCalls` — call graph (prepare first, then in/out)
+
+Use Grep/Glob for text patterns LSP can't see: comments, strings, config values, log messages, regex matches across files.
+
+Before renaming a symbol or changing a function signature, MUST run `findReferences` to enumerate call sites.
+
+Diagnostics (type errors, missing imports) are NOT in this LSP tool. Run the `py-check` skill after Python edits and `ts-check` after TS/TSX edits before reporting done.
+
 ## Scripting Conventions
 
 - CLI flags: check existing arg parsing pattern (argparse, getopts) and follow exactly

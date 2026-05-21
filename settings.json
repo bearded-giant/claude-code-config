@@ -2,7 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "ENABLE_LSP_TOOL": "1"
   },
   "permissions": {
     "allow": [
@@ -32,13 +33,9 @@
       "mcp__gong",
       "mcp__zendesk"
     ],
-    "ask": [
-      "Bash(git:push)"
-    ],
+    "ask": ["Bash(git:push)"],
     "defaultMode": "default",
-    "additionalDirectories": [
-      "/Users/bryan/"
-    ]
+    "additionalDirectories": ["/Users/bryan/"]
   },
   "model": "Opus",
   "hooks": {
@@ -207,16 +204,11 @@
     },
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": [
-        "mcp",
-        "serve"
-      ]
+      "args": ["mcp", "serve"]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
-      ]
+      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
     },
     "snowflake": {
       "type": "http",
