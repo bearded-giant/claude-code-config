@@ -25,7 +25,7 @@ Companion docs:
 | Tool | Install | Purpose |
 |---|---|---|
 | `hcloud` | `brew install hcloud` | Hetzner CLI — provisioning |
-| `tailscale` | `brew install --cask tailscale` | Mesh VPN client |
+| `tailscale` | `brew install --cask tailscale` (GUI app, recommended) OR `brew install tailscale` + `sudo tailscaled install-system-daemon` (CLI-only) | Mesh VPN client. CLI-only path needs extra DNS setup — see troubleshooting. |
 | `mutagen` | `brew install mutagen-io/mutagen/mutagen` | File sync laptop ↔ VPS |
 | `bun` | `curl -fsSL https://bun.sh/install \| bash` | Runtime for daemon + session-mcp (also installed on VPS) |
 | `git`, `ssh`, `rsync`, `jq` | usually preinstalled / `brew install` | Provisioning + checks |
@@ -315,6 +315,7 @@ Useful gauges/counters: `daemon_sessions_active`, `daemon_gateway_connected`, `d
 | Hook errors `/Users/bryan/.nvm/.../node: not found` on VPS | Create `/Users/bryan → /home/bryan` symlink + bridge node path (step 10 above) |
 | Daemon's bot shows offline after restart | systemd restarted — `journalctl -u discord-daemon -n 20` to confirm reconnect; gateway usually back in <5s |
 | Session-mcp logs `Unable to connect` to daemon | `DAEMON_BIND_HOST=0.0.0.0` not set, or wrong; daemon isn't listening on loopback |
+| `ssh claude-vps` fails with `Could not resolve hostname` (brew CLI-only Tailscale on macOS) | Sysdaemon doesn't inject MagicDNS into system resolver like the App does. Fix: `echo -e "nameserver 100.100.100.100\nsearch <your-tailnet>.ts.net" \| sudo tee /etc/resolver/ts.net` then `networksetup -setsearchdomains Wi-Fi <your-tailnet>.ts.net`. Tailnet suffix from `tailscale dns status`. |
 
 ---
 
