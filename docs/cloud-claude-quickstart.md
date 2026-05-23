@@ -385,13 +385,34 @@ Phone workflow: open Discord, find the thread, post a message — the VPS claude
 ```bash
 cd ~/dev/<project>
 # /exit local claude first so the jsonl is flushed
-./scripts/lift-to-vps.sh                       # latest session in this cwd
-# or pin a specific session uuid:
-./scripts/lift-to-vps.sh <session-uuid>
-# prints the exact `cvps` + `dclaude --resume <id>` invocation to run on VPS
+lift                            # alias → scripts/lift-to-vps.sh, latest session in cwd
+lift <session-uuid>             # pin to a specific uuid
+# prints the cvps + dclaude --continue|--resume invocation to run on VPS
 ```
 
-Rsyncs the JSONL transcript (`~/.claude/projects/<encoded-cwd>/<uuid>.jsonl`) so `dclaude --resume <uuid>` on VPS picks up tool calls + history. Repo files travel through your normal sync (mutagen / git push+pull). Direction is laptop→VPS only.
+What lift moves:
+- `~/.claude/projects/<encoded-cwd>/<uuid>.jsonl` — conversation transcript + tool calls. Paths inside (`cwd` fields) get rewritten `/Users/bryan` → `/home/bryan` (VPS-canonical).
+- Matching `~/.claude/history.jsonl` entries (input history) — rewritten the same way so the resume picker enumerates the session under the right project key.
+- `~/.claude/file-history/<uuid>/` if present — per-session edit revision store.
+- Bumps mtime on the destination jsonl so `dclaude --continue` picks the lifted session over any older VPS-side session in that cwd.
+
+Repo files travel through your normal sync (mutagen / git push+pull). Direction is **laptop → VPS only**: re-running `lift` after working on VPS will silently overwrite VPS-side edits to that session's jsonl. If you've made changes on VPS that matter, sync them back first.
+
+Round-trip workflow (local ↔ VPS, one-way each direction):
+
+```bash
+# work locally
+claude                          # session jsonl grows on laptop
+/exit
+lift                            # push updated jsonl to VPS
+cvps                            # ssh + tmux, lands at /home/bryan/<same relpath>
+dclaude --continue              # picks up where laptop left off
+# ... work on VPS ...
+/exit
+bye                             # detach + close ssh
+# next session locally: claude --resume (laptop jsonl unchanged from before lift)
+# OR re-lift after making more local changes (overwrites VPS jsonl)
+```
 
 **Syncing git config to VPS** (manual, when laptop gitconfig changes):
 
