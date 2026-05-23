@@ -9,6 +9,31 @@ Companion docs:
 
 ---
 
+## Read this first: worktrees, not branches
+
+The session-to-thread mapping is **one Discord thread per cwd**. The daemon derives a stable `session_id` from the working directory of the launched claude process, so a relaunch in the same directory resumes the same thread (see [thread reuse](#thread-reuse-on-resume)).
+
+That makes **git worktrees the recommended pattern** for parallel work on the same repo:
+
+| Pattern | Behavior |
+|---|---|
+| **Worktree per branch** (`~/dev/myrepo-featureA`, `~/dev/myrepo-featureB`, ...) | Each has its own cwd → own session_id → own Discord thread. Switch context by `cd`-ing to the worktree. Recommended. |
+| Single clone, switch branches with `git checkout` | Same cwd across branches → all branches share one Discord thread → you can't tell which branch's session is talking. Avoid. |
+| Two concurrent claude sessions in the same cwd | Both register the same `session_id` → second one steals the thread mapping from the first. Don't do this. |
+
+If you don't already work in worktrees, the rough flow is:
+
+```bash
+cd ~/dev/myrepo
+git worktree add ../myrepo-featureA -b featureA   # new branch in sibling dir
+cd ../myrepo-featureA
+dclaude                                           # gets its own Discord thread
+```
+
+For a single-task scratch session that doesn't merit a worktree, override the cwd-derived id explicitly: `CLAUDE_SESSION_ID=scratch-foo dclaude`.
+
+---
+
 ## What you need
 
 ### Accounts (free or low-cost)
