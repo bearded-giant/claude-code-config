@@ -2,10 +2,18 @@
 
 Multi-session Claude Code on a remote VPS, controllable from a phone via Discord, with the laptop as the canonical source of truth.
 
-Companion docs:
-- [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) — what you need + how to bootstrap
-- [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md) — step-by-step runbook + lessons learned
-- [`cloud-claude-setup.md`](cloud-claude-setup.md) — original setup notes
+## Doc index (start here)
+
+| If you want to… | Read |
+|---|---|
+| Stand it up the first time | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) |
+| Understand the system end-to-end | this doc |
+| Re-provision from scratch / debug bootstrap | [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md) |
+| Extend the daemon or session-mcp | [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) |
+| Check what surprised people before | [`cloud-claude-lessons.md`](cloud-claude-lessons.md) |
+| Day-to-day ops (DM commands, metrics, backups) | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) "Day-to-day use" |
+| API reference | [`../discord-daemon/README.md`](../discord-daemon/README.md) |
+| Module map | [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) |
 
 ---
 
@@ -277,6 +285,17 @@ Discord user DMs the bot
 | Token rotation needed | Edit `~/.claude/channels/discord/.env`, `sudo systemctl restart discord-daemon`. |
 
 ---
+
+## State file schemas
+
+Authoritative location: [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) "State file schemas". Quick summary:
+
+- **`.env`** — bot token, daemon token, bind host/port, optional alert webhook
+- **`access.json`** — `dmPolicy` + `allowFrom` user IDs + (unused-today) groups/pending
+- **`sessions.json`** — registry persistence; written by daemon, hydrated on boot
+- **`approved/<senderId>`** — transient pairing approval marker
+
+All live under `~/.claude/channels/discord/` on the host running the daemon.
 
 ## File system layout
 
