@@ -8,7 +8,7 @@ Companion docs:
 - [`cloud-claude-architecture.md`](cloud-claude-architecture.md)
 - [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md)
 - [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md)
-- [`discord-daemon/HACKING.md`](../discord-daemon/HACKING.md)
+- [`discord-daemon/HACKING.md`](../HACKING.md)
 
 ---
 
@@ -51,7 +51,7 @@ The daemon does **not** archive threads on `SIGTERM`. Reason: systemd default is
 
 If you want a true teardown (e.g. retiring the VPS), set `DAEMON_ARCHIVE_ON_EXIT=1` before stopping the service. The shutdown handler will iterate the registry and archive each thread with reason `daemon SIGTERM`.
 
-Stale entries — sessions whose claude died but heartbeat is still in `sessions.json` — get evicted by the periodic sweep (default 15s loop, 90s stale cutoff). Eviction calls `archiveSessionThread` so orphaned threads always close eventually.
+Stale entries — sessions whose claude died but heartbeat lapsed — get **marked dormant** by the periodic sweep (default 15s loop, 90s stale cutoff), not evicted. The thread is archived (Discord auto-unarchives on next send) but the `sessionId → threadId` mapping in the registry is preserved so a later `dclaude` in the same cwd reattaches to the same thread. Hard delete only via `kill <label>` DM command.
 
 ## 2026-05-23 — Permission relay scope
 

@@ -153,19 +153,22 @@ DAEMON_ARCHIVE_ON_EXIT=1                    # optional — archive threads on SI
 {
   "sessions": [
     {
-      "sessionId": "uuid-or-claude-provided",
+      "sessionId": "cwd-<sha1(cwd)[:16]>",
       "label": "feature-foo",
       "cwd": "/home/bryan/dev/feature-foo",
       "pid": 12345,
       "threadId": "1500000000000000000",
       "registeredAt": 1779000000000,
-      "lastHeartbeat": 1779000030000
+      "lastHeartbeat": 1779000030000,
+      "state": "active"
     }
   ]
 }
 ```
 
-Written via atomic `tmp + rename`. Debounced 1s on register/heartbeat/unregister. Synchronous flush on SIGTERM.
+`state` is `active` while a session-mcp is registered + heartbeating, `dormant` after a soft unregister (session-mcp shutdown) or heartbeat lapse. Dormant entries retain their `threadId` so a subsequent register with the same `sessionId` reuses the Discord thread. Hard delete (drops the mapping) only via `kill <label>` DM command. Backward compat on load: missing `state` field defaults to `active`.
+
+Written via atomic `tmp + rename`. Debounced 1s on register/heartbeat/markDormant/delete. Synchronous flush on SIGTERM.
 
 ### `approved/<senderId>` (transient)
 
@@ -189,4 +192,4 @@ Plain text file. Contents: the DM channel ID. Written by the `/discord:access pa
 
 ## Lessons & ongoing notes
 
-See [`docs/cloud-claude-lessons.md`](../docs/cloud-claude-lessons.md). Append there when you discover something non-obvious — that doc is the running log future agents read first.
+See [`docs/cloud-claude-lessons.md`](docs/cloud-claude-lessons.md). Append there when you discover something non-obvious — that doc is the running log future agents read first.

@@ -5,7 +5,7 @@ Stand up a remote Claude Code VPS with Discord control. ~1 hour wall-clock once 
 Companion docs:
 - [`cloud-claude-architecture.md`](cloud-claude-architecture.md) — what the system looks like
 - [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md) — full step-by-step + lessons learned
-- [`cloud-claude-setup.md`](cloud-claude-setup.md) — original notes
+- [`cloud-claude-lessons.md`](cloud-claude-lessons.md) — running log of surprises
 
 ---
 
@@ -41,7 +41,7 @@ For a single-task scratch session that doesn't merit a worktree, override the cw
 | Account | Cost | What for |
 |---|---|---|
 | Hetzner Cloud | ~$40/mo (CCX33) | The VPS itself. Requires payment method + sometimes photo-ID verification (1–24h hold first time). |
-| Tailscale | free (up to 100 devices / 3 users) | Mesh VPN. Stable hostnames between laptop / phone / VPS. |
+| Tailscale | free (up to 100 devices / 3 users) | Mesh VPN. Stable hostnames between laptop and VPS. Phone does NOT need Tailscale — phone↔VPS goes through Discord. |
 | Discord | free | UI surface. Need an account, server you control, and a developer application for the bot. |
 | Anthropic (Claude Code) | per-token usage | Powers the claude sessions. Use your existing Claude/Anthropic login. |
 

@@ -2,7 +2,7 @@
 
 Step-by-step to stand up the cloud claude + multi-session Discord setup. Resume from any step — each is checkpointed.
 
-Companion doc: [`cloud-claude-setup.md`](cloud-claude-setup.md) for architecture overview.
+Companion doc: [`cloud-claude-architecture.md`](cloud-claude-architecture.md) for architecture overview.
 
 ---
 
@@ -40,12 +40,16 @@ Default path used by provision script: `~/.ssh/id_ed25519.pub`. Override with `S
 ### 0.4 Tailscale account + auth key
 
 1. Sign up: https://tailscale.com (Google/GitHub/email)
-2. Install on laptop + phone:
+2. Install on laptop:
    ```bash
-   brew install --cask tailscale         # laptop
+   brew install --cask tailscale         # laptop (GUI app, recommended)
+   # OR CLI-only:
+   #   brew install tailscale
+   #   sudo /opt/homebrew/opt/tailscale/bin/tailscaled install-system-daemon
+   #   sudo mkdir -p /etc/resolver && echo -e "nameserver 100.100.100.100\nsearch <your-tailnet>.ts.net" | sudo tee /etc/resolver/ts.net
    ```
-   Phone: App Store / Play Store.
-3. Both devices: log in, accept the tailnet.
+   Phone: **not needed**. Discord handles phone↔VPS traffic via Discord's own infrastructure; Tailscale on phone is only useful if you ssh from phone, which this setup does not.
+3. Log in on the laptop, accept the connection.
 4. Generate pre-auth key for VPS:
    - https://login.tailscale.com/admin/settings/keys
    - Generate auth key: **Reusable: off**, **Ephemeral: off**, **Expiry: 90d**
@@ -118,7 +122,7 @@ In another terminal, point a claude session at it:
 export DISCORD_DAEMON_URL=http://127.0.0.1:7777
 export DISCORD_DAEMON_TOKEN=$(grep DAEMON_TOKEN ~/.claude/channels/discord/.env | cut -d= -f2)
 cd ~/some-project
-claude --channels   # if you have settings.json wired to session-mcp
+dclaude   # = claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions
 ```
 
 A thread should appear in Discord. Pair, post in thread, see claude respond.
@@ -316,7 +320,7 @@ source ~/.bashrc
 ```bash
 tmux new -s main
 cd ~/some-project
-claude --channels
+dclaude       # alias from setup-vps.sh; expands to claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions
 ```
 
 Expect: Discord shows new thread named after cwd, with `session <label> online`.
@@ -364,11 +368,11 @@ Test parallelism:
 ```bash
 tmux new -s work
 # pane 1
-cd ~/dev/foo && claude --channels
+cd ~/dev/foo && dclaude
 # split, pane 2
-cd ~/dev/bar && claude --channels
+cd ~/dev/bar && dclaude
 # split, pane 3
-cd ~/dev/baz && claude --channels
+cd ~/dev/baz && dclaude
 ```
 
 Discord: 3 threads under the sessions channel. DM `list` → 3 sessions.

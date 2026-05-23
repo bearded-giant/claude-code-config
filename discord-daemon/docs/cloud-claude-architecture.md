@@ -9,11 +9,11 @@ Multi-session Claude Code on a remote VPS, controllable from a phone via Discord
 | Stand it up the first time | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) |
 | Understand the system end-to-end | this doc |
 | Re-provision from scratch / debug bootstrap | [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md) |
-| Extend the daemon or session-mcp | [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) |
+| Extend the daemon or session-mcp | [`../HACKING.md`](../HACKING.md) |
 | Check what surprised people before | [`cloud-claude-lessons.md`](cloud-claude-lessons.md) |
 | Day-to-day ops (DM commands, metrics, backups) | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) "Day-to-day use" |
-| API reference | [`../discord-daemon/README.md`](../discord-daemon/README.md) |
-| Module map | [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) |
+| API reference | [`../README.md`](../README.md) |
+| Module map | [`../HACKING.md`](../HACKING.md) |
 
 ---
 
@@ -74,9 +74,9 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 │  │                            │  pane: claude session │     MCP    │    │
 │  │  ┌───────────────┐         │  pane: claude session │            │    │
 │  │  │ Mutagen agent │ writes  │                       │            │    │
-│  │  │ → /home/bryan │ ──────► │  each claude:         │            │    │
-│  │  │   /dev        │         │   --channels          │            │    │
-│  │  └───────────────┘         │     server:discord    │            │    │
+│  │  │ → /home/bryan │ ──────► │  each `dclaude`       │            │    │
+│  │  │   /dev        │         │   alias loads the     │            │    │
+│  │  └───────────────┘         │   server:discord MCP  │            │    │
 │  │                            └──────────┬────────────┘            │    │
 │  │                                       │ HTTP + SSE              │    │
 │  │                                       │ (loopback)              │    │
@@ -176,7 +176,7 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 ### Session lifecycle
 
 ```
-claude --channels server:discord
+dclaude  (= claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions)
   └─► spawn session-mcp
         └─► session_id = `cwd-<sha1(cwd)[:16]>`  (stable per cwd; override w/ CLAUDE_SESSION_ID)
         └─► POST /sessions {session_id, label, cwd, pid}
@@ -249,7 +249,7 @@ Discord user DMs the bot
 |---|---|---|---|
 | **Hetzner Cloud (CCX33)** | external | Hosts the VPS (8 vCPU / 32GB / 240GB / ~$40/mo) | provisioned by `scripts/provision-hetzner.sh` via `hcloud` CLI |
 | **hcloud CLI** | laptop | Talks to Hetzner Cloud API | `hcloud context create claude` once; provisioning script uses it |
-| **Tailscale** | laptop + phone + VPS | Mesh VPN. Stable hostnames + identity-based ACL | `tailscale up --ssh` on VPS; `ssh bryan@claude-vps` resolves anywhere |
+| **Tailscale** | laptop + VPS (NOT phone) | Mesh VPN. Stable hostnames + identity-based ACL. Phone uses Discord directly, no tailnet membership needed. | `tailscale up --ssh` on VPS; `ssh bryan@claude-vps` resolves from laptop |
 | **OpenSSH (regular, port 22)** | VPS public IP | File transfer + Mutagen agent (Tailscale SSH strips exec bits) | `scp`, `rsync`, Mutagen — always public IP |
 | **Tailscale SSH** | tailnet | Interactive shell, no key management | `ssh bryan@claude-vps` |
 | **Mutagen** | laptop daemon + VPS agent | Continuous file sync laptop→VPS (`one-way-safe`) | `scripts/mutagen-sync-dev.sh` creates session |
@@ -282,7 +282,7 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 | Boundary | Mechanism |
 |---|---|
 | Hetzner firewall | Only SSH (22) + ICMP open from public internet. 7777 blocked publicly. |
-| Daemon HTTP | Binds `0.0.0.0:7777` → reachable only via loopback (same-host sessions) + tailnet interface (laptop/phone). Public ingress blocked by Hetzner firewall. |
+| Daemon HTTP | Binds `0.0.0.0:7777` → reachable only via loopback (same-host sessions) + tailnet interface (laptop). Public ingress blocked by Hetzner firewall. |
 | Daemon auth | `x-daemon-token` header, constant-time compare. Token in `.env` chmod 600. |
 | Discord access | `access.json` allowlist of Discord user IDs. Bot ignores messages from non-allowlisted senders. |
 | Bot pairing | `/discord:access pair <code>` skill; codes expire 1h; 3 max concurrent. |
@@ -312,7 +312,7 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 
 ## State file schemas
 
-Authoritative location: [`../discord-daemon/HACKING.md`](../discord-daemon/HACKING.md) "State file schemas". Quick summary:
+Authoritative location: [`../HACKING.md`](../HACKING.md) "State file schemas". Quick summary:
 
 - **`.env`** — bot token, daemon token, bind host/port, optional alert webhook
 - **`access.json`** — `dmPolicy` + `allowFrom` user IDs + (unused-today) groups/pending

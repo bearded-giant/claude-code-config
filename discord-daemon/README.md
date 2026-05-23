@@ -101,4 +101,4 @@ Disabled otherwise.
 - Permission relay (the `notifications/claude/channel/permission_request` flow with Allow/Deny buttons) — bundled plugin has it, this daemon doesn't yet. Add later if you want permission prompts via Discord across sessions.
 - Group channel support (non-thread guild channels) — daemon currently only writes to its own session threads. Read fetch_messages also restricted to own thread.
 
-See `docs/cloud-claude-setup.md` for the full VPS + Tailscale + Mutagen walkthrough.
+See [`docs/cloud-claude-quickstart.md`](docs/cloud-claude-quickstart.md) for the full VPS + Tailscale + Mutagen walkthrough.
