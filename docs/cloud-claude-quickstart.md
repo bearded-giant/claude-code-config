@@ -402,16 +402,6 @@ KEEP_GPG=1 ./scripts/sync-gitconfig.sh         # only if VPS has your GPG key
 
 Reads `~/.config/git/config` (XDG path) or `~/.gitconfig` fallback. Writes to VPS at the same XDG path. `bootstrap-vps.sh` calls this automatically on initial setup.
 
-**Copying text from VPS-side dclaude into mac clipboard:**
-
-Two paths:
-
-| Path | How |
-|---|---|
-| OSC52 yank (preferred) | `C-b [` to enter VPS-tmux copy-mode → `v` start select → motion → `y` yank. Lands in mac clipboard via OSC52 escape, forwarded through local tmux (`set-clipboard on` + `allow-passthrough on`) to terminal. |
-| Modifier-bypass | Hold `Option` (WezTerm/iTerm) or `Shift` (Terminal.app) while drag-selecting → bypasses both tmux mouse layers → `Cmd-C`. |
-
-Terminal needs OSC52 enabled (WezTerm: default on; iTerm2: "Allow apps to write to pasteboard" in prefs).
 
 **Metrics:**
 
