@@ -520,6 +520,56 @@ pkill -f 'discord/0.0.4'   # then /mcp in claude
 ### Initial Mutagen sync is slow
 With ~80GB raw under `~/dev` (post-excludes ~25-40GB), expect 30-60 min over typical home upload. Sync runs independently of daemon — you can spin up VPS claude sessions for any subtree that's already arrived (`du -sh ~/dev/<repo>` on VPS to confirm).
 
+### Mutagen ignores need more than "node_modules"
+Default-ish excludes that should ship with the sync create:
+
+```
+node_modules .venv venv __pycache__
+target/ dist/ build/ .next/ .nuxt/
+*.pyc .DS_Store .mypy_cache .pytest_cache .tox .gradle
+plugins/cache/ plugins/marketplaces/ plugins/repos/ plugins/subtask/ plugins/install-counts-cache.json
+.giantmem
+```
+
+The `plugins/*` excludes matter: claude-code-config has `~/.claude/plugins/cache/` (gitignored) as runtime cache. Both sides regenerate it independently → otherwise hundreds of conflicts on first sync.
+
+### Mutagen symlink mode: use `posix-raw`, not `portable`
+Default is `portable` which rejects any symlink whose target is an absolute path. Lots of real-world repos have those:
+- Python venvs (`bin/python3 → /opt/homebrew/...`)
+- Tooling links (`claude-code-config/lib/workspace → /Users/bryan/dev/giant-tooling/...`)
+- Container artifacts (`dbt_packages/shared_macros → /repo/...`)
+
+```bash
+mutagen sync create --symlink-mode=posix-raw ...
+```
+
+`posix-raw` passes the symlink verbatim. Combined with the `/Users/bryan → /home/bryan` root symlink on the VPS, most laptop-absolute paths inside `~/dev` resolve correctly on the VPS too.
+
+### Sync mirrors code, not runtime
+The remote will not behave 1:1 with local right after sync. Per-project on VPS, first time you want to run something:
+
+```bash
+cd ~/dev/<project>
+# Python:
+python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+# Node:
+bun install     # or npm i, pnpm i
+# Rust:
+cargo build
+```
+
+`venv/`, `node_modules/`, `target/`, `build/`, `dist/` are excluded from sync — recreate them on VPS. After that, source edits propagate live in seconds. Container-only paths (e.g. dbt `/repo/...`, liquibase `/home/tradergt/...`) stay broken outside their containers, same as on laptop.
+
+### Mutagen sync via tailnet hostname doesn't work
+Tailscale SSH (`--ssh` on `tailscale up`) strips file mode bits during SFTP transfer. Mutagen's agent uploads chmod 644 → can't execute. Always use **public IP** for Mutagen even though everything else uses tailnet:
+
+```bash
+mutagen sync create --name=dev /Users/bryan/dev bryan@<public-ip>:/home/bryan/dev
+# NOT bryan@claude-vps
+```
+
+Hetzner firewall rule (port 22 open from anywhere by default) already allows it. Tailscale SSH is for interactive shells; regular sshd handles the rest.
+
 ---
 
 ## Where you left off
