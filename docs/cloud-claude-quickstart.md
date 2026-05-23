@@ -283,7 +283,7 @@ alias cvps='ssh -t claude-vps "tmux new -A -s main"'   # ssh + attach VPS tmux
 alias cvps-shell='ssh claude-vps'                       # raw VPS shell (no tmux)
 
 # VPS ~/.bashrc (setup-vps.sh installs these automatically on fresh bootstraps)
-dclaude() { claude --dangerously-load-development-channels server:discord "$@"; }
+dclaude() { claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions "$@"; }
 alias bye='tmux detach 2>/dev/null; exit'
 ```
 
@@ -313,6 +313,8 @@ Other ways to detach if `C-b d` muscle memory hasn't formed:
 | Command prompt (discoverable, no muscle memory) | `C-b :` then type `detach` |
 
 Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable on the VPS for non-Discord work.
+
+**Note on `--dangerously-skip-permissions`:** Discord can't easily relay the per-tool permission prompt back to the phone, so `dclaude` skips them. Claude will run any tool (Bash, Edit, Write, MCP calls) without asking. Acceptable when you're the only one driving sessions on a tailnet-locked VPS — only your own prompts reach claude. Do **not** use this pattern if anyone else has access to the Discord bot.
 
 ### Thread reuse on resume
 

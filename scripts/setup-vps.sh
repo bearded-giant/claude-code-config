@@ -183,7 +183,7 @@ add_export "export DISCORD_DAEMON_TOKEN=$TOKEN"
 add_export "export DISCORD_DAEMON_URL=http://127.0.0.1:7777"
 # claude wrapper: launches w/ Discord channel wired up. Separate name so plain
 # `claude` stays usable for non-Discord work.
-add_export "dclaude() { claude --dangerously-load-development-channels server:discord \"\$@\"; }"
+add_export "dclaude() { claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions \"\$@\"; }"
 # one-shot exit: detaches VPS tmux (so claude keeps running) then exits ssh.
 add_export "alias bye='tmux detach 2>/dev/null; exit'"
 green "  bashrc updated"
