@@ -28,6 +28,12 @@ SESSION_NAME="dev"
 LOCAL_PATH="$HOME/dev"
 REMOTE_PATH="/home/bryan/dev"
 
+# Sync mode: one-way-safe — alpha (laptop) is authoritative.
+# Beta (VPS) can have its own files (settings.json theme, cwd-local state) but
+# cannot ever push changes back to alpha. Edits to a file existing on both
+# sides propagate alpha→beta only.
+SYNC_MODE="one-way-safe"
+
 # Excludes — derived from runbook lessons. Path-style (with trailing slash)
 # for directories; plain name for any-depth matching.
 IGNORES=(
@@ -54,6 +60,10 @@ IGNORES=(
   'plugins/repos/'
   'plugins/subtask/'
   'plugins/install-counts-cache.json'
+  'plugins/known_marketplaces.json'
+
+  # paired repo .git dirs — each host clones independently
+  'giant-tooling/.git/'
 
   # session memory artifacts
   '.giantmem'
@@ -77,8 +87,9 @@ for i in "${IGNORES[@]}"; do
   ignore_flags+=(--ignore="$i")
 done
 
-echo "==> creating sync '$SESSION_NAME': $LOCAL_PATH <-> bryan@$VPS_IP:$REMOTE_PATH"
+echo "==> creating sync '$SESSION_NAME': $LOCAL_PATH -> bryan@$VPS_IP:$REMOTE_PATH ($SYNC_MODE)"
 mutagen sync create --name="$SESSION_NAME" \
+  --sync-mode="$SYNC_MODE" \
   --symlink-mode=posix-raw \
   "${ignore_flags[@]}" \
   "$LOCAL_PATH" "bryan@$VPS_IP:$REMOTE_PATH"
