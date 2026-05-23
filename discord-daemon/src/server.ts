@@ -37,9 +37,9 @@ bot.start()
   })
 
 const sweepTimer = setInterval(async () => {
-  const dead = registry.sweepStale()
-  for (const s of dead) {
-    process.stderr.write(`daemon: evicting stale session ${s.label} (${s.sessionId})\n`)
+  const stale = registry.sweepStale()
+  for (const s of stale) {
+    process.stderr.write(`daemon: marking dormant (heartbeat lost): ${s.label} (${s.sessionId})\n`)
     try { await bot.archiveSessionThread(s.threadId, 'heartbeat lost') } catch {}
   }
 }, HEARTBEAT_SWEEP_MS)

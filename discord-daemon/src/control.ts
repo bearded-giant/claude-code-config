@@ -26,12 +26,12 @@ export async function handleControlDM(input: string, _userId: string, bot: Disco
     }
     case 'kill': {
       const label = parts[1]
-      if (!label) return 'usage: `kill <label>` — removes session from registry.'
+      if (!label) return 'usage: `kill <label>` — hard-removes session from registry (drops thread mapping; future register creates a new thread).'
       const s = resolveSession(label)
       if (!s) return `no session matching \`${label}\``
-      registry.unregister(s.sessionId)
+      registry.delete(s.sessionId)
       try { await bot.archiveSessionThread(s.threadId, `killed via DM`) } catch {}
-      return `unregistered \`${s.label}\` (${s.sessionId}) + archived thread`
+      return `deleted \`${s.label}\` (${s.sessionId}) + archived thread`
     }
     case 'send': {
       const label = parts[1]
@@ -98,18 +98,19 @@ function helpText(): string {
 
 function formatList(): string {
   const sessions = registry.list()
-  if (sessions.length === 0) return 'no active sessions'
+  if (sessions.length === 0) return 'no sessions'
   const rows = sessions.map(s => {
     const age = humanAge(Date.now() - s.registeredAt)
     const heartbeatAge = humanAge(Date.now() - s.lastHeartbeat)
-    return `• \`${s.label}\` — ${s.cwd} — up ${age}, hb ${heartbeatAge} ago`
+    const tag = s.state === 'dormant' ? ' _(dormant)_' : ''
+    return `• \`${s.label}\`${tag} — ${s.cwd} — up ${age}, hb ${heartbeatAge} ago`
   })
   return `**${sessions.length} session(s):**\n${rows.join('\n')}`
 }
 
 function formatSession(s: ReturnType<typeof registry.list>[number]): string {
   return [
-    `**${s.label}**`,
+    `**${s.label}** _(${s.state})_`,
     `session_id: \`${s.sessionId}\``,
     `cwd: \`${s.cwd}\``,
     `pid: ${s.pid}`,

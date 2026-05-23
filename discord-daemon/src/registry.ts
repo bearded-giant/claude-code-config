@@ -15,7 +15,7 @@ const BUFFER_CAP = 200
 const RECENT_CAP = 50
 const PERSIST_DEBOUNCE_MS = 1000
 
-type PersistedEntry = Pick<Session, 'sessionId' | 'label' | 'cwd' | 'pid' | 'threadId' | 'registeredAt' | 'lastHeartbeat'>
+type PersistedEntry = Pick<Session, 'sessionId' | 'label' | 'cwd' | 'pid' | 'threadId' | 'registeredAt' | 'lastHeartbeat' | 'state'>
 
 class Registry {
   private bySession = new Map<string, Entry>()
@@ -31,6 +31,7 @@ class Registry {
       for (const s of parsed.sessions ?? []) {
         const entry: Entry = {
           ...s,
+          state: s.state ?? 'active', // backward compat for pre-state persisted files
           subscribers: new Set(),
           buffered: [],
           recentEvents: [],
@@ -73,7 +74,7 @@ class Registry {
     }
   }
 
-  register(s: Omit<Session, 'registeredAt' | 'lastHeartbeat'>): Session {
+  register(s: Omit<Session, 'registeredAt' | 'lastHeartbeat' | 'state'>): Session {
     const now = Date.now()
     const existing = this.bySession.get(s.sessionId)
     if (existing) {
@@ -82,12 +83,14 @@ class Registry {
       existing.pid = s.pid
       existing.threadId = s.threadId
       existing.lastHeartbeat = now
+      existing.state = 'active'
       this.byThread.set(s.threadId, s.sessionId)
       this.schedulePersist()
       return entryToSession(existing)
     }
     const entry: Entry = {
       ...s,
+      state: 'active',
       registeredAt: now,
       lastHeartbeat: now,
       subscribers: new Set(),
@@ -100,7 +103,23 @@ class Registry {
     return entryToSession(entry)
   }
 
-  unregister(sessionId: string): Session | null {
+  // Soft unregister: claude session-mcp shut down, but keep entry + thread mapping
+  // so a future register with same sessionId reuses the thread.
+  markDormant(sessionId: string): Session | null {
+    const e = this.bySession.get(sessionId)
+    if (!e) return null
+    e.state = 'dormant'
+    for (const sub of e.subscribers) {
+      try { sub({ kind: 'message', message_id: '__closed__', chat_id: e.threadId, user: 'daemon', user_id: '0', ts: new Date().toISOString(), content: '__session_unregistered__' }) } catch {}
+    }
+    e.subscribers.clear()
+    e.buffered.length = 0
+    this.schedulePersist()
+    return entryToSession(e)
+  }
+
+  // Hard delete: drop from registry entirely. Caller archives thread.
+  delete(sessionId: string): Session | null {
     const e = this.bySession.get(sessionId)
     if (!e) return null
     this.bySession.delete(sessionId)
@@ -169,14 +188,17 @@ class Registry {
     return e.recentEvents.slice(-n)
   }
 
+  // Sweep active sessions whose heartbeats lapsed. Marks them dormant —
+  // keeps thread mapping so resumes (claude --resume from same cwd) reattach.
+  // Dormant sessions are not re-swept (they don't heartbeat by design).
   sweepStale(): Session[] {
     const cutoff = Date.now() - HEARTBEAT_STALE_MS
-    const dead: Session[] = []
+    const stale: Session[] = []
     for (const e of this.bySession.values()) {
-      if (e.lastHeartbeat < cutoff) dead.push(entryToSession(e))
+      if (e.state === 'active' && e.lastHeartbeat < cutoff) stale.push(entryToSession(e))
     }
-    for (const d of dead) this.unregister(d.sessionId)
-    return dead
+    for (const s of stale) this.markDormant(s.sessionId)
+    return stale
   }
 }
 
@@ -189,6 +211,7 @@ function entryToSession(e: Entry | PersistedEntry): Session {
     threadId: e.threadId,
     registeredAt: e.registeredAt,
     lastHeartbeat: e.lastHeartbeat,
+    state: e.state ?? 'active',
   }
 }
 

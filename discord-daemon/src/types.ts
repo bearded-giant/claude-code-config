@@ -23,6 +23,8 @@ export type Access = {
   chunkMode?: 'length' | 'newline'
 }
 
+export type SessionState = 'active' | 'dormant'
+
 export type Session = {
   sessionId: string
   label: string
@@ -31,6 +33,7 @@ export type Session = {
   threadId: string
   registeredAt: number
   lastHeartbeat: number
+  state: SessionState
 }
 
 // Inbound event delivered to a session via SSE.

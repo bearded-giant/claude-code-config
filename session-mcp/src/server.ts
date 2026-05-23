@@ -16,7 +16,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { DaemonClient } from './daemon-client.ts'
-import { randomUUID } from 'crypto'
+import { createHash } from 'crypto'
 import { basename } from 'path'
 
 const DAEMON_URL = process.env.DISCORD_DAEMON_URL ?? 'http://127.0.0.1:7777'
@@ -27,8 +27,11 @@ if (!DAEMON_TOKEN) {
   process.exit(1)
 }
 
-const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? randomUUID()
 const CWD = process.cwd()
+// Stable session id derived from cwd so claude --resume reattaches to the
+// same Discord thread. Worktree-per-project pattern guarantees no collision.
+// Override with CLAUDE_SESSION_ID env if you want a different scheme.
+const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? `cwd-${createHash('sha1').update(CWD).digest('hex').slice(0, 16)}`
 const LABEL = process.env.CLAUDE_SESSION_LABEL ?? basename(CWD)
 
 const daemon = new DaemonClient({ url: DAEMON_URL, token: DAEMON_TOKEN })

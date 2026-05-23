@@ -64,7 +64,11 @@ async function handle(req: Request, bot: DiscordBot): Promise<Response> {
   // /metrics is unauthenticated — Prometheus scrapers don't carry tokens.
   // Daemon binds to loopback + tailnet only, so unauthenticated is safe here.
   if (req.method === 'GET' && path === '/metrics') {
-    const body = metrics.render({ sessions_active: registry.list().length })
+    const all = registry.list()
+    const body = metrics.render({
+      sessions_active: all.filter(s => s.state === 'active').length,
+      sessions_dormant: all.filter(s => s.state === 'dormant').length,
+    })
     return new Response(body, { headers: { 'Content-Type': 'text/plain; version=0.0.4' } })
   }
 
@@ -150,10 +154,13 @@ async function registerSession(req: Request, bot: DiscordBot): Promise<Response>
   return json({ session: sess })
 }
 
+// Session-mcp shutting down → soft unregister. Keep thread mapping so a future
+// register with same sessionId (same cwd hash, on resume) reattaches to the
+// same Discord thread. Archive the thread; Discord auto-unarchives on next send.
 async function deleteSession(sessionId: string, bot: DiscordBot): Promise<Response> {
-  const removed = registry.unregister(sessionId)
-  if (!removed) return json({ error: 'no such session' }, 404)
-  await bot.archiveSessionThread(removed.threadId, 'unregistered')
+  const dormant = registry.markDormant(sessionId)
+  if (!dormant) return json({ error: 'no such session' }, 404)
+  await bot.archiveSessionThread(dormant.threadId, 'session ended')
   return json({ ok: true })
 }
 
