@@ -279,7 +279,8 @@ Reduce the launch dance to two commands. Local bash alias + VPS bash function:
 
 ```bash
 # laptop ~/.bashrc (or wherever you keep aliases)
-alias cvps='ssh -t claude-vps "tmux new -A -s main"'
+alias cvps='ssh -t claude-vps "tmux new -A -s main"'   # ssh + attach VPS tmux
+alias cvps-shell='ssh claude-vps'                       # raw VPS shell (no tmux)
 
 # VPS ~/.bashrc (setup-vps.sh installs these automatically on fresh bootstraps)
 dclaude() { claude --dangerously-load-development-channels server:discord "$@"; }
