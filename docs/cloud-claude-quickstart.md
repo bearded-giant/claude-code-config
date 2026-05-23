@@ -299,6 +299,13 @@ bye                      # detach VPS tmux (claude keeps running) + exit ssh
 
 `bye` is shorthand for `C-b d` then `exit`. Use it whether claude is still running (you'll resume it later) or already closed (idempotent — tmux detach errors are swallowed). To kill claude for good first, `/exit` inside claude, then `bye`.
 
+Detach VPS tmux directly (if you skipped `bye`):
+
+| Method | Keys |
+|---|---|
+| Default keybind | `C-b d` |
+| Command prompt (discoverable, no muscle memory) | `C-b :` then type `detach` |
+
 Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable on the VPS for non-Discord work.
 
 ### Thread reuse on resume
