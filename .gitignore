@@ -42,3 +42,6 @@ plugins/blocklist.json
 plugins/known_marketplaces.json
 
 archive/*
+
+# node deps
+node_modules/

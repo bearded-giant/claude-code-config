@@ -1,0 +1,400 @@
+# Cloud Claude — Provisioning Runbook
+
+Step-by-step to stand up the cloud claude + multi-session Discord setup. Resume from any step — each is checkpointed.
+
+Companion doc: [`cloud-claude-setup.md`](cloud-claude-setup.md) for architecture overview.
+
+---
+
+## Phase 0 — Account prerequisites (do once)
+
+### 0.1 Hetzner Cloud account
+
+1. Sign up: https://www.hetzner.com/cloud
+2. Verify email
+3. Add payment method (card or PayPal)
+4. **Identity verification (passport / driver's license upload)** — Hetzner sometimes holds new accounts pending ID verification, especially first server. Expect 1–24h turnaround. Upload via account settings when prompted.
+5. Create a **project** (e.g., `claude-vps`)
+6. Inside project: **Security → API tokens → Generate** (Read+Write). Copy token, save to password manager.
+
+### 0.2 hcloud CLI on laptop
+
+```bash
+brew install hcloud
+hcloud context create claude   # paste API token when prompted
+hcloud context list            # verify "claude" is active
+```
+
+### 0.3 Local SSH key
+
+Confirm a key exists, or generate one:
+
+```bash
+ls ~/.ssh/*.pub
+# none? →
+ssh-keygen -t ed25519 -C "bryan@laptop"   # accept default path
+```
+
+Default path used by provision script: `~/.ssh/id_ed25519.pub`. Override with `SSH_PUBKEY_PATH=...` env if different.
+
+### 0.4 Tailscale account + auth key
+
+1. Sign up: https://tailscale.com (Google/GitHub/email)
+2. Install on laptop + phone:
+   ```bash
+   brew install --cask tailscale         # laptop
+   ```
+   Phone: App Store / Play Store.
+3. Both devices: log in, accept the tailnet.
+4. Generate pre-auth key for VPS:
+   - https://login.tailscale.com/admin/settings/keys
+   - Generate auth key: **Reusable: off**, **Ephemeral: off**, **Expiry: 90d**
+   - Copy `tskey-auth-...`, save to password manager
+5. Optional: lock the tailnet ACL to your own devices only (admin console → Access controls).
+
+### 0.5 Discord bot
+
+1. https://discord.com/developers/applications → New Application → `claude-bot`
+2. Bot tab → Reset Token → copy bot token (save to password manager)
+3. Privileged Gateway Intents → enable **Message Content Intent**
+4. OAuth2 → URL Generator:
+   - Scopes: `bot`
+   - Permissions: Send Messages, Read Message History, Manage Threads, Create Public Threads, Add Reactions, Attach Files, Embed Links
+5. Open generated URL → invite bot to a server you control
+6. In Discord: enable Developer Mode (Settings → Advanced)
+7. Right-click the channel for session threads → Copy Channel ID. Save it.
+
+**Checkpoint:** by end of Phase 0 you should have, all saved to password manager:
+- Hetzner API token (set in `hcloud context`)
+- Tailscale auth key (`tskey-auth-...`)
+- Discord bot token (`MT...`)
+- Discord channel ID for session threads (numeric snowflake)
+- SSH keypair on laptop
+
+---
+
+## Phase 1 — Provision VPS
+
+### 1.1 Run provisioning script
+
+From the repo root on laptop:
+
+```bash
+TAILSCALE_AUTHKEY=tskey-auth-xxxxx \
+  ./discord-daemon/scripts/provision-hetzner.sh
+```
+
+What it does:
+- Uploads SSH key as `${USER}-laptop`
+- Creates firewall (SSH+ICMP only — Tailscale carries everything else)
+- Creates server `claude-vps` (CCX33, 8 vCPU dedicated / 32GB / 240GB, ~$40/mo)
+- cloud-init installs: curl, git, mosh, jq, Tailscale, Bun
+- Creates `bryan` user with SSH key
+- Disables root SSH
+- Joins tailnet if auth key supplied
+
+Override defaults via env:
+- `SERVER_LOCATION=ash` (Ashburn VA, default) | `hil` (Hillsboro OR) | `fsn1` (Falkenstein DE)
+- `SERVER_TYPE=ccx33` (default) | `ccx23` (4 vCPU/16GB, cheaper)
+- `SERVER_NAME=claude-vps` (default)
+- `SSH_KEY_NAME=${USER}-laptop` (default)
+
+### 1.2 Verify reachable
+
+```bash
+# wait ~60s for cloud-init
+ssh bryan@claude-vps          # via Tailscale, if authkey was supplied
+# or
+ssh bryan@<public-ip>         # from `hcloud server ip claude-vps`
+```
+
+If Tailscale not auto-joined:
+
+```bash
+ssh bryan@<public-ip>
+sudo tailscale up --ssh --hostname=claude-vps
+# follow URL in laptop browser to approve
+tailscale ip -4               # note this IP
+```
+
+**Checkpoint:** `ssh bryan@claude-vps` works from laptop.
+
+---
+
+## Phase 2 — Install daemon
+
+### 2.1 Copy code
+
+From laptop:
+
+```bash
+scp -r ~/dev/claude-code-config/discord-daemon bryan@claude-vps:~/
+scp -r ~/dev/claude-code-config/session-mcp bryan@claude-vps:~/  # for the VPS's claude sessions
+```
+
+### 2.2 Run installer
+
+```bash
+ssh bryan@claude-vps
+sudo bash ~/discord-daemon/scripts/install-vps.sh
+```
+
+The script:
+- Installs system deps
+- Copies daemon to `/home/bryan/discord-daemon`
+- Creates `/home/bryan/.claude/channels/discord/` state dir + `.env`
+- Generates random `DAEMON_TOKEN`
+- Installs systemd unit (not started yet)
+
+### 2.3 Configure .env
+
+```bash
+TAILNET_IP=$(tailscale ip -4)
+sudo -u bryan vim /home/bryan/.claude/channels/discord/.env
+```
+
+Fill in:
+
+```
+DISCORD_BOT_TOKEN=<from Phase 0.5>
+DISCORD_SESSIONS_CHANNEL_ID=<from Phase 0.5>
+DAEMON_TOKEN=<pre-generated; keep>
+DAEMON_BIND_HOST=<TAILNET_IP value>
+DAEMON_BIND_PORT=7777
+```
+
+Save. Verify perms `chmod 600`.
+
+### 2.4 Start daemon
+
+```bash
+sudo systemctl enable --now discord-daemon
+sudo systemctl status discord-daemon
+journalctl -u discord-daemon -f
+```
+
+Expect: `daemon: gateway connected as <bot>#XXXX` and `daemon: HTTP listening on <tailnet-ip>:7777`.
+
+### 2.5 Verify HTTP from laptop
+
+```bash
+TOKEN=$(ssh bryan@claude-vps "grep DAEMON_TOKEN /home/bryan/.claude/channels/discord/.env | cut -d= -f2")
+curl -H "x-daemon-token: $TOKEN" http://claude-vps:7777/health
+# {"ok":true,"sessions":0}
+```
+
+**Checkpoint:** daemon running, health endpoint responds from laptop over tailnet.
+
+---
+
+## Phase 3 — Pair Discord user
+
+### 3.1 DM the bot
+
+From Discord (the account that should control sessions) → DM the bot → say `hi`.
+
+Bot replies with pairing code: `Pairing required — run in Claude Code: /discord:access pair abc123`.
+
+### 3.2 Approve on VPS
+
+```bash
+ssh bryan@claude-vps
+cd ~/.claude
+# Run the /discord:access skill manually — it just edits access.json.
+# Easiest: hand-edit:
+jq --arg id "<your-discord-user-id>" '.allowFrom += [$id] | .pending = {}' \
+  channels/discord/access.json > /tmp/a && mv /tmp/a channels/discord/access.json
+```
+
+Or if you have claude installed on VPS already (will be after Phase 4):
+
+```bash
+claude --print "/discord:access pair abc123"
+```
+
+Bot DMs `Paired! DM "help" for commands.`
+
+Confirm: DM `list` to bot → should reply `no active sessions`.
+
+**Checkpoint:** bot accepts your DMs as control commands.
+
+---
+
+## Phase 4 — First claude session
+
+### 4.1 Install claude on VPS
+
+```bash
+ssh bryan@claude-vps
+curl -fsSL https://claude.ai/install.sh | bash    # or npm path, whichever Anthropic recommends
+```
+
+### 4.2 settings.json snippet
+
+```bash
+mkdir -p ~/.claude
+cat >> ~/.claude/settings.json <<'EOF'
+{
+  "mcpServers": {
+    "discord": {
+      "command": "/home/bryan/.bun/bin/bun",
+      "args": ["run", "/home/bryan/session-mcp/src/server.ts"],
+      "env": {
+        "DISCORD_DAEMON_URL": "http://127.0.0.1:7777"
+      }
+    }
+  }
+}
+EOF
+```
+
+(Daemon and sessions run on same host → loopback works; tailnet-bind from Phase 2.3 still required for other VPSes or laptop testing.)
+
+### 4.3 Export token in shell
+
+```bash
+echo "export DISCORD_DAEMON_TOKEN=$(grep DAEMON_TOKEN ~/.claude/channels/discord/.env | cut -d= -f2)" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 4.4 Launch session
+
+```bash
+tmux new -s main
+cd ~/some-project
+claude --channels
+```
+
+Expect: Discord shows new thread named after cwd, with `session <label> online`.
+
+Post in the thread → claude session sees the message → replies in same thread.
+
+**Checkpoint:** one session live, end-to-end.
+
+---
+
+## Phase 5 — Mutagen file sync (optional)
+
+### 5.1 Laptop
+
+```bash
+brew install mutagen-io/mutagen/mutagen
+mutagen sync create --name=dev \
+  ~/dev bryan@claude-vps:/home/bryan/dev \
+  --ignore-vcs \
+  --ignore="node_modules,.venv,target,dist,build,.next,__pycache__"
+mutagen sync monitor dev
+```
+
+Mutagen auto-installs its agent on the VPS over SSH on first sync.
+
+### 5.2 Verify
+
+```bash
+echo "test" > ~/dev/sync-test.txt
+ssh bryan@claude-vps "cat ~/dev/sync-test.txt"   # → test
+ssh bryan@claude-vps "echo reverse >> ~/dev/sync-test.txt"
+cat ~/dev/sync-test.txt   # → test\nreverse
+rm ~/dev/sync-test.txt
+```
+
+**Checkpoint:** bidirectional `~/dev` sync working.
+
+---
+
+## Phase 6 — Scale to multiple sessions
+
+Each tmux window/pane = one session. Same flow as Phase 4.4. Different cwd → different thread name.
+
+Test parallelism:
+
+```bash
+tmux new -s work
+# pane 1
+cd ~/dev/foo && claude --channels
+# split, pane 2
+cd ~/dev/bar && claude --channels
+# split, pane 3
+cd ~/dev/baz && claude --channels
+```
+
+Discord: 3 threads under the sessions channel. DM `list` → 3 sessions.
+
+---
+
+## Phase 7 — Mobile / phone access
+
+- **Tailscale app** running → VPS reachable as `claude-vps`.
+- **Termius / Blink Shell / a-Shell** → mosh into VPS for tmux. Reconnects survive network changes.
+- **Discord mobile** → chat with sessions via threads.
+
+Typical mobile workflow:
+1. Open Discord, post in thread `bg-foo-abc1`: "status?"
+2. Session replies in thread.
+3. If you want to drive the session interactively, Termius → `mosh claude-vps` → `tmux attach`.
+
+---
+
+## Reference — operational commands
+
+### Daemon logs
+```bash
+journalctl -u discord-daemon -f
+journalctl -u discord-daemon --since "10m ago"
+```
+
+### Restart daemon
+```bash
+sudo systemctl restart discord-daemon
+```
+
+### Update daemon code
+```bash
+# laptop
+scp -r ~/dev/claude-code-config/discord-daemon bryan@claude-vps:~/
+ssh bryan@claude-vps 'sudo cp -r ~/discord-daemon/. /home/bryan/discord-daemon/ && sudo systemctl restart discord-daemon'
+```
+
+### List sessions
+```bash
+curl -H "x-daemon-token: $DISCORD_DAEMON_TOKEN" http://claude-vps:7777/sessions | jq
+```
+
+### Mutagen pause/resume
+```bash
+mutagen sync pause dev
+mutagen sync resume dev
+mutagen sync list
+```
+
+### Tailscale
+```bash
+tailscale status
+tailscale ping claude-vps
+```
+
+---
+
+## Cost summary
+
+| Item | $/mo |
+|---|---|
+| Hetzner CCX33 | ~40 |
+| Tailscale (Free up to 100 devices, 3 users) | 0 |
+| Discord | 0 |
+| Mutagen | 0 |
+| **Total** | **~40** |
+
+---
+
+## Where you left off
+
+Phase 0 blocked on Hetzner passport verification. Pick up at **0.1 step 4** once ID uploaded and account approved. Everything from 0.2 onward is laptop-local prep — can be done in any order before VPS is created.
+
+Pre-VPS work to do offline:
+- 0.2 hcloud CLI install (`brew install hcloud`)
+- 0.3 SSH key check
+- 0.4 Tailscale account + auth key
+- 0.5 Discord bot + token + channel ID
+
+Once Hetzner is verified: jump to Phase 1.
