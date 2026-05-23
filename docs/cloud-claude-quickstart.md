@@ -303,6 +303,19 @@ The daemon derives a stable `session_id` from the cwd (sha1 prefix). Exiting cla
 
 Worktree-per-project pattern is the assumption — two concurrent claude sessions in the same cwd would collide on the same thread. Use `kill <label>` via DM to hard-delete (drops the mapping so the next launch creates a fresh thread). Override the cwd-derived id with `CLAUDE_SESSION_ID=<id> dclaude` if you need a different scheme.
 
+### Nested tmux (local + VPS)
+
+**Status: current setup — subject to change.** The way tmux is used on the VPS may evolve (e.g., one-shell-per-pane, or dropping VPS tmux entirely for screen / ssh-only). For now:
+
+If you run tmux locally too, leader collision is the main hazard — the outer tmux eats prefix keys before the inner sees them. Current convention here:
+
+| Layer | Leader |
+|---|---|
+| Local tmux | `C-a` |
+| VPS tmux (set in `~/.tmux.conf` on the VPS) | `C-b` (default) |
+
+A red status bar with a `VPS` tag is set on the remote tmux so you can tell which layer you're in at a glance. Newcomers unfamiliar with tmux will still find the nesting confusing — open question how to ergonomically support them.
+
 Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
 
 **DM control commands:**

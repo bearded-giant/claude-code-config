@@ -264,6 +264,19 @@ Discord user DMs the bot
 
 ---
 
+## Nested tmux
+
+**Current setup — likely to change.** VPS-side tmux is how sessions survive ssh disconnects today. The shape of that may change (single-pane-per-window, drop VPS tmux for screen, or skip it entirely for users who don't want nesting). Documented here so the friction is visible:
+
+| Layer | Leader | Notes |
+|---|---|---|
+| Local tmux | `C-a` | per user's local config |
+| VPS tmux | `C-b` (default) | set explicitly in `~/.tmux.conf` on the VPS; red status bar tagged `VPS` |
+
+Distinct prefixes mean keys for the outer tmux don't accidentally fire on the inner one. Users not already on tmux will still find nested-tmux confusing — open ergonomics question.
+
+---
+
 ## Security boundaries
 
 | Boundary | Mechanism |
