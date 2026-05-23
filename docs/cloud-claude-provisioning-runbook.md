@@ -441,6 +441,87 @@ tailscale ping claude-vps
 
 ---
 
+## Lessons learned from the first run (2026-05-23)
+
+Captured during the real provisioning so the runbook accounts for them. Apply when re-running on a fresh VPS or a new platform.
+
+### Stow 2.3.1 won't create the target dir
+Ubuntu 24.04 ships stow 2.3.1. It refuses to stow if `~/.claude` doesn't already exist. `install.sh` does not pre-create it.
+
+Fix:
+```bash
+mkdir -p ~/.claude
+cd ~/dev && stow --restow -t ~/.claude claude-code-config
+```
+
+### Daemon must bind 0.0.0.0 for same-host sessions
+If `DAEMON_BIND_HOST=<tailnet-ip>`, the daemon doesn't listen on loopback. A claude session-mcp running on the same host can't reach `127.0.0.1:7777`. Override `~/.claude/channels/discord/.env`:
+
+```
+DAEMON_BIND_HOST=0.0.0.0
+```
+
+Hetzner cloud firewall (configured by `provision-hetzner.sh`) blocks public 7777 → safe. Loopback + tailnet both reachable.
+
+### Tailscale SSH strips file mode bits
+`mutagen sync create` fails with `Permission denied` running its uploaded agent. The agent lands chmod 644 because Tailscale's SSH proxy doesn't preserve exec bits during SFTP.
+
+Fix: use the public IP for Mutagen, not the tailnet hostname:
+```bash
+mutagen sync create --name=dev \
+  /Users/bryan/dev bryan@<public-ip>:/home/bryan/dev   # NOT bryan@claude-vps
+```
+
+Regular sshd on port 22 preserves modes. Hetzner firewall already allows SSH from anywhere.
+
+### --channels needs `server:` prefix and a dev flag for ad-hoc MCPs
+Claude CLI:
+```bash
+claude --dangerously-load-development-channels server:discord
+```
+Not `--channels server:discord` alone. The `--channels` flag exists but rejects `server:` entries unless the dev flag is also passed. Both flags take the same `<servers...>` arg — pass it once on the dev flag.
+
+If you registered the channel via a plugin instead of `claude mcp add`, use `plugin:<name>@<marketplace>` and you can drop the dev flag.
+
+### MCP must be registered via `claude mcp add`, not just settings.json
+Claude does NOT auto-load `mcpServers` from `~/.claude/settings.json` for the CLI's MCP list. Register explicitly:
+```bash
+claude mcp add discord /home/bryan/.bun/bin/bun \
+  --scope user \
+  -e DISCORD_DAEMON_URL=http://127.0.0.1:7777 \
+  -e DISCORD_DAEMON_TOKEN=$TOKEN \
+  -- run /home/bryan/dev/claude-code-config/session-mcp/src/server.ts
+```
+This writes `~/.claude.json`. Verify with `claude mcp list`.
+
+### Stowed hooks hardcode laptop paths
+The committed `settings.json` references absolute laptop paths (`/Users/bryan/.nvm/versions/node/v24.11.1/bin/node`, `/Users/bryan/.local/bin/giantmem`, etc.). On Linux VPS these fail with `node: not found`.
+
+Quick bridge (no code changes):
+```bash
+sudo mkdir -p /Users
+sudo ln -sfn /home/bryan /Users/bryan
+mkdir -p ~/.nvm/versions/node/v24.11.1/bin
+ln -sfn /usr/bin/node ~/.nvm/versions/node/v24.11.1/bin/node
+```
+
+Long-term: edit `settings.json` to use `$HOME` / PATH-relative commands. Or move host-specific MCPs to `settings.local.json` (gitignored).
+
+### Bot must be added to private channels
+`DISCORD_SESSIONS_CHANNEL_ID` pointing to a private channel → thread create fails until the bot is added as a member. Channel settings → Permissions → Add member → pick the bot.
+
+### Restart MCP after access.json edits — usually not, but sometimes
+`access.json` is re-read on every gate check, so allowlist additions take effect live. **But** the bundled discord plugin caches some DM channel state in memory; if you've been failing pre-allowlist, a process restart clears that.
+
+```bash
+pkill -f 'discord/0.0.4'   # then /mcp in claude
+```
+
+### Initial Mutagen sync is slow
+With ~80GB raw under `~/dev` (post-excludes ~25-40GB), expect 30-60 min over typical home upload. Sync runs independently of daemon — you can spin up VPS claude sessions for any subtree that's already arrived (`du -sh ~/dev/<repo>` on VPS to confirm).
+
+---
+
 ## Where you left off
 
 Phase 0 blocked on Hetzner passport verification. Pick up at **0.1 step 4** once ID uploaded and account approved. Everything from 0.2 onward is laptop-local prep — can be done in any order before VPS is created.
