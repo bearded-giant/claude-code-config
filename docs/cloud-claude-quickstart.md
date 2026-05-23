@@ -77,6 +77,21 @@ Default ACL allows all your devices to reach each other. If you ever share your 
 
 ## Bootstrap (one-time, ~1 hour)
 
+**Fast path:** after Phase 0 is complete, two commands rebuild a VPS end-to-end:
+
+```bash
+TAILSCALE_AUTHKEY=tskey-auth-... SERVER_LOCATION=ash \
+  ./discord-daemon/scripts/provision-hetzner.sh           # creates VPS
+
+./scripts/bootstrap-vps.sh claude-vps                     # everything else (idempotent)
+# OR with restore from a prior backup:
+./scripts/bootstrap-vps.sh claude-vps --restore ~/Backups/discord-daemon/discord-daemon-XXXX.tar.age
+```
+
+`bootstrap-vps.sh` rsyncs the repo, runs `setup-vps.sh` on the VPS (apt deps, Bun, stow, root symlink, node bridge, claude CLI install, MCP registration, systemd, daemon start, plugin patch), and stages the optional backup restore. The only interactive step left is `claude /login` in a browser.
+
+The detailed steps below are the long-form version of what `setup-vps.sh` automates — useful for understanding and debugging.
+
 Run on the laptop unless noted.
 
 ### 1. Authenticate hcloud
