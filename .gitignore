@@ -45,3 +45,10 @@ archive/*
 
 # node deps
 node_modules/
+
+# python bytecode
+__pycache__/
+*.pyc
+
+# transient memory state
+.memory-project.json

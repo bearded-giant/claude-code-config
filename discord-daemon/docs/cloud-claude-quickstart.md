@@ -372,6 +372,8 @@ Phone workflow: open Discord, find the thread, post a message — the VPS claude
 | `tail <label> [n]` | last N inbox events (default 10) |
 | `kill <label>` | hard-delete session + archive thread (drops thread mapping; next launch in same cwd creates a fresh thread) |
 | `restart <label>` | inject restart signal into session inbox |
+| `projects` | list repos under `~/dev` (1-2 levels) for spawning |
+| `start [relpath]` | spawn a new `dclaude` session via tmux. No arg → `~/scratch`. With relpath → `$HOME/<relpath>` (mkdir -p if missing). Daemon validates: no `..`, no absolute paths, charset `[A-Za-z0-9._/-]`. |
 | `help` | this list |
 
 **Bringing VPS-side edits back:**

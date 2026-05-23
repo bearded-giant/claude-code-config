@@ -175,6 +175,10 @@ MUST NOT spawn agents for:
 
 Bot config and access policy: `~/.claude/channels/discord/`. Inbound DMs don't surface yet — use `fetch_messages` on DM channel `1485390190523584542`, reply via `reply`. Full setup in discord plugin docs.
 
+### Acknowledge inbound channel messages immediately
+
+When a Discord channel message arrives (any `<channel source="discord" ...>` event), call the `react` MCP tool with 👀 on that `message_id` **before** doing anything else. This gives the sender instant visual confirmation that you received the request. Then proceed with the work and reply normally via `reply` when results are ready. Skip the react only for trivial responses where the reply lands in <2s anyway.
+
 ### Slash commands from Discord channel messages
 
 Discord messages arrive as channel notifications (not as prompts), so `/<command>` text typed in Discord is NOT auto-dispatched by claude's slash command parser. When an inbound Discord channel message starts with `/<name>` followed by optional args, treat it as a request to run that slash command:
