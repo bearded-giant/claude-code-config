@@ -273,6 +273,30 @@ claude --dangerously-load-development-channels server:discord
 `Ctrl-b d` to detach the tmux session — claude keeps running on the VPS.
 Reopen later with the same `ssh + tmux attach`.
 
+### Optional shortcuts
+
+Reduce the launch dance to two commands. Local bash alias + VPS bash function:
+
+```bash
+# laptop ~/.bashrc (or wherever you keep aliases)
+alias cvps='ssh -t claude-vps "tmux new -A -s main"'
+
+# VPS ~/.bashrc
+dclaude() { claude --dangerously-load-development-channels server:discord "$@"; }
+```
+
+Daily flow becomes:
+
+```bash
+cvps                     # local pane: ssh + attach VPS tmux "main"
+cd ~/dev/<project>
+dclaude                  # claude with Discord wired up
+# Ctrl-b d to detach VPS tmux, claude survives
+exit                     # exit ssh
+```
+
+Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable on the VPS for non-Discord work.
+
 Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
 
 **DM control commands:**
