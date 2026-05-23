@@ -1,0 +1,22 @@
+--- a/server.ts
++++ b/server.ts
+@@ -403,7 +403,17 @@ async function fetchAllowedChannel(id: string) {
+   const ch = await fetchTextChannel(id)
+   const access = loadAccess()
+   if (ch.type === ChannelType.DM) {
+-    if (access.allowFrom.includes(ch.recipientId)) return ch
++    // Partials.Channel makes DMs partial when fetched by ID -- recipientId
++    // is unpopulated until .fetch() resolves it. Without this, every tool
++    // call against a DM channel fails with "not allowlisted" even when the
++    // user IS in allowFrom. Resolve the partial.
++    let recipientId = (ch as any).recipientId as string | null | undefined
++    if (!recipientId && typeof (ch as any).fetch === 'function') {
++      try {
++        const fetched = await (ch as any).fetch()
++        recipientId = fetched.recipientId
++      } catch {}
++    }
++    if (recipientId && access.allowFrom.includes(recipientId)) return ch
+   } else {
+     const key = ch.isThread() ? ch.parentId ?? ch.id : ch.id
+     if (key in access.groups) return ch
