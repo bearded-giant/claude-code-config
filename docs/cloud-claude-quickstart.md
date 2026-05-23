@@ -281,8 +281,9 @@ Reduce the launch dance to two commands. Local bash alias + VPS bash function:
 # laptop ~/.bashrc (or wherever you keep aliases)
 alias cvps='ssh -t claude-vps "tmux new -A -s main"'
 
-# VPS ~/.bashrc
+# VPS ~/.bashrc (setup-vps.sh installs these automatically on fresh bootstraps)
 dclaude() { claude --dangerously-load-development-channels server:discord "$@"; }
+alias bye='tmux detach 2>/dev/null; exit'
 ```
 
 Daily flow becomes:
@@ -291,9 +292,11 @@ Daily flow becomes:
 cvps                     # local pane: ssh + attach VPS tmux "main"
 cd ~/dev/<project>
 dclaude                  # claude with Discord wired up
-# Ctrl-b d to detach VPS tmux, claude survives
-exit                     # exit ssh
+# ... work ...
+bye                      # detach VPS tmux (claude keeps running) + exit ssh
 ```
+
+`bye` is shorthand for `C-b d` then `exit`. Use it whether claude is still running (you'll resume it later) or already closed (idempotent — tmux detach errors are swallowed). To kill claude for good first, `/exit` inside claude, then `bye`.
 
 Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable on the VPS for non-Discord work.
 
