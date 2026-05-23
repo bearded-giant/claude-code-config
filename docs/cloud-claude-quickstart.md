@@ -380,6 +380,39 @@ Phone workflow: open Discord, find the thread, post a message — the VPS claude
 ./scripts/pull-from-vps.sh foo   # commit+push on VPS if dirty, then git pull locally
 ```
 
+**Lifting a local session to VPS (keep chat history):**
+
+```bash
+cd ~/dev/<project>
+# /exit local claude first so the jsonl is flushed
+./scripts/lift-to-vps.sh                       # latest session in this cwd
+# or pin a specific session uuid:
+./scripts/lift-to-vps.sh <session-uuid>
+# prints the exact `cvps` + `dclaude --resume <id>` invocation to run on VPS
+```
+
+Rsyncs the JSONL transcript (`~/.claude/projects/<encoded-cwd>/<uuid>.jsonl`) so `dclaude --resume <uuid>` on VPS picks up tool calls + history. Repo files travel through your normal sync (mutagen / git push+pull). Direction is laptop→VPS only.
+
+**Syncing git config to VPS** (manual, when laptop gitconfig changes):
+
+```bash
+./scripts/sync-gitconfig.sh                    # strips GPG signing
+KEEP_GPG=1 ./scripts/sync-gitconfig.sh         # only if VPS has your GPG key
+```
+
+Reads `~/.config/git/config` (XDG path) or `~/.gitconfig` fallback. Writes to VPS at the same XDG path. `bootstrap-vps.sh` calls this automatically on initial setup.
+
+**Copying text from VPS-side dclaude into mac clipboard:**
+
+Two paths:
+
+| Path | How |
+|---|---|
+| OSC52 yank (preferred) | `C-b [` to enter VPS-tmux copy-mode → `v` start select → motion → `y` yank. Lands in mac clipboard via OSC52 escape, forwarded through local tmux (`set-clipboard on` + `allow-passthrough on`) to terminal. |
+| Modifier-bypass | Hold `Option` (WezTerm/iTerm) or `Shift` (Terminal.app) while drag-selecting → bypasses both tmux mouse layers → `Cmd-C`. |
+
+Terminal needs OSC52 enabled (WezTerm: default on; iTerm2: "Allow apps to write to pasteboard" in prefs).
+
 **Metrics:**
 
 ```bash

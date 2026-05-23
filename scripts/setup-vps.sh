@@ -209,6 +209,11 @@ set -g mouse on
 set -g history-limit 50000
 set -g base-index 1
 setw -g pane-base-index 1
+
+# vi-mode in copy-mode
+setw -g mode-keys vi
+# OSC52: emit clipboard escape so outer (laptop) tmux forwards to terminal.
+set -s set-clipboard on
 TMUX_EOF
   green "  ~/.tmux.conf written"
 else

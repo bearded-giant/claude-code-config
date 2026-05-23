@@ -36,6 +36,11 @@ echo "==> sanity: ssh ${VPS_HOST}"
 ssh -o ConnectTimeout=5 "$VPS_HOST" 'echo ok' >/dev/null
 echo "    ok"
 
+if [ -x "$CONFIG_DIR/scripts/sync-gitconfig.sh" ]; then
+  echo "==> sync git config → ${VPS_HOST} (GPG stripped; KEEP_GPG=1 to preserve)"
+  "$CONFIG_DIR/scripts/sync-gitconfig.sh" "$VPS_HOST" || echo "    (git config sync skipped)"
+fi
+
 echo "==> rsync claude-code-config → ${VPS_HOST}:~/dev/"
 ssh "$VPS_HOST" 'mkdir -p ~/dev'
 rsync -az --delete \
