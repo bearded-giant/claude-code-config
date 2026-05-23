@@ -333,10 +333,9 @@ Post in the thread → claude session sees the message → replies in same threa
 
 ```bash
 brew install mutagen-io/mutagen/mutagen
-mutagen sync create --name=dev \
-  ~/dev bryan@claude-vps:/home/bryan/dev \
-  --ignore-vcs \
-  --ignore="node_modules,.venv,target,dist,build,.next,__pycache__"
+# Wrapper script bakes in the right flags + excludes (see Lessons Learned).
+# Pass the VPS public IP (NOT tailnet hostname).
+./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)"
 mutagen sync monitor dev
 ```
 
