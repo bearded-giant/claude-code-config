@@ -10,7 +10,7 @@ import {
 } from 'discord.js'
 import { mkdirSync, writeFileSync, statSync, realpathSync } from 'fs'
 import { join, sep } from 'path'
-import { STATE_DIR, INBOX_DIR, SESSIONS_CHANNEL_ID, getDiscordToken } from './config.ts'
+import { STATE_DIR, INBOX_DIR, SESSIONS_CHANNEL_ID, getDiscordToken, MOCK_DISCORD } from './config.ts'
 import { readAccess, saveAccess, pruneExpired, drainApprovals } from './access.ts'
 import { registry } from './registry.ts'
 import { handleControlDM } from './control.ts'
@@ -51,17 +51,27 @@ export class DiscordBot {
   }
 
   async start(): Promise<void> {
+    if (MOCK_DISCORD) {
+      process.stderr.write('daemon: MOCK_DISCORD mode — gateway login skipped\n')
+      return
+    }
     await this.client.login(getDiscordToken())
     setInterval(() => this.drainApprovals(), 5000).unref()
   }
 
   async stop(): Promise<void> {
+    if (MOCK_DISCORD) return
     await this.client.destroy()
   }
 
   // === Outbound ===
 
   async createSessionThread(label: string, cwd: string): Promise<{ threadId: string }> {
+    if (MOCK_DISCORD) {
+      const threadId = `mock-${label.replace(/[^a-zA-Z0-9]/g, '-')}-${shortId()}`
+      process.stderr.write(`daemon[mock]: createSessionThread(${label}, ${cwd}) → ${threadId}\n`)
+      return { threadId }
+    }
     const parent = await this.fetchSessionsChannel()
     const safe = label.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 80) || 'session'
     const name = `${safe}-${shortId()}`
@@ -75,6 +85,10 @@ export class DiscordBot {
   }
 
   async archiveSessionThread(threadId: string, reason: string): Promise<void> {
+    if (MOCK_DISCORD) {
+      process.stderr.write(`daemon[mock]: archiveSessionThread(${threadId}, ${reason})\n`)
+      return
+    }
     const ch = await this.client.channels.fetch(threadId).catch(() => null)
     if (!ch || !ch.isThread()) return
     try {
@@ -86,6 +100,11 @@ export class DiscordBot {
   }
 
   async sendToThread(threadId: string, text: string, opts: { files?: string[]; replyTo?: string } = {}): Promise<{ ids: string[] }> {
+    if (MOCK_DISCORD) {
+      const id = `mock-msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      process.stderr.write(`daemon[mock]: send → ${threadId}: ${text.slice(0, 80)}\n`)
+      return { ids: [id] }
+    }
     const ch = await this.fetchSessionThread(threadId)
     const files = opts.files ?? []
     for (const f of files) {
@@ -120,6 +139,10 @@ export class DiscordBot {
   }
 
   async editMessage(threadId: string, messageId: string, text: string): Promise<{ id: string }> {
+    if (MOCK_DISCORD) {
+      process.stderr.write(`daemon[mock]: edit ${messageId} → ${text.slice(0, 80)}\n`)
+      return { id: messageId }
+    }
     const ch = await this.fetchSessionThread(threadId)
     const msg = await ch.messages.fetch(messageId)
     const edited = await msg.edit(text)
@@ -127,12 +150,17 @@ export class DiscordBot {
   }
 
   async react(threadId: string, messageId: string, emoji: string): Promise<void> {
+    if (MOCK_DISCORD) {
+      process.stderr.write(`daemon[mock]: react ${messageId} ${emoji}\n`)
+      return
+    }
     const ch = await this.fetchSessionThread(threadId)
     const msg = await ch.messages.fetch(messageId)
     await msg.react(emoji)
   }
 
   async fetchMessages(threadId: string, limit: number): Promise<string> {
+    if (MOCK_DISCORD) return '(mock — no history)'
     const ch = await this.fetchSessionThread(threadId)
     const msgs = await ch.messages.fetch({ limit: Math.min(limit, 100) })
     const me = this.client.user?.id
@@ -149,6 +177,7 @@ export class DiscordBot {
   }
 
   async downloadAttachments(threadId: string, messageId: string): Promise<Array<{ path: string; name: string; contentType: string | null; size: number }>> {
+    if (MOCK_DISCORD) return []
     const ch = await this.fetchSessionThread(threadId)
     const msg = await ch.messages.fetch(messageId)
     const out: Array<{ path: string; name: string; contentType: string | null; size: number }> = []
@@ -161,8 +190,31 @@ export class DiscordBot {
 
   // Control-side DM send — bypasses session/thread validation.
   async sendDM(userId: string, text: string): Promise<void> {
+    if (MOCK_DISCORD) {
+      process.stderr.write(`daemon[mock]: DM ${userId}: ${text}\n`)
+      return
+    }
     const user = await this.client.users.fetch(userId)
     await user.send(text)
+  }
+
+  // Mock-only helper for smoke tests: simulate an inbound thread message.
+  injectMockMessage(threadId: string, content: string, user = 'tester', userId = '1'): void {
+    if (!MOCK_DISCORD) throw new Error('injectMockMessage only allowed in MOCK_DISCORD mode')
+    const sess = registry.getByThread(threadId)
+    if (!sess) {
+      process.stderr.write(`daemon[mock]: no session for thread ${threadId}\n`)
+      return
+    }
+    registry.deliver(sess.sessionId, {
+      kind: 'message',
+      message_id: `mock-${Date.now()}`,
+      chat_id: threadId,
+      user,
+      user_id: userId,
+      ts: new Date().toISOString(),
+      content,
+    })
   }
 
   // === Inbound ===

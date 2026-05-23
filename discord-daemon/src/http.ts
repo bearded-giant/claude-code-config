@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DAEMON_TOKEN, BIND_HOST, BIND_PORT } from './config.ts'
+import { DAEMON_TOKEN, BIND_HOST, BIND_PORT, MOCK_DISCORD } from './config.ts'
 import { registry } from './registry.ts'
 import type { DiscordBot } from './discord.ts'
 
@@ -62,6 +62,17 @@ async function handle(req: Request, bot: DiscordBot): Promise<Response> {
 
   if (req.method === 'GET' && path === '/sessions') {
     return json({ sessions: registry.list() })
+  }
+
+  // Mock-only: inject an inbound thread message for smoke testing.
+  if (MOCK_DISCORD && req.method === 'POST' && path === '/_mock/inject') {
+    try {
+      const body = (await req.json()) as { thread_id: string; content: string; user?: string; user_id?: string }
+      bot.injectMockMessage(body.thread_id, body.content, body.user, body.user_id)
+      return json({ ok: true })
+    } catch (err) {
+      return json({ error: (err as Error).message }, 400)
+    }
   }
 
   if (req.method === 'POST' && path === '/sessions') {

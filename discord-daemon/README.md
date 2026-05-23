@@ -69,6 +69,33 @@ Each session may only act on its own `threadId`. Cross-session calls return 403.
 - `access.json` controls who can post in threads (allowlist of Discord user IDs).
 - Files sent via `reply` are sandboxed away from daemon state (`~/.claude/channels/discord` except `inbox/`).
 
+## Smoke test (no Discord required)
+
+```
+bun install
+./scripts/smoke-test.sh
+```
+
+Spawns daemon with `DAEMON_DISCORD_MOCK=1`, exercises the full HTTP+SSE surface, asserts auth, registry, inbox stream, send/edit/react, and chat_id isolation. 16 checks.
+
+## CLI helper
+
+```
+DAEMON_TOKEN=... DAEMON_URL=http://claude-vps:7777 ./scripts/daemon-cli.sh list
+./scripts/daemon-cli.sh tail <session_id>     # follow SSE
+./scripts/daemon-cli.sh kill <label>
+```
+
+Persist creds in `~/.discord-daemon-cli`.
+
+## Mock-mode endpoints (smoke testing only)
+
+When `DAEMON_DISCORD_MOCK=1`:
+
+- `POST /_mock/inject` — `{ thread_id, content, user?, user_id? }` — simulates an inbound thread message.
+
+Disabled otherwise.
+
 ## Limits not yet implemented
 
 - Permission relay (the `notifications/claude/channel/permission_request` flow with Allow/Deny buttons) — bundled plugin has it, this daemon doesn't yet. Add later if you want permission prompts via Discord across sessions.

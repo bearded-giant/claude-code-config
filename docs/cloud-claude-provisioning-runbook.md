@@ -71,6 +71,60 @@ Default path used by provision script: `~/.ssh/id_ed25519.pub`. Override with `S
 - Discord channel ID for session threads (numeric snowflake)
 - SSH keypair on laptop
 
+### 0.6 Local smoke test (no VPS, no Discord)
+
+Validates the daemon + session-mcp HTTP/SSE path before any VPS exists. Uses `DAEMON_DISCORD_MOCK=1` — stubs threads, skips gateway login.
+
+```bash
+cd discord-daemon
+bun install
+./scripts/smoke-test.sh
+```
+
+Expect 16 PASS lines + `✅ all smoke checks passed`. Verifies:
+- HTTP boot, auth gate (constant-time compare)
+- Session register / list / heartbeat / unregister
+- SSE inbox stream + hello event
+- Mock-mode inbound message injection
+- Send / edit / react
+- `chat_id` authorization (cross-session calls → 403)
+- Thread create + archive logged
+
+If this fails, the deployed setup will fail the same way. Fix here before provisioning.
+
+### 0.7 Local daemon dev-run against real Discord (optional)
+
+Once you have a bot token + channel ID, smoke the real gateway path locally:
+
+```bash
+mkdir -p ~/.claude/channels/discord
+cat > ~/.claude/channels/discord/.env <<'EOF'
+DISCORD_BOT_TOKEN=MTxxx...
+DISCORD_SESSIONS_CHANNEL_ID=12345...
+DAEMON_TOKEN=$(openssl rand -hex 32)
+DAEMON_BIND_HOST=127.0.0.1
+DAEMON_BIND_PORT=7777
+EOF
+chmod 600 ~/.claude/channels/discord/.env
+
+cd discord-daemon && bun run src/server.ts
+```
+
+Expect: `daemon: gateway connected as <bot>#XXXX` + `daemon: HTTP listening`.
+
+In another terminal, point a claude session at it:
+
+```bash
+export DISCORD_DAEMON_URL=http://127.0.0.1:7777
+export DISCORD_DAEMON_TOKEN=$(grep DAEMON_TOKEN ~/.claude/channels/discord/.env | cut -d= -f2)
+cd ~/some-project
+claude --channels   # if you have settings.json wired to session-mcp
+```
+
+A thread should appear in Discord. Pair, post in thread, see claude respond.
+
+Once VPS exists, the same `.env` moves to the VPS. Same code path.
+
 ---
 
 ## Phase 1 — Provision VPS

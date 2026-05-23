@@ -20,6 +20,10 @@ export const SESSIONS_CHANNEL_ID = process.env.DISCORD_SESSIONS_CHANNEL_ID ?? ''
 export const HEARTBEAT_STALE_MS = parseInt(process.env.HEARTBEAT_STALE_MS ?? '90000', 10)
 export const HEARTBEAT_SWEEP_MS = 15000
 
+// Skip Discord gateway entirely. HTTP API still served. Stub thread IDs.
+// Used by smoke tests + dev-mode runs without a real bot token.
+export const MOCK_DISCORD = process.env.DAEMON_DISCORD_MOCK === '1'
+
 // Load STATE_DIR/.env into process.env. Real env wins.
 export function loadEnvFile(): void {
   try {
@@ -41,5 +45,6 @@ export function getDiscordToken(): string {
 
 export function assertRequired(): void {
   if (!DAEMON_TOKEN) throw new Error('DAEMON_TOKEN env var required (shared secret between daemon and sessions).')
+  if (MOCK_DISCORD) return
   if (!SESSIONS_CHANNEL_ID) throw new Error('DISCORD_SESSIONS_CHANNEL_ID env var required (channel where session threads are created).')
 }

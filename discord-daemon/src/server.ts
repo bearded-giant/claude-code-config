@@ -15,8 +15,15 @@ loadEnvFile()
 assertRequired()
 
 const bot = new DiscordBot()
-await bot.start()
+
+// HTTP first — health probes + smoke tests don't need Discord up. Login runs
+// async; failures log but don't block boot. New sessions registering before
+// login completes still get queued through the registry.
 const http = startHTTP(bot)
+bot.start().catch(err => {
+  process.stderr.write(`daemon: Discord start failed: ${err}\n`)
+  process.stderr.write('daemon: HTTP still serving; fix credentials and restart\n')
+})
 
 const sweepTimer = setInterval(async () => {
   const dead = registry.sweepStale()
