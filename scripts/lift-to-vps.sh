@@ -51,13 +51,16 @@ echo "  remote:     $REMOTE"
 
 ssh "$REMOTE" "mkdir -p \"\$HOME/.claude/projects/$ENCODED\""
 rsync -av "$LOCAL_JSONL" "$REMOTE:.claude/projects/$ENCODED/"
+# Bump mtime so `dclaude --continue` picks the lifted session over any older
+# VPS-native session in the same cwd.
+ssh "$REMOTE" "touch \"\$HOME/.claude/projects/$ENCODED/$SESSION_ID.jsonl\""
 
 cat <<EOF
 
 Resume on VPS:
 
-  cvps                      # local → VPS tmux (mirrors cwd if cvps is the function form)
+  cvps                      # local → VPS tmux (mirrors cwd)
   cd $PWD                   # symlink resolves /Users/bryan → /home/bryan
-  dclaude --resume $SESSION_ID
+  dclaude --continue        # OR: dclaude --resume $SESSION_ID
 
 EOF
