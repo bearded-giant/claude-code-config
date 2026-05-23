@@ -294,12 +294,18 @@ cvps                     # local pane: ssh + attach VPS tmux "main"
 cd ~/dev/<project>
 dclaude                  # claude with Discord wired up
 # ... work ...
-bye                      # detach VPS tmux (claude keeps running) + exit ssh
 ```
 
-`bye` is shorthand for `C-b d` then `exit`. Use it whether claude is still running (you'll resume it later) or already closed (idempotent — tmux detach errors are swallowed). To kill claude for good first, `/exit` inside claude, then `bye`.
+Then disconnect — two cases:
 
-Detach VPS tmux directly (if you skipped `bye`):
+| You want to… | While claude is the foreground | Use |
+|---|---|---|
+| Walk away, keep claude running | yes — claude has the terminal | **`C-b d`** (key combo, intercepted by tmux directly). Then `exit` to close ssh. |
+| Done for the session, close everything | no — `/exit` claude first | **`bye`** at the resulting VPS shell prompt |
+
+`bye` is `tmux detach; exit` as a shell alias — it needs a shell prompt to run, so it's only usable when claude has already exited (or from a separate tmux pane). `C-b d` works regardless of what's in the pane because tmux captures the key sequence before the running process sees it.
+
+Other ways to detach if `C-b d` muscle memory hasn't formed:
 
 | Method | Keys |
 |---|---|
