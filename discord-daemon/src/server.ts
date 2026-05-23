@@ -3,6 +3,7 @@ import { loadEnvFile, assertRequired, HEARTBEAT_SWEEP_MS } from './config.ts'
 import { DiscordBot } from './discord.ts'
 import { startHTTP } from './http.ts'
 import { registry } from './registry.ts'
+import { alert } from './alerts.ts'
 
 process.on('unhandledRejection', err => {
   process.stderr.write(`daemon: unhandled rejection: ${err}\n`)
@@ -14,16 +15,26 @@ process.on('uncaughtException', err => {
 loadEnvFile()
 assertRequired()
 
+// Hydrate registry from disk first. Sessions persisted from prior boot show
+// up here; their session-mcp heartbeats will land in the loaded entries.
+const loaded = registry.loadFromDisk()
+if (loaded > 0) {
+  process.stderr.write(`daemon: hydrated ${loaded} session(s) from disk\n`)
+}
+
 const bot = new DiscordBot()
 
 // HTTP first — health probes + smoke tests don't need Discord up. Login runs
 // async; failures log but don't block boot. New sessions registering before
 // login completes still get queued through the registry.
 const http = startHTTP(bot)
-bot.start().catch(err => {
-  process.stderr.write(`daemon: Discord start failed: ${err}\n`)
-  process.stderr.write('daemon: HTTP still serving; fix credentials and restart\n')
-})
+bot.start()
+  .then(() => alert('info', `daemon started, hydrated=${loaded}`))
+  .catch(err => {
+    process.stderr.write(`daemon: Discord start failed: ${err}\n`)
+    process.stderr.write('daemon: HTTP still serving; fix credentials and restart\n')
+    void alert('error', `daemon Discord start failed: ${err}`)
+  })
 
 const sweepTimer = setInterval(async () => {
   const dead = registry.sweepStale()
@@ -39,7 +50,20 @@ async function shutdown(sig: string): Promise<void> {
   shuttingDown = true
   process.stderr.write(`daemon: ${sig} received, shutting down\n`)
   clearInterval(sweepTimer)
+  // Persist registry synchronously so the next boot can hydrate.
+  registry.persistNow()
   http.stop()
+  // Threads are NOT archived here — systemd restarts daemon by default and
+  // sessions reconnect via heartbeat. Stale entries get swept after restart
+  // if their session-mcp never reconnects.
+  // Override with DAEMON_ARCHIVE_ON_EXIT=1 for intentional teardown.
+  if (process.env.DAEMON_ARCHIVE_ON_EXIT === '1') {
+    process.stderr.write('daemon: archiving all session threads on exit\n')
+    for (const s of registry.list()) {
+      try { await bot.archiveSessionThread(s.threadId, `daemon ${sig}`) } catch {}
+    }
+  }
+  await alert('warn', `daemon ${sig} shutdown`)
   try { await bot.stop() } catch {}
   setTimeout(() => process.exit(0), 1000).unref()
 }

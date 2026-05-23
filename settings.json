@@ -64,6 +64,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/discord_bun_orphan_sweep.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/discord_patch_apply.py"
           }
         ]
       },

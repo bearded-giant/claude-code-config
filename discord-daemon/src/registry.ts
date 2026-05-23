@@ -1,30 +1,89 @@
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs'
+import { dirname } from 'path'
 import type { Session, InboxEvent } from './types.ts'
-import { HEARTBEAT_STALE_MS } from './config.ts'
+import { HEARTBEAT_STALE_MS, SESSIONS_FILE } from './config.ts'
 
 type Subscriber = (ev: InboxEvent) => void
 
 type Entry = Session & {
   subscribers: Set<Subscriber>
   buffered: InboxEvent[]
+  recentEvents: InboxEvent[]  // ring buffer for `tail`
 }
 
 const BUFFER_CAP = 200
+const RECENT_CAP = 50
+const PERSIST_DEBOUNCE_MS = 1000
+
+type PersistedEntry = Pick<Session, 'sessionId' | 'label' | 'cwd' | 'pid' | 'threadId' | 'registeredAt' | 'lastHeartbeat'>
 
 class Registry {
   private bySession = new Map<string, Entry>()
   private byThread = new Map<string, string>() // threadId -> sessionId
+  private persistTimer: ReturnType<typeof setTimeout> | null = null
+  private persistDirty = false
+
+  // Hydrate from disk. Returns loaded session count.
+  loadFromDisk(): number {
+    try {
+      const raw = readFileSync(SESSIONS_FILE, 'utf8')
+      const parsed = JSON.parse(raw) as { sessions: PersistedEntry[] }
+      for (const s of parsed.sessions ?? []) {
+        const entry: Entry = {
+          ...s,
+          subscribers: new Set(),
+          buffered: [],
+          recentEvents: [],
+        }
+        this.bySession.set(s.sessionId, entry)
+        this.byThread.set(s.threadId, s.sessionId)
+      }
+      return this.bySession.size
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        process.stderr.write(`daemon: failed to load sessions.json: ${err}\n`)
+      }
+      return 0
+    }
+  }
+
+  // Debounced persist. Coalesces bursts (heartbeats every 30s, but multiple
+  // sessions). Skip serializing subscribers/buffered — they're runtime-only.
+  private schedulePersist(): void {
+    this.persistDirty = true
+    if (this.persistTimer) return
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null
+      if (!this.persistDirty) return
+      this.persistDirty = false
+      this.persistNow()
+    }, PERSIST_DEBOUNCE_MS)
+  }
+
+  // Atomic write — tmp + rename. Called sync on shutdown.
+  persistNow(): void {
+    try {
+      mkdirSync(dirname(SESSIONS_FILE), { recursive: true })
+      const sessions: PersistedEntry[] = [...this.bySession.values()].map(entryToSession)
+      const tmp = SESSIONS_FILE + '.tmp'
+      writeFileSync(tmp, JSON.stringify({ sessions }, null, 2) + '\n', { mode: 0o600 })
+      renameSync(tmp, SESSIONS_FILE)
+    } catch (err) {
+      process.stderr.write(`daemon: failed to persist sessions.json: ${err}\n`)
+    }
+  }
 
   register(s: Omit<Session, 'registeredAt' | 'lastHeartbeat'>): Session {
     const now = Date.now()
     const existing = this.bySession.get(s.sessionId)
     if (existing) {
-      // re-register (claude restarted same session_id) — keep buffer, refresh meta
       existing.label = s.label
       existing.cwd = s.cwd
       existing.pid = s.pid
       existing.threadId = s.threadId
       existing.lastHeartbeat = now
       this.byThread.set(s.threadId, s.sessionId)
+      this.schedulePersist()
       return entryToSession(existing)
     }
     const entry: Entry = {
@@ -33,9 +92,11 @@ class Registry {
       lastHeartbeat: now,
       subscribers: new Set(),
       buffered: [],
+      recentEvents: [],
     }
     this.bySession.set(s.sessionId, entry)
     this.byThread.set(s.threadId, s.sessionId)
+    this.schedulePersist()
     return entryToSession(entry)
   }
 
@@ -48,6 +109,7 @@ class Registry {
       try { sub({ kind: 'message', message_id: '__closed__', chat_id: e.threadId, user: 'daemon', user_id: '0', ts: new Date().toISOString(), content: '__session_unregistered__' }) } catch {}
     }
     e.subscribers.clear()
+    this.schedulePersist()
     return entryToSession(e)
   }
 
@@ -55,6 +117,7 @@ class Registry {
     const e = this.bySession.get(sessionId)
     if (!e) return false
     e.lastHeartbeat = Date.now()
+    this.schedulePersist()
     return true
   }
 
@@ -73,10 +136,11 @@ class Registry {
     return [...this.bySession.values()].map(entryToSession)
   }
 
-  // Deliver event to all subscribers of session. Buffers if none connected.
   deliver(sessionId: string, ev: InboxEvent): boolean {
     const e = this.bySession.get(sessionId)
     if (!e) return false
+    e.recentEvents.push(ev)
+    if (e.recentEvents.length > RECENT_CAP) e.recentEvents.shift()
     if (e.subscribers.size === 0) {
       e.buffered.push(ev)
       if (e.buffered.length > BUFFER_CAP) e.buffered.shift()
@@ -88,7 +152,6 @@ class Registry {
     return true
   }
 
-  // Subscribe to inbox. Returns unsubscribe fn. Drains buffered events first.
   subscribe(sessionId: string, sub: Subscriber): (() => void) | null {
     const e = this.bySession.get(sessionId)
     if (!e) return null
@@ -98,6 +161,12 @@ class Registry {
     }
     e.buffered.length = 0
     return () => { e.subscribers.delete(sub) }
+  }
+
+  recent(sessionId: string, n: number): InboxEvent[] {
+    const e = this.bySession.get(sessionId)
+    if (!e) return []
+    return e.recentEvents.slice(-n)
   }
 
   sweepStale(): Session[] {
@@ -111,7 +180,7 @@ class Registry {
   }
 }
 
-function entryToSession(e: Entry): Session {
+function entryToSession(e: Entry | PersistedEntry): Session {
   return {
     sessionId: e.sessionId,
     label: e.label,

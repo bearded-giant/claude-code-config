@@ -83,6 +83,10 @@ export class DaemonClient {
     return this.req('POST', `/sessions/${encodeURIComponent(sessionId)}/download`, args)
   }
 
+  permissionRequest(sessionId: string, args: { request_id: string; tool_name: string; description: string; input_preview: string }): Promise<{ ok: true }> {
+    return this.req('POST', `/sessions/${encodeURIComponent(sessionId)}/permission_request`, args)
+  }
+
   // Open an SSE stream to /sessions/:id/inbox. Calls onEvent for each event.
   // Reconnects with backoff on failure. Returns a stop() function.
   openInbox(sessionId: string, onEvent: (ev: unknown) => void, onError?: (e: Error) => void): () => void {

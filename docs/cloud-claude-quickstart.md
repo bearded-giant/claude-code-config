@@ -44,6 +44,25 @@ Companion docs:
 
 Save all of these in a password manager before starting.
 
+### Tailscale ACL lockdown (do once)
+
+Default ACL allows all your devices to reach each other. If you ever share your tailnet (collaborators, family plan), tighten before that happens.
+
+1. Open <https://login.tailscale.com/admin/acls>
+2. Replace the default policy with:
+   ```json
+   {
+     "acls": [
+       {"action": "accept", "src": ["bryan@..."], "dst": ["bryan@...:*"]}
+     ],
+     "tagOwners": {"tag:vps": ["bryan@..."]},
+     "ssh": [
+       {"action": "accept", "src": ["bryan@..."], "dst": ["bryan@..."], "users": ["bryan", "root"]}
+     ]
+   }
+   ```
+   Replace `bryan@...` with your Tailscale identity. Now only you can reach `claude-vps`, even if you later add devices owned by others.
+
 ### Discord prep checklist
 
 1. Create a Discord application + bot in the developer portal.
@@ -199,6 +218,32 @@ ssh bryan@claude-vps '
 
 ---
 
+### 11. Hardening + ops (recommended)
+
+```bash
+# Auto security patches
+ssh bryan@claude-vps 'sudo bash -s' < scripts/setup-unattended-upgrades.sh
+
+# Backups (encrypted with age, retained 14)
+age-keygen -o ~/.config/age/discord-daemon.key
+AGE_RECIPIENT=$(grep "public key" ~/.config/age/discord-daemon.key | awk -F': ' '{print $2}') \
+  ./scripts/backup-daemon-state.sh claude-vps
+
+# Add to laptop crontab for weekly:
+#   0 3 * * 0 AGE_RECIPIENT=age1... /Users/bryan/dev/claude-code-config/scripts/backup-daemon-state.sh claude-vps
+
+# Optional: alert webhook for gateway up/down events
+ssh bryan@claude-vps 'echo "DAEMON_ALERT_WEBHOOK=https://ntfy.sh/your-topic" >> ~/.claude/channels/discord/.env && sudo systemctl restart discord-daemon'
+
+# Session restore on VPS reboot
+ssh bryan@claude-vps 'cat > ~/.claude/vps-sessions.yml <<EOF
+- cwd: ~/dev/foo
+  label: foo
+- cwd: ~/dev/bar
+EOF
+~/dev/claude-code-config/scripts/restore-vps-tmux.sh'
+```
+
 ## Day-to-day use
 
 ```bash
@@ -213,7 +258,33 @@ claude --dangerously-load-development-channels server:discord
 `Ctrl-b d` to detach the tmux session — claude keeps running on the VPS.
 Reopen later with the same `ssh + tmux attach`.
 
-Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands (`list`, `kill <label>`, `status <label>`).
+Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
+
+**DM control commands:**
+
+| Command | What |
+|---|---|
+| `list` | active sessions + cwd + heartbeat ages |
+| `status <label>` | one-session detail |
+| `send <label> <text>` | post into a session's thread without opening it |
+| `tail <label> [n]` | last N inbox events (default 10) |
+| `kill <label>` | unregister + archive thread |
+| `restart <label>` | inject restart signal into session inbox |
+| `help` | this list |
+
+**Bringing VPS-side edits back:**
+
+```bash
+./scripts/pull-from-vps.sh foo   # commit+push on VPS if dirty, then git pull locally
+```
+
+**Metrics:**
+
+```bash
+curl http://claude-vps:7777/metrics   # Prometheus text (no auth, tailnet-only)
+```
+
+Useful gauges/counters: `daemon_sessions_active`, `daemon_gateway_connected`, `daemon_messages_received`, `daemon_permission_decisions`, `daemon_uptime_seconds`.
 
 ---
 

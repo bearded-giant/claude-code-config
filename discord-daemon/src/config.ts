@@ -7,6 +7,11 @@ export const ACCESS_FILE = join(STATE_DIR, 'access.json')
 export const APPROVED_DIR = join(STATE_DIR, 'approved')
 export const INBOX_DIR = join(STATE_DIR, 'inbox')
 export const ENV_FILE = join(STATE_DIR, '.env')
+export const SESSIONS_FILE = join(STATE_DIR, 'sessions.json')
+
+// Optional outbound webhook for daemon events (gateway up/down, sessions evicted).
+// Compatible with ntfy.sh, Discord webhooks (with ?wait=true), Pushover, etc.
+export const ALERT_WEBHOOK = process.env.DAEMON_ALERT_WEBHOOK ?? ''
 
 export const BIND_HOST = process.env.DAEMON_BIND_HOST ?? '127.0.0.1'
 export const BIND_PORT = parseInt(process.env.DAEMON_BIND_PORT ?? '7777', 10)

@@ -117,6 +117,33 @@ assert_eq "$(echo "$EDIT" | jq -r .id)" "$MID" "edit returns same id"
 echo "==> react"
 assert_eq "$(curl_json POST "/sessions/$SID/react" "{\"chat_id\":\"$THREAD\",\"message_id\":\"$MID\",\"emoji\":\"👍\"}" | jq -r .ok)" "true" "react"
 
+echo "==> /metrics (unauthenticated, returns Prometheus text)"
+METRICS=$(curl -s "$URL/metrics")
+echo "$METRICS" | grep -q "daemon_sessions_active 1" && pass "/metrics sessions_active=1" || fail "/metrics missing sessions_active=1"
+echo "$METRICS" | grep -q "daemon_uptime_seconds" && pass "/metrics uptime_seconds present" || fail "/metrics uptime_seconds missing"
+
+echo "==> permission_request flow"
+RID="req-$(openssl rand -hex 4)"
+curl_json POST "/sessions/$SID/permission_request" "{\"request_id\":\"$RID\",\"tool_name\":\"Bash\",\"description\":\"run ls\",\"input_preview\":\"{\\\"cmd\\\":\\\"ls\\\"}\"}" >/dev/null
+grep -q "permission DM" "$TMP/daemon.log" && pass "permission_request dispatched (mock log)" || fail "permission_request not logged"
+
+echo "==> persistence (sessions.json)"
+[ -f "$DISCORD_STATE_DIR/sessions.json" ] && pass "sessions.json exists" || { sleep 1.5; [ -f "$DISCORD_STATE_DIR/sessions.json" ] && pass "sessions.json exists (after debounce)" || fail "no sessions.json"; }
+grep -q "$SID" "$DISCORD_STATE_DIR/sessions.json" && pass "session_id in sessions.json" || fail "session_id missing from sessions.json"
+
+echo "==> restart daemon, expect hydration"
+kill "$DAEMON_PID"; wait "$DAEMON_PID" 2>/dev/null || true
+DAEMON_DISCORD_MOCK=1 DAEMON_TOKEN="$TOKEN" DAEMON_BIND_HOST=127.0.0.1 DAEMON_BIND_PORT="$PORT" \
+  bun run src/server.ts >>"$TMP/daemon.log" 2>&1 &
+DAEMON_PID=$!
+for i in {1..40}; do
+  if curl -sf -H "x-daemon-token: $TOKEN" "$URL/health" >/dev/null 2>&1; then break; fi
+  sleep 0.1
+done
+COUNT=$(curl_json GET /sessions | jq '.sessions | length')
+assert_eq "$COUNT" "1" "hydrated from disk"
+grep -q "hydrated" "$TMP/daemon.log" && pass "hydration log present" || fail "no hydration log"
+
 echo "==> unregister"
 assert_eq "$(curl_json DELETE "/sessions/$SID" | jq -r .ok)" "true" "unregister"
 assert_eq "$(curl_json GET /sessions | jq '.sessions | length')" "0" "list empty after unregister"

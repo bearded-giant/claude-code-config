@@ -14,6 +14,7 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
 import { DaemonClient } from './daemon-client.ts'
 import { randomUUID } from 'crypto'
 import { basename } from 'path'
@@ -44,7 +45,11 @@ const mcp = new Server(
   {
     capabilities: {
       tools: {},
-      experimental: { 'claude/channel': {} },
+      experimental: {
+        'claude/channel': {},
+        // Asserts we authenticate the replier — daemon gates on access.allowFrom.
+        'claude/channel/permission': {},
+      },
     },
     instructions: [
       'The sender reads Discord, not this session. Anything you want them to see must go through the reply tool — your transcript output never reaches their chat.',
@@ -233,8 +238,38 @@ function routeInbound(ev: unknown): void {
       method: 'notifications/claude/channel',
       params: { content: String(e.content ?? ''), meta },
     })
+    return
+  }
+  if (e.kind === 'permission_decision') {
+    void mcp.notification({
+      method: 'notifications/claude/channel/permission',
+      params: { request_id: String(e.request_id), behavior: String(e.behavior) },
+    })
+    return
   }
 }
+
+// Receive permission_request from Claude → forward to daemon, which DMs
+// allowlisted users with Allow/Deny buttons. The daemon's button click
+// delivers a permission_decision back via SSE → forwarded to Claude above.
+mcp.setNotificationHandler(
+  z.object({
+    method: z.literal('notifications/claude/channel/permission_request'),
+    params: z.object({
+      request_id: z.string(),
+      tool_name: z.string(),
+      description: z.string(),
+      input_preview: z.string(),
+    }),
+  }),
+  async ({ params }) => {
+    try {
+      await daemon.permissionRequest(SESSION_ID, params)
+    } catch (err) {
+      process.stderr.write(`session-mcp: permission_request forward failed: ${err}\n`)
+    }
+  },
+)
 
 void registerAndStream().catch(err => {
   process.stderr.write(`session-mcp: register failed: ${err}\n`)

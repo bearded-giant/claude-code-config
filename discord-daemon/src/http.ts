@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { DAEMON_TOKEN, BIND_HOST, BIND_PORT, MOCK_DISCORD } from './config.ts'
 import { registry } from './registry.ts'
+import { metrics } from './metrics.ts'
 import type { DiscordBot } from './discord.ts'
 
 const RegisterBody = z.object({
@@ -39,6 +40,13 @@ const DownloadBody = z.object({
   message_id: z.string().min(1),
 })
 
+const PermissionRequestBody = z.object({
+  request_id: z.string().min(1),
+  tool_name: z.string().min(1),
+  description: z.string(),
+  input_preview: z.string(),
+})
+
 export function startHTTP(bot: DiscordBot): { stop: () => void } {
   const server = Bun.serve({
     hostname: BIND_HOST,
@@ -52,6 +60,13 @@ export function startHTTP(bot: DiscordBot): { stop: () => void } {
 async function handle(req: Request, bot: DiscordBot): Promise<Response> {
   const url = new URL(req.url)
   const path = url.pathname
+
+  // /metrics is unauthenticated — Prometheus scrapers don't carry tokens.
+  // Daemon binds to loopback + tailnet only, so unauthenticated is safe here.
+  if (req.method === 'GET' && path === '/metrics') {
+    const body = metrics.render({ sessions_active: registry.list().length })
+    return new Response(body, { headers: { 'Content-Type': 'text/plain; version=0.0.4' } })
+  }
 
   // Auth gate
   if (!checkAuth(req)) return json({ error: 'unauthorized' }, 401)
@@ -91,6 +106,7 @@ async function handle(req: Request, bot: DiscordBot): Promise<Response> {
     if (req.method === 'POST' && tail === 'react') return await reactMessage(sessionId, req, bot)
     if (req.method === 'POST' && tail === 'fetch') return await fetchMessages(sessionId, req, bot)
     if (req.method === 'POST' && tail === 'download') return await downloadAttachments(sessionId, req, bot)
+    if (req.method === 'POST' && tail === 'permission_request') return await permissionRequest(sessionId, req, bot)
     if (req.method === 'GET' && tail === 'inbox') return inboxStream(sessionId)
   }
 
@@ -201,6 +217,18 @@ async function fetchMessages(sessionId: string, req: Request, bot: DiscordBot): 
   try {
     const text = await bot.fetchMessages(body.chat_id, body.limit ?? 20)
     return json({ text })
+  } catch (e) {
+    return json({ error: (e as Error).message }, 500)
+  }
+}
+
+async function permissionRequest(sessionId: string, req: Request, bot: DiscordBot): Promise<Response> {
+  let body: z.infer<typeof PermissionRequestBody>
+  try { body = PermissionRequestBody.parse(await req.json()) } catch (err) { return json({ error: (err as Error).message }, 400) }
+  if (!registry.get(sessionId)) return json({ error: 'no such session' }, 404)
+  try {
+    await bot.dispatchPermissionRequest({ sessionId, ...body })
+    return json({ ok: true })
   } catch (e) {
     return json({ error: (e as Error).message }, 500)
   }

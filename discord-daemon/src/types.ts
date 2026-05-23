@@ -47,7 +47,8 @@ export type InboxEvent =
       attachment_count?: number
     }
   | {
-      kind: 'permission_reply'
+      kind: 'permission_decision'
+      ts: string
       request_id: string
       behavior: 'allow' | 'deny'
     }

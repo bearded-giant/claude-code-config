@@ -3,10 +3,14 @@ import {
   GatewayIntentBits,
   Partials,
   ChannelType,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
   type Message,
   type Attachment,
   type ThreadChannel,
   type TextChannel,
+  type Interaction,
 } from 'discord.js'
 import { mkdirSync, writeFileSync, statSync, realpathSync } from 'fs'
 import { join, sep } from 'path'
@@ -14,16 +18,28 @@ import { STATE_DIR, INBOX_DIR, SESSIONS_CHANNEL_ID, getDiscordToken, MOCK_DISCOR
 import { readAccess, saveAccess, pruneExpired, drainApprovals } from './access.ts'
 import { registry } from './registry.ts'
 import { handleControlDM } from './control.ts'
+import { alert } from './alerts.ts'
+import { metrics } from './metrics.ts'
 import { randomBytes } from 'crypto'
 
 const MAX_CHUNK_LIMIT = 2000
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 const RECENT_SENT_CAP = 200
 
+type PendingPermission = {
+  sessionId: string
+  tool_name: string
+  description: string
+  input_preview: string
+  createdAt: number
+}
+
 export class DiscordBot {
   client: Client
   // Track message IDs we recently sent → reply-to-bot in threads counts as us.
   private recentSentIds = new Set<string>()
+  // Permission requests pending button click. Keyed by request_id.
+  private pendingPermissions = new Map<string, PendingPermission>()
 
   constructor() {
     this.client = new Client({
@@ -38,15 +54,44 @@ export class DiscordBot {
 
     this.client.on('error', err => {
       process.stderr.write(`daemon: client error: ${err}\n`)
+      metrics.incr('gateway_errors')
     })
 
     this.client.on('messageCreate', msg => {
       if (msg.author.bot) return
-      this.handleInbound(msg).catch(e => process.stderr.write(`daemon: handleInbound failed: ${e}\n`))
+      metrics.incr('messages_received')
+      this.handleInbound(msg).catch(e => {
+        process.stderr.write(`daemon: handleInbound failed: ${e}\n`)
+        metrics.incr('inbound_errors')
+      })
     })
 
     this.client.once('ready', c => {
       process.stderr.write(`daemon: gateway connected as ${c.user.tag}\n`)
+      metrics.setGauge('gateway_connected', 1)
+      void alert('info', `gateway connected as ${c.user.tag}`)
+    })
+
+    this.client.on('interactionCreate', (interaction: Interaction) => {
+      if (!interaction.isButton()) return
+      void this.handlePermissionButton(interaction).catch(err =>
+        process.stderr.write(`daemon: permission button error: ${err}\n`)
+      )
+    })
+
+    // Gateway lifecycle alerts. shardDisconnect fires on any disconnect.
+    this.client.on('shardDisconnect', (event, shardId) => {
+      process.stderr.write(`daemon: shard ${shardId} disconnected (code ${event.code})\n`)
+      metrics.setGauge('gateway_connected', 0)
+      void alert('warn', `gateway disconnect shard=${shardId} code=${event.code}`)
+    })
+    this.client.on('shardReconnecting', shardId => {
+      process.stderr.write(`daemon: shard ${shardId} reconnecting\n`)
+    })
+    this.client.on('shardResume', (shardId) => {
+      process.stderr.write(`daemon: shard ${shardId} resumed\n`)
+      metrics.setGauge('gateway_connected', 1)
+      void alert('info', `gateway resumed shard=${shardId}`)
     })
   }
 
@@ -198,6 +243,110 @@ export class DiscordBot {
     await user.send(text)
   }
 
+  // Permission relay: store pending + DM allowlisted users with Allow/Deny buttons.
+  async dispatchPermissionRequest(args: {
+    sessionId: string
+    request_id: string
+    tool_name: string
+    description: string
+    input_preview: string
+  }): Promise<void> {
+    this.pendingPermissions.set(args.request_id, {
+      sessionId: args.sessionId,
+      tool_name: args.tool_name,
+      description: args.description,
+      input_preview: args.input_preview,
+      createdAt: Date.now(),
+    })
+    metrics.incr('permission_requests')
+    const access = readAccess()
+    const text = `🔐 Permission: \`${args.tool_name}\` (session \`${this.sessionLabel(args.sessionId)}\`)`
+    if (MOCK_DISCORD) {
+      process.stderr.write(`daemon[mock]: permission DM (would go to ${access.allowFrom.length} users): ${text}\n`)
+      return
+    }
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`perm:more:${args.request_id}`)
+        .setLabel('See more')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`perm:allow:${args.request_id}`)
+        .setLabel('Allow')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`perm:deny:${args.request_id}`)
+        .setLabel('Deny')
+        .setEmoji('❌')
+        .setStyle(ButtonStyle.Danger),
+    )
+    for (const userId of access.allowFrom) {
+      void (async () => {
+        try {
+          const user = await this.client.users.fetch(userId)
+          await user.send({ content: text, components: [row] })
+        } catch (err) {
+          process.stderr.write(`daemon: permission DM to ${userId} failed: ${err}\n`)
+        }
+      })()
+    }
+  }
+
+  private async handlePermissionButton(interaction: Interaction): Promise<void> {
+    if (!interaction.isButton()) return
+    const m = /^perm:(allow|deny|more):(.+)$/.exec(interaction.customId)
+    if (!m) return
+    const access = readAccess()
+    if (!access.allowFrom.includes(interaction.user.id)) {
+      await interaction.reply({ content: 'Not authorized.', ephemeral: true }).catch(() => {})
+      return
+    }
+    const [, behavior, request_id] = m
+    if (!request_id) return
+    const pending = this.pendingPermissions.get(request_id)
+
+    if (behavior === 'more') {
+      if (!pending) {
+        await interaction.reply({ content: 'Details no longer available.', ephemeral: true }).catch(() => {})
+        return
+      }
+      let prettyInput: string
+      try { prettyInput = JSON.stringify(JSON.parse(pending.input_preview), null, 2) }
+      catch { prettyInput = pending.input_preview }
+      const expanded = `🔐 Permission: \`${pending.tool_name}\` (session \`${this.sessionLabel(pending.sessionId)}\`)\n\ndescription: ${pending.description}\n\ninput_preview:\n\`\`\`json\n${prettyInput}\n\`\`\``
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`perm:allow:${request_id}`).setLabel('Allow').setEmoji('✅').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`perm:deny:${request_id}`).setLabel('Deny').setEmoji('❌').setStyle(ButtonStyle.Danger),
+      )
+      await interaction.update({ content: expanded.slice(0, 1900), components: [row] }).catch(() => {})
+      return
+    }
+
+    // allow / deny
+    if (!pending) {
+      await interaction.reply({ content: 'Request expired or already answered.', ephemeral: true }).catch(() => {})
+      return
+    }
+    registry.deliver(pending.sessionId, {
+      kind: 'permission_decision',
+      ts: new Date().toISOString(),
+      request_id,
+      behavior: behavior as 'allow' | 'deny',
+    })
+    this.pendingPermissions.delete(request_id)
+    metrics.incr('permission_decisions')
+    const label = behavior === 'allow' ? '✅ Allowed' : '❌ Denied'
+    await interaction.update({
+      content: `${interaction.message.content}\n\n${label} by ${interaction.user.username}`,
+      components: [],
+    }).catch(() => {})
+  }
+
+  private sessionLabel(sessionId: string): string {
+    return registry.get(sessionId)?.label ?? sessionId.slice(0, 8)
+  }
+
   // Mock-only helper for smoke tests: simulate an inbound thread message.
   injectMockMessage(threadId: string, content: string, user = 'tester', userId = '1'): void {
     if (!MOCK_DISCORD) throw new Error('injectMockMessage only allowed in MOCK_DISCORD mode')
@@ -266,7 +415,7 @@ export class DiscordBot {
 
     if (access.allowFrom.includes(senderId)) {
       // Allowlisted user → control command
-      const reply = await handleControlDM(msg.content.trim(), senderId)
+      const reply = await handleControlDM(msg.content.trim(), senderId, this)
       if (reply) {
         try { await msg.reply(reply) } catch (err) { process.stderr.write(`daemon: control reply failed: ${err}\n`) }
       }
