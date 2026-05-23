@@ -145,7 +145,9 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 │ │   src/                                                          │    │
 │ │     server.ts    entrypoint, lifecycle                          │    │
 │ │     http.ts      Bun.serve REST + SSE                           │    │
-│ │     registry.ts  in-memory Map<sessionId, {threadId, ...}>      │    │
+│ │     registry.ts  in-memory Map<sessionId, {threadId, state, ..}>│    │
+│ │                  state ∈ {active, dormant}; dormant retains     │    │
+│ │                  thread mapping for resume                      │    │
 │ │     discord.ts   discord.js client, gateway                     │    │
 │ │     control.ts   DM command parsing (list/status/kill)          │    │
 │ │     access.ts    access.json read/write (allowlist)             │    │
@@ -176,19 +178,27 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 ```
 claude --channels server:discord
   └─► spawn session-mcp
+        └─► session_id = `cwd-<sha1(cwd)[:16]>`  (stable per cwd; override w/ CLAUDE_SESSION_ID)
         └─► POST /sessions {session_id, label, cwd, pid}
-              └─► daemon.discord.createSessionThread(label, cwd)
-                    └─► thread "<label>-<id>" appears in Discord
-              └─► daemon.registry.register(...)
+              ├─► registry.get(session_id) hit?
+              │     ├─ yes  → reuse existing threadId, flip state → 'active'
+              │     └─ no   → daemon.discord.createSessionThread(label, cwd)
+              │                  └─► thread "<label>-<id>" appears in Discord
               └─► returns {threadId} to session-mcp
         └─► open SSE /sessions/:id/inbox  (long-lived)
         └─► heartbeat every 30s
 
-claude exits / SIGTERM
+claude exits / SIGTERM   (soft close — preserves thread mapping)
   └─► session-mcp DELETE /sessions/:id
-        └─► daemon.discord.archiveSessionThread(threadId)
-              └─► thread archived in Discord
-        └─► registry drops entry, closes SSE
+        └─► registry.markDormant(session_id)
+              ├─ state → 'dormant', subscribers cleared, entry retained
+              └─ thread archived in Discord (auto-unarchives on next send)
+
+claude --resume in same cwd  →  same session_id  →  same threadId  →  same Discord thread
+
+Hard removal (intentional teardown):
+  DM `kill <label>` → registry.delete(session_id) + archive thread. Next register
+  in that cwd will create a fresh thread.
 ```
 
 ### Inbound message (Discord → claude)
@@ -225,9 +235,9 @@ Discord user DMs the bot
   └─► daemon.handleDM(msg)
         └─► access.allowFrom check
         └─► control.handleControlDM(text)
-              └─► "list" → registry.list() → markdown table
-              └─► "kill <label>" → registry.unregister + thread archive
-              └─► "status <label>" → registry.get + format
+              └─► "list" → registry.list() → markdown table (active + dormant tagged)
+              └─► "kill <label>" → registry.delete (hard) + thread archive
+              └─► "status <label>" → registry.get + format (includes state)
         └─► msg.reply(text)
 ```
 
@@ -278,7 +288,8 @@ Discord user DMs the bot
 | Reopen laptop | `ssh bryan@claude-vps; tmux attach -t main` → exact prior state. |
 | Daemon crashes | systemd restarts (Restart=always, 5s). Sessions reconnect SSE on backoff. |
 | Discord gateway drops | discord.js auto-reconnects. SessionsMC keep heartbeating. |
-| Claude session crashes | Heartbeat stops. After 90s daemon evicts the session + archives its thread. |
+| Claude session crashes | Heartbeat stops. After 90s daemon marks session dormant + archives its thread (thread mapping retained — next `dclaude` in same cwd reattaches). |
+| Claude session ended normally + resumed (`claude --resume`) | Same cwd → same `session_id` → daemon reuses existing thread. Archive auto-clears on first outbound send. |
 | VPS reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
 | Mutagen network drop | Reconnects automatically. Edits queued. No data loss. |
 | Both sides edit same file | one-way-safe halts propagation → conflict shown. Manual resolve. |

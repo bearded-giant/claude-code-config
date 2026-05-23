@@ -297,6 +297,12 @@ exit                     # exit ssh
 
 Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable on the VPS for non-Discord work.
 
+### Thread reuse on resume
+
+The daemon derives a stable `session_id` from the cwd (sha1 prefix). Exiting claude marks the session **dormant** but keeps the thread mapping; relaunching `dclaude` in the same cwd (or `claude --resume`) reattaches to the same Discord thread. Discord auto-unarchives on the first outbound message.
+
+Worktree-per-project pattern is the assumption — two concurrent claude sessions in the same cwd would collide on the same thread. Use `kill <label>` via DM to hard-delete (drops the mapping so the next launch creates a fresh thread). Override the cwd-derived id with `CLAUDE_SESSION_ID=<id> dclaude` if you need a different scheme.
+
 Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
 
 **DM control commands:**
@@ -307,7 +313,7 @@ Phone workflow: open Discord, find the thread, post a message — the VPS claude
 | `status <label>` | one-session detail |
 | `send <label> <text>` | post into a session's thread without opening it |
 | `tail <label> [n]` | last N inbox events (default 10) |
-| `kill <label>` | unregister + archive thread |
+| `kill <label>` | hard-delete session + archive thread (drops thread mapping; next launch in same cwd creates a fresh thread) |
 | `restart <label>` | inject restart signal into session inbox |
 | `help` | this list |
 
