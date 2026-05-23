@@ -55,6 +55,17 @@ rsync -av "$LOCAL_JSONL" "$REMOTE:.claude/projects/$ENCODED/"
 # VPS-native session in the same cwd.
 ssh "$REMOTE" "touch \"\$HOME/.claude/projects/$ENCODED/$SESSION_ID.jsonl\""
 
+# Append matching history.jsonl entries so claude's --resume picker enumerates
+# the lifted session. Without these, the conversation jsonl alone is invisible.
+HISTORY_LINES=$(grep -F "\"sessionId\":\"$SESSION_ID\"" "$HOME/.claude/history.jsonl" 2>/dev/null || true)
+if [ -n "$HISTORY_LINES" ]; then
+  COUNT=$(printf '%s\n' "$HISTORY_LINES" | wc -l | tr -d ' ')
+  echo "  appending $COUNT history.jsonl entries → $REMOTE"
+  printf '%s\n' "$HISTORY_LINES" | ssh "$REMOTE" 'cat >> ~/.claude/history.jsonl'
+else
+  echo "  warning: no history.jsonl entries match session $SESSION_ID (resume picker may not see it)"
+fi
+
 cat <<EOF
 
 Resume on VPS:
