@@ -175,6 +175,18 @@ MUST NOT spawn agents for:
 
 Bot config and access policy: `~/.claude/channels/discord/`. Inbound DMs don't surface yet — use `fetch_messages` on DM channel `1485390190523584542`, reply via `reply`. Full setup in discord plugin docs.
 
+### Slash commands from Discord channel messages
+
+Discord messages arrive as channel notifications (not as prompts), so `/<command>` text typed in Discord is NOT auto-dispatched by claude's slash command parser. When an inbound Discord channel message starts with `/<name>` followed by optional args, treat it as a request to run that slash command:
+
+1. Look up the command file. Search order:
+   - `~/.claude/commands/<name>.md`
+   - `~/.claude/plugins/**/commands/<name>.md`
+   - `~/.claude/skills/<name>/SKILL.md` (skill auto-fired by command name)
+2. Read the file. Execute its instructions in the current conversation, substituting args from the Discord message into the command's `$ARGUMENTS` / arg placeholders.
+3. Built-in commands (`/exit`, `/clear`, `/resume`, `/init`, `/login`) can't be triggered this way — they're hardcoded in the claude CLI, not file-backed. Reply via the `reply` tool explaining the limitation.
+4. If no command file matches, reply via the `reply` tool — don't silently ignore.
+
 ## Concise Output Rules
 
 | Ask Type | Format |

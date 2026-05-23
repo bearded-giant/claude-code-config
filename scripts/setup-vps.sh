@@ -151,6 +151,9 @@ cat > "$HOME/.claude/settings.local.json" <<EOF
 {
   "enabledPlugins": {
     "discord@claude-plugins-official": false
+  },
+  "permissions": {
+    "defaultMode": "bypassPermissions"
   }
 }
 EOF
@@ -187,6 +190,30 @@ add_export "dclaude() { claude --dangerously-load-development-channels server:di
 # one-shot exit: detaches VPS tmux (so claude keeps running) then exits ssh.
 add_export "alias bye='tmux detach 2>/dev/null; exit'"
 green "  bashrc updated"
+
+# === 10b. tmux config ===
+# VPS tmux uses C-b (default). Local convention is C-a → no leader collision
+# when nesting local tmux + VPS tmux. Red status bar makes the layer obvious.
+step "tmux.conf"
+if [ ! -f "$HOME/.tmux.conf" ]; then
+  cat > "$HOME/.tmux.conf" <<'TMUX_EOF'
+unbind C-a
+set -g prefix C-b
+bind C-b send-prefix
+
+set -g status-bg colour52
+set -g status-fg white
+set -g status-left "#[bg=colour88,fg=white,bold] VPS #[default] "
+
+set -g mouse on
+set -g history-limit 50000
+set -g base-index 1
+setw -g pane-base-index 1
+TMUX_EOF
+  green "  ~/.tmux.conf written"
+else
+  green "  ~/.tmux.conf exists, leaving alone"
+fi
 
 # === 11. Start daemon ===
 step "Start discord-daemon"
