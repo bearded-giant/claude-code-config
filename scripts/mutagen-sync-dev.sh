@@ -28,11 +28,14 @@ SESSION_NAME="dev"
 LOCAL_PATH="$HOME/dev"
 REMOTE_PATH="/home/bryan/dev"
 
-# Sync mode: one-way-safe — alpha (laptop) is authoritative.
-# Beta (VPS) can have its own files (settings.json theme, cwd-local state) but
-# cannot ever push changes back to alpha. Edits to a file existing on both
-# sides propagate alpha→beta only.
-SYNC_MODE="one-way-safe"
+# Sync mode: two-way-resolved — both sides can write. On conflict, the side
+# with the newer mtime wins. Deletes propagate. This lets dclaude on the VPS
+# edit code that mutagen syncs back to the laptop for git commit + push.
+#
+# (Previously one-way-safe; flipped because VPS-side dclaude edits otherwise
+# get stranded on the VPS and git push from there requires per-remote auth
+# the VPS can't always satisfy — e.g. corporate GitLab behind ZTNA.)
+SYNC_MODE="two-way-resolved"
 
 # Excludes — derived from runbook lessons. Path-style (with trailing slash)
 # for directories; plain name for any-depth matching.

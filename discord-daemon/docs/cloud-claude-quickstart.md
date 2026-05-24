@@ -9,7 +9,32 @@ Companion docs:
 
 ---
 
-## Read this first: worktrees, not branches
+## Read this first: how state moves
+
+The system has three layers of state. Knowing what lives where prevents data loss.
+
+| State | Lives on | Authority |
+|---|---|---|
+| **Code files** (your projects under `~/dev/`) | Laptop ↔ VPS via Mutagen `two-way-resolved` | Last writer wins (newest mtime). Edit on either side; the other catches up within seconds. |
+| **Git remotes** (push, pull, signing) | Laptop only | VPS has no GitLab/Twingate/GPG credentials. All `git push` runs from the laptop. |
+| **Claude session state** (jsonl transcripts, file-history) | Per-host; lifted laptop → VPS on demand via `lift` | One-way (laptop → VPS). Never go VPS → laptop with chat history. |
+
+Canonical flow for cross-host work:
+
+```
+laptop                                   VPS
+  edit code  ──┐                  ┌──  edit code via dclaude
+               │   Mutagen 2-way  │
+               └──────────────────┘
+  git push to gitlab/github
+  (only laptop has remotes auth)
+
+  claude session  ──┐ lift script ┐
+                    │ (one-way)   │
+                    └─────────────►  dclaude --continue
+```
+
+## Worktrees, not branches
 
 The session-to-thread mapping is **one Discord thread per cwd**. The daemon derives a stable `session_id` from the working directory of the launched claude process, so a relaunch in the same directory resumes the same thread (see [thread reuse](#thread-reuse-on-resume)).
 
@@ -234,11 +259,22 @@ ssh bryan@claude-vps '
 '
 ```
 
-### 9. (Optional) Mutagen file sync
+### 9. (Optional, recommended) Mutagen file sync — bi-directional
 
 ```bash
 ./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)"
 mutagen sync list dev          # confirm "Watching for changes" eventually
+```
+
+Sync mode is `two-way-resolved`: both hosts can write, conflicts go to newest mtime. This is what makes the **VPS → laptop → git push** loop work — VPS-side dclaude edits sync back to laptop, where you commit + push to your gitlab/github remotes using laptop-side credentials.
+
+Why bi-directional matters: the VPS deliberately does **not** carry your work credentials (no GitLab token, no Twingate-gated corporate VPN, no GPG signing key). Git push happens only from the laptop. If the sync were one-way (laptop→VPS only), VPS-side edits would be stranded on the VPS.
+
+If you already have an older one-way `dev` session, recreate:
+
+```bash
+mutagen sync terminate dev
+./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)" --recreate
 ```
 
 ### 10. (Optional) Personal claude config on VPS
@@ -378,6 +414,19 @@ Phone workflow: open Discord, find the thread, post a message — the VPS claude
 
 **Bringing VPS-side edits back:**
 
+VPS edits flow back via Mutagen (`two-way-resolved`) automatically. Commit + push happens on the **laptop** using your normal credentials (GitLab token / GPG key / Twingate-gated corporate gitlab / signing config). The VPS deliberately holds none of those.
+
+```bash
+# on VPS dclaude: edit, save, /exit
+# Mutagen syncs change back to laptop within seconds
+# on laptop:
+cd ~/dev/<project>
+git status              # see what dclaude did
+git add -A && git commit -m '...' && git push
+```
+
+For repos where you ran the VPS-side `git commit` (e.g. github personal repo with deploy key on VPS), use the older laptop-pull helper:
+
 ```bash
 ./scripts/pull-from-vps.sh foo   # commit+push on VPS if dirty, then git pull locally
 ```
@@ -398,9 +447,9 @@ What lift moves:
 - `~/.claude/file-history/<uuid>/` if present — per-session edit revision store.
 - Bumps mtime on the destination jsonl so `dclaude --continue` picks the lifted session over any older VPS-side session in that cwd.
 
-Repo files travel through your normal sync (mutagen / git push+pull). Direction is **laptop → VPS only**: re-running `lift` after working on VPS will silently overwrite VPS-side edits to that session's jsonl. If you've made changes on VPS that matter, sync them back first.
+Repo files now travel both ways via Mutagen (`two-way-resolved`). The lift script remains **laptop → VPS only** for chat transcripts — re-running `lift` after working on VPS will silently overwrite VPS-side jsonl appends made by `dclaude --continue`. If you want the VPS-side conversation history kept, don't re-lift; just continue from where you left off in whichever host is current.
 
-Round-trip workflow (local ↔ VPS, one-way each direction):
+Round-trip workflow (code bi-directional, chat history laptop→VPS only):
 
 ```bash
 # work locally

@@ -1,6 +1,6 @@
 # Cloud Claude — Architecture
 
-Multi-session Claude Code on a remote VPS, controllable from a phone via Discord, with the laptop as the canonical source of truth.
+Multi-session Claude Code on a remote VPS, controllable from a phone via Discord, with the laptop as the git/identity source of truth. File state is **bi-directional** — edits on either host land on the other via Mutagen `two-way-resolved`. Git remotes (push/pull, signing keys, ZTNA-gated corporate repos) live on the laptop; the VPS edits files but never pushes.
 
 ## Doc index (start here)
 
@@ -55,8 +55,8 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
 │  │  Tailscale   │  │   Mutagen    │  │  ~/dev (src) │  │   tmux +     │ │
 │  │  app (mesh)  │  │  daemon      │  │   80GB raw,  │  │   mosh/ssh   │ │
-│  │              │  │  (one-way    │  │  ~12GB sync  │  │              │ │
-│  │              │  │  -safe)      │  │              │  │              │ │
+│  │              │  │  (two-way-   │  │  ~12GB sync  │  │              │ │
+│  │              │  │  resolved)   │  │              │  │              │ │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
 │         │ tailnet         │ SSH (public IP) │                 │ SSH/mosh│
 └─────────┼─────────────────┼─────────────────┼─────────────────┼─────────┘
@@ -73,9 +73,9 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 │  │  └───────────────┘         │  pane: claude session │ ─── stdio ─┼─►  │
 │  │                            │  pane: claude session │     MCP    │    │
 │  │  ┌───────────────┐         │  pane: claude session │            │    │
-│  │  │ Mutagen agent │ writes  │                       │            │    │
-│  │  │ → /home/bryan │ ──────► │  each `dclaude`       │            │    │
-│  │  │   /dev        │         │   alias loads the     │            │    │
+│  │  │ Mutagen agent │ ◄─────► │                       │            │    │
+│  │  │ ↔ /home/bryan │  two-   │  each `dclaude`       │            │    │
+│  │  │   /dev        │  way    │   alias loads the     │            │    │
 │  │  └───────────────┘         │   server:discord MCP  │            │    │
 │  │                            └──────────┬────────────┘            │    │
 │  │                                       │ HTTP + SSE              │    │
@@ -252,7 +252,7 @@ Discord user DMs the bot
 | **Tailscale** | laptop + VPS (NOT phone) | Mesh VPN. Stable hostnames + identity-based ACL. Phone uses Discord directly, no tailnet membership needed. | `tailscale up --ssh` on VPS; `ssh bryan@claude-vps` resolves from laptop |
 | **OpenSSH (regular, port 22)** | VPS public IP | File transfer + Mutagen agent (Tailscale SSH strips exec bits) | `scp`, `rsync`, Mutagen — always public IP |
 | **Tailscale SSH** | tailnet | Interactive shell, no key management | `ssh bryan@claude-vps` |
-| **Mutagen** | laptop daemon + VPS agent | Continuous file sync laptop→VPS (`one-way-safe`) | `scripts/mutagen-sync-dev.sh` creates session |
+| **Mutagen** | laptop daemon + VPS agent | Continuous bi-directional file sync laptop ↔ VPS (`two-way-resolved`). Conflicts resolved newest-mtime-wins. | `scripts/mutagen-sync-dev.sh` creates session |
 | **GNU stow** | VPS (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
 | **GNU bash + bun + node** | VPS | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
 | **discord-daemon** | VPS systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
@@ -305,7 +305,7 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 | Claude session ended normally + resumed (`claude --resume`) | Same cwd → same `session_id` → daemon reuses existing thread. Archive auto-clears on first outbound send. |
 | VPS reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
 | Mutagen network drop | Reconnects automatically. Edits queued. No data loss. |
-| Both sides edit same file | one-way-safe halts propagation → conflict shown. Manual resolve. |
+| Both sides edit same file | two-way-resolved picks newest mtime. Older edit overwritten. Avoid simultaneous editing in same file from both hosts. |
 | Token rotation needed | Edit `~/.claude/channels/discord/.env`, `sudo systemctl restart discord-daemon`. |
 
 ---
@@ -326,7 +326,7 @@ All live under `~/.claude/channels/discord/` on the host running the daemon.
 ### Laptop
 
 ```
-~/dev/                            (Mutagen alpha)
+~/dev/                            (Mutagen alpha — bi-directional)
   claude-code-config/             stowed → ~/.claude
     discord-daemon/               daemon source
     session-mcp/                  session MCP source
@@ -347,7 +347,7 @@ All live under `~/.claude/channels/discord/` on the host running the daemon.
 
 ```
 /home/bryan/
-  dev/                            (Mutagen beta)
+  dev/                            (Mutagen beta — bi-directional)
     claude-code-config/           rsync'd then mutagen-synced
       discord-daemon/             daemon source
       session-mcp/                MCP source
