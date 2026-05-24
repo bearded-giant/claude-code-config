@@ -252,7 +252,7 @@ Discord user DMs the bot
 | **Tailscale** | laptop + VPS (NOT phone) | Mesh VPN. Stable hostnames + identity-based ACL. Phone uses Discord directly, no tailnet membership needed. | `tailscale up --ssh` on VPS; `ssh bryan@claude-vps` resolves from laptop |
 | **OpenSSH (regular, port 22)** | VPS public IP | File transfer + Mutagen agent (Tailscale SSH strips exec bits) | `scp`, `rsync`, Mutagen — always public IP |
 | **Tailscale SSH** | tailnet | Interactive shell, no key management | `ssh bryan@claude-vps` |
-| **Mutagen** | laptop daemon + VPS agent | Continuous bi-directional file sync laptop ↔ VPS (`two-way-resolved`). Conflicts resolved newest-mtime-wins. | `scripts/mutagen-sync-dev.sh` creates session |
+| **Mutagen** | laptop daemon + VPS agent | Continuous bi-directional file sync laptop ↔ VPS (`two-way-resolved`). Conflicts resolved newest-mtime-wins. `.git/` excluded — git state is per-host, commits + pushes happen on laptop only. | `scripts/mutagen-sync-dev.sh` creates session |
 | **GNU stow** | VPS (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
 | **GNU bash + bun + node** | VPS | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
 | **discord-daemon** | VPS systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |

@@ -65,8 +65,10 @@ IGNORES=(
   'plugins/install-counts-cache.json'
   'plugins/known_marketplaces.json'
 
-  # paired repo .git dirs — each host clones independently
-  'giant-tooling/.git/'
+  # ALL .git dirs — every repo's git state is per-host. Mutagen syncing refs
+  # races against git operations and corrupts HEAD. Commits + pushes happen on
+  # the laptop only; the VPS edits files but never commits.
+  '.git/'
 
   # session memory artifacts
   '.giantmem'

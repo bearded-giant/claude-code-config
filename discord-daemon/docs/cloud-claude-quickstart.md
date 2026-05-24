@@ -15,7 +15,8 @@ The system has three layers of state. Knowing what lives where prevents data los
 
 | State | Lives on | Authority |
 |---|---|---|
-| **Code files** (your projects under `~/dev/`) | Laptop ↔ VPS via Mutagen `two-way-resolved` | Last writer wins (newest mtime). Edit on either side; the other catches up within seconds. |
+| **Code files** (your projects under `~/dev/`) | Laptop ↔ VPS via Mutagen `two-way-resolved` | Last writer wins (newest mtime). Edit on either side; the other catches up within seconds. `.git/` is excluded from sync. |
+| **Git state** (`.git/` dirs — commits, refs, index) | Per-host (mutagen ignores `.git/`) | Each side has its own `.git`. The VPS working tree drifts from the VPS `.git` HEAD over time — that's expected, the VPS never commits. |
 | **Git remotes** (push, pull, signing) | Laptop only | VPS has no GitLab/Twingate/GPG credentials. All `git push` runs from the laptop. |
 | **Claude session state** (jsonl transcripts, file-history) | Per-host; lifted laptop → VPS on demand via `lift` | One-way (laptop → VPS). Never go VPS → laptop with chat history. |
 
