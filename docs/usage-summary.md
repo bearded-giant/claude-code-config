@@ -211,6 +211,30 @@ giantmem access prune --older-than 180d        # trim
 
 Phase 1 ships additively — legacy `WORKSPACE`/`ACTIVE ARTIFACTS`/`PLAN`/`DISCOVERIES` sections remain, with `=== PRELOAD PACK: <pack>/<layer> ===` blocks appended.
 
+## Hybrid search (scoped-memory phase 2)
+
+Phase 2 adds opt-in semantic search via `sqlite-vec` embeddings + a blended scorer.
+
+Storage runs CGO-free via `modernc.org/sqlite/vec` (auto-registered through a blank import in `internal/db/db.go`). live.db migration v4 creates the vec0 virtual table `artifact_embeddings` (FLOAT[dim], default 768) plus `artifact_embedding_meta` for body-hash gating.
+
+Embedders are pluggable:
+
+| Backend | Used for |
+|---|---|
+| `stub` | Default. Deterministic hash-based 768-dim vectors. Tests the pipeline; NOT semantic. |
+| `python` | Long-running subprocess speaking JSON. Spawns `~/dev/giant-tooling/workspace/scripts/embed.py` (`sentence-transformers` + `BAAI/bge-base-en-v1.5`). |
+| `ollama` | HTTP POST `/api/embeddings` against `$OLLAMA_HOST` (default `http://127.0.0.1:11434`). |
+
+```bash
+giantmem embed --backfill                          # stub backend, deterministic
+GIANTMEM_EMBED_BACKEND=python giantmem embed --backfill
+giantmem artifact search "scope registry yaml" --limit 5
+```
+
+`artifact search` runs hybrid: weights default to `fts=0.5 vec=0.25 recency=0.15 access=0.1`, env-tunable via `GIANTMEM_HYBRID_{FTS,VEC,RECENCY,ACCESS}_WEIGHT` (validated sum-to-1.0). MCP `find_artifact(semantic=true)` routes through the same pipeline. Default behavior unchanged when `semantic` is omitted.
+
+Body hash on artifact_embedding_meta ensures re-embedding only fires when the body actually changes; idempotent backfill is the norm.
+
 ## What is NOT done (deferred follow-ups)
 
 Tracked, not blocking:

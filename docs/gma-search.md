@@ -261,3 +261,41 @@ giantmem access prune --older-than 30d --dry-run # report row count without writ
 ```
 
 JSON output of `artifact list --json` and MCP `find_artifact` now carry `access_count` (30-day window) and `lifecycle` per row.
+
+## 8. Semantic search (phase 2)
+
+Hybrid scoring blends FTS + vector + recency + access. Opt-in; default behavior unchanged.
+
+```bash
+# one-time backfill (stub backend = fast, deterministic, NOT real semantic)
+giantmem embed --backfill --backend stub
+
+# semantic-style search against the current filter set
+giantmem artifact search "scope registry yaml" -t proposal --limit 5
+
+# JSON breakdown with per-component scores
+giantmem artifact search "lifecycle" --json --limit 10
+
+# real semantic backends
+GIANTMEM_EMBED_BACKEND=python giantmem embed --backfill            # needs sentence-transformers
+GIANTMEM_EMBED_BACKEND=ollama giantmem artifact search "auth flow" # needs Ollama on :11434
+```
+
+Backends:
+
+| Backend | Runtime dep | Use when |
+|---|---|---|
+| `stub` | none | Testing the pipeline. Deterministic hash vectors — NOT semantic. |
+| `python` | `python3` + `sentence-transformers` in PATH | Real semantic ranking. Long-running daemon, ~3s cold start. |
+| `ollama` | Ollama daemon on `OLLAMA_HOST` (default `http://127.0.0.1:11434`) | Already running Ollama. HTTP per call. |
+
+Weights (env tunable; sum must == 1.0):
+
+```bash
+GIANTMEM_HYBRID_FTS_WEIGHT=0.5
+GIANTMEM_HYBRID_VEC_WEIGHT=0.25
+GIANTMEM_HYBRID_RECENCY_WEIGHT=0.15
+GIANTMEM_HYBRID_ACCESS_WEIGHT=0.1
+```
+
+MCP `find_artifact(semantic=true, query=...)` runs the same pipeline. Default remains FTS-only when `semantic` is omitted.
