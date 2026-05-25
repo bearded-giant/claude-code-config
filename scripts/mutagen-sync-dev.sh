@@ -69,10 +69,11 @@ IGNORES=(
   # races against git operations and corrupts HEAD. Commits + pushes happen on
   # the laptop only; the VPS edits files but never commits.
   '.git/'
-
-  # session memory artifacts
-  '.giantmem'
 )
+# NOTE: .giantmem intentionally synced — dclaude on VPS needs session
+# memory (plans, features, artifacts.json, discoveries) to share context
+# with laptop. No sqlite DBs live under .giantmem (those go to
+# ~/.giantmem-global/), so two-way-resolved is safe.
 
 mutagen daemon start >/dev/null 2>&1 || true
 
