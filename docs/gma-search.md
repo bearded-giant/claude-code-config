@@ -223,3 +223,41 @@ giantmem artifact list --repo all --include-archived -t proposal --json \
 | Recent activity | `--since 7d` on `find`, or jq date filter on `artifact list` |
 | Old / forgotten | `giantmem artifact stale` |
 | What's missing frontmatter | `giantmem artifact orphans` |
+| Cross-repo by scope | `--scope <id>` (artifact list, find_artifact MCP) |
+| Pending review candidates | `--lifecycle candidate` or `/review-memory` |
+| Most-touched artifacts | `giantmem access top` |
+| Counts dashboard | MCP `get_stats(scope=..., repo=..., feature=...)` |
+
+## 7. Filtering by scope and lifecycle
+
+### Scope filter (cross-repo)
+
+```bash
+giantmem scope init                              # one-time seed
+giantmem scope add-repo personal dotfiles giant-tooling
+
+giantmem artifact list --scope personal -t delta-spec
+giantmem artifact list --repo all --scope personal --lifecycle durable
+```
+
+Scope membership = the artifact's `Repo` matches a repo listed under that scope id in `~/.giantmem-global/scopes.yaml`. An artifact whose frontmatter has `scope: X` overrides repo membership for that artifact.
+
+### Lifecycle filter
+
+```bash
+giantmem artifact list --lifecycle candidate     # things awaiting /review-memory
+giantmem artifact list --lifecycle durable,deprecated
+giantmem artifact stale --days 0                 # tier policy (A=never, B=180d, C=90d)
+```
+
+`--lifecycle` is repeatable / CSV. Empty means "all stages" (today's default behavior).
+
+### Access log
+
+```bash
+giantmem access top --limit 10                   # top by 30d count
+giantmem access prune --older-than 180d          # trim live.db.artifact_access
+giantmem access prune --older-than 30d --dry-run # report row count without writing
+```
+
+JSON output of `artifact list --json` and MCP `find_artifact` now carry `access_count` (30-day window) and `lifecycle` per row.

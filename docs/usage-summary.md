@@ -157,15 +157,72 @@ These shaped the migration. Worth reskimming when something feels off.
 | Both-histories | per-feature `spec_history.md` AND repo `.giantmem/specs/_history.md` | `merge_delta_spec.py` `write_history` |
 | Domain reuse | `domains/{name}.json` (code KB) and `specs/{name}/spec.md` (behavior contract) share the namespace | informational hint in `/plan-feature` |
 
+## Scopes and lifecycle (scoped-memory phase 1)
+
+Two new dimensions sit on top of every artifact: which **scope** it belongs to (a cross-repo grouping) and which **lifecycle** stage it lives in. They unlock cross-worktree filtering and let memory age out instead of growing forever.
+
+### Scopes
+
+A scope is a named bundle of repos at `~/.giantmem-global/scopes.yaml`. Membership is repo-based unless an artifact's frontmatter sets `scope:` explicitly. Same artifact can list under multiple scopes if the same repo is in multiple scope entries.
+
+```bash
+giantmem scope init                            # seeds the file with `personal` for current repo
+giantmem scope list                            # show all scopes + member repos
+giantmem scope add-repo personal dotfiles      # extend a scope
+giantmem scope show personal                   # JSON detail
+giantmem scope sync                            # rebuild live.db cache from YAML
+```
+
+Filter anywhere artifacts list:
+
+```bash
+giantmem artifact list --scope personal -t delta-spec
+giantmem artifact list --repo all --scope personal
+```
+
+MCP `find_artifact` accepts a `scope` arg with identical semantics.
+
+### Lifecycle
+
+Each artifact carries `lifecycle: durable | candidate | deprecated`. Default `durable`. Templates stamp it on creation. AI-generated discoveries / research land as `candidate` for review.
+
+```bash
+giantmem artifact list --lifecycle candidate
+/review-memory                                 # walk candidates: approve|reject|skip|quit
+giantmem artifact stale --days 0               # tier policy: A=never, B=180d, C=90d
+```
+
+Retention tier is derived from `type:`, not stored. Tier A (proposal, design, source-spec) never expires. Tier B (pattern, research, notes) and Tier C (tasks, plan, review, facts, delta-spec) get progressively shorter stale thresholds for candidates; durables get a `durable-stale` annotation but are not pruned.
+
+### Access log
+
+Every `artifact list`, `artifact show`, and MCP `find_artifact` call writes rows to `live.db.artifact_access`. Column shape: `(artifact_id, query, rank, accessed_at)`. List operations log per returned row with rank 1..N; direct show logs rank=NULL.
+
+```bash
+giantmem access top --limit 10                 # most-accessed in last 30d
+giantmem access prune --older-than 180d        # trim
+```
+
+`access_count` (30-day window) is enriched onto JSON output of `artifact list --json` and MCP find_artifact results. MCP `get_stats` returns counts by type/lifecycle/status/repo + `recent_writes_24h`, `recent_accesses_24h`, `top_accessed`.
+
+### Preload packs
+
+`~/.claude/config/preload_packs.yaml` declares ordered layers used by `workspace_session_hook.py` to assemble session-start context. Each layer can inline `static_files`, run a filter via `giantmem artifact list`, or both. Placeholders: `{active_scope}`, `{active_feature}`, `{repo}`, `{branch}`.
+
+Phase 1 ships additively — legacy `WORKSPACE`/`ACTIVE ARTIFACTS`/`PLAN`/`DISCOVERIES` sections remain, with `=== PRELOAD PACK: <pack>/<layer> ===` blocks appended.
+
 ## What is NOT done (deferred follow-ups)
 
 Tracked, not blocking:
 
 1. Plugin-v2 artifact taxonomy via `~/.config/giantmem/artifact_types.toml`
-2. Filesystem watcher for auto-reindex (today: reindex on feature commands or by hand)
+2. Filesystem watcher for auto-reindex (today: reindex on feature commands or by hand). Phase 3 of scoped-memory.
 3. Paired-feature view — `--paired` joins cwt ↔ fewt branches that share a feature name
 4. Full SQL `artifacts` table in `archives.db` with FTS join (today: file-walk crawl, fine until ~hundreds of workspaces)
 5. Adversarial test for `/feature-validate --fix` — verify a hand-written proposal body is byte-identical after fix
+6. Hybrid scoring (FTS + vector + recency + access) — Phase 2 of scoped-memory. Requires sqlite-vec backend decision spike.
+7. TF-IDF domain suggestion in `/new-feature` — Phase 3 of scoped-memory.
+8. Entity promotion of `domains/*.json` to typed entity rows — Phase 3 of scoped-memory.
 
 ## Where to read more
 

@@ -41,6 +41,30 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - Never write to repo `docs/` unprompted — route to `.giantmem/context/` or the active feature's `research/`
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
+- Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated discoveries / research land as `candidate` and get reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
+
+## Scope + Lifecycle (cross-repo memory unit)
+
+Two new pieces let memory cross worktrees + age gracefully:
+
+| Concept | Lives at | Holds |
+|---|---|---|
+| **scope registry** | `~/.giantmem-global/scopes.yaml` | Named scopes (`personal`, `recharge-customcheckout`, ...) → list of repo names. Artifact membership = repo match OR explicit `scope:` frontmatter. Edit via `giantmem scope init|list|show|add-repo|sync`. |
+| **lifecycle** | per-artifact frontmatter `lifecycle:` | `durable` (default, never auto-prunes), `candidate` (review pending), `deprecated` (kept but excluded from default packs). Walk candidates via `/review-memory`. |
+| **retention tier** | derived from `type:` | Tier A (proposal/design/source-spec) never expires; Tier B (pattern/research/notes) 180d; Tier C (tasks/plan/review/facts/delta-spec) 90d. Surfaced by `giantmem artifact stale --days 0`. |
+| **preload packs** | `~/.claude/config/preload_packs.yaml` | Ordered layers driving session-start hook output. Layers can inline `static_files`, run `giantmem artifact list` with filters, and resolve `{active_scope}` / `{active_feature}` / `{repo}` / `{branch}` placeholders. |
+
+Filter by scope or lifecycle anywhere artifacts are listed:
+
+```bash
+giantmem artifact list --scope personal -t delta-spec
+giantmem artifact list --lifecycle candidate
+giantmem artifact stale --days 0           # tier policy, no fixed day cutoff
+giantmem access top --limit 10             # most-touched artifacts in last 30d
+giantmem access prune --older-than 180d    # trim access_log table
+```
+
+MCP `find_artifact` accepts `scope` + `lifecycle` args (same semantics). MCP `get_stats` returns counts by type/lifecycle/status/repo plus recent access metrics.
 
 ## Three-Spec Model (per-feature → repo-truth)
 

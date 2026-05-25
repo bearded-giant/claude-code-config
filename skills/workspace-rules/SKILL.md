@@ -71,6 +71,8 @@ type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | res
 feature: {name}              # for feature-scoped artifacts
 repo: {repo-name}            # for repo-level artifacts (one of feature or repo)
 status: {draft | ready | done | blocked | stale}
+lifecycle: {durable | candidate | deprecated}    # SHOULD; default durable
+scope: {scope_id}            # optional; overrides repo→scope membership
 domain: {name}               # optional
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -79,7 +81,14 @@ updated: YYYY-MM-DD
 
 JSON artifacts (`meta.json`, `domains/*.json`) get the same keys at top level (no `---` fences).
 
-Backfill legacy files: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`
+Lifecycle stage rules:
+- `durable` (default): human-authored, scaffolded by `/new-feature`, accumulated source-specs. Never auto-pruned.
+- `candidate`: AI-captured discoveries / research / mid-session notes. Surface in `/review-memory` for promote → durable / demote → deprecated.
+- `deprecated`: kept on disk but excluded from default preload packs and stale reports.
+
+Backfill legacy files:
+- Frontmatter keys: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`
+- Lifecycle only: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`
 
 ## Anti-patterns — DO NOT
 

@@ -37,6 +37,18 @@ features/
 
 Legacy `features/{name}/spec.md` symlinks → `proposal.md` for 30-day muscle-memory back-compat (set by `migrate_spec_to_proposal.py`).
 
+## Lifecycle (per-artifact)
+
+Every artifact written under `features/{name}/` carries a `lifecycle:` field in addition to `status:`. Defaults stamped by `/new-feature` templates:
+
+| Lifecycle | Used for | Behavior |
+|---|---|---|
+| `durable` | All `/new-feature` scaffolds (proposal, delta-spec, tasks, design, facts). Source-specs after `/complete-feature` merge. | Never auto-pruned. Shows up in default preload packs. |
+| `candidate` | AI-captured research, discoveries, mid-session notes. | Listed by `/review-memory`. User promotes → durable or demotes → deprecated. |
+| `deprecated` | Previously useful, now rejected. | Kept on disk. Excluded from default packs and stale reports. |
+
+`/complete-feature` flips merged delta-specs to `lifecycle: durable` if not already (they should be — they came from a durable template).
+
 ## Cache discipline — CRITICAL
 
 Every feature command (new/start/pause/complete/reopen) MUST update both:
