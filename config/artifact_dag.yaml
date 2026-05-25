@@ -1,0 +1,45 @@
+# Artifact DAG — informational. Drives `/feature-next` only.
+#
+# Maps artifact types to the types they depend on. Status is derived live from
+# .giantmem/artifacts.json — never stored on a type.
+#
+# Rules:
+#   - "done"    = artifact exists with status: done
+#   - "ready"   = all `requires` types have at least one done instance for the
+#                 feature AND no instance of own type exists OR own status is
+#                 draft
+#   - "blocked" = any `requires` type is missing entirely (treated as skipped
+#                 only if the user has explicitly never created one)
+#   - "skipped" = `requires` type has zero instances and is marked optional
+#
+# Dependencies are enablers, not gates. /feature-next is informational —
+# user can write any artifact in any order. The DAG is here so the next
+# obvious thing is one query away.
+
+proposal:
+  requires: []
+  optional: false
+
+delta-spec:
+  requires: [proposal]
+  optional: true
+
+design:
+  requires: [proposal]
+  optional: true
+
+plan:
+  requires: [proposal]
+  optional: true
+
+tasks:
+  requires: [proposal]
+  optional: false
+
+research:
+  requires: []
+  optional: true
+
+review:
+  requires: [tasks]
+  optional: true
