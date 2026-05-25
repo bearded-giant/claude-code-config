@@ -1,333 +1,144 @@
-# gma + giantmem artifact search — cheat sheet
+# Artifact + content search
 
-How to find typed artifacts (proposal/delta-spec/tasks/plan/research/...) AND keyword/phrase content. Two engines:
+Find typed artifacts (proposal/delta-spec/tasks/plan/research/...) OR keyword content. Two engines:
 
-- **`giantmem artifact ...`** — typed query by frontmatter (type, status, feature, domain, repo, branch, updated). Cross-repo.
-- **`giantmem find ...`** — FTS5 content search across live workspaces + archives + Claude session transcripts.
-- **`gma`** — fzf-driven interactive picker over `giantmem artifact list --json`.
+| Engine | Indexes | Use for |
+|---|---|---|
+| `giantmem artifact ...` | `artifacts.json` per workspace | typed query by frontmatter — type, status, feature, domain, repo, branch, scope, lifecycle |
+| `giantmem find ...` | `live.db` + `archives.db` (FTS5) | full content match across .giantmem markdown + Claude session JSONL |
 
-Pick the engine by what you have. Frontmatter known → `artifact`. Just a phrase → `find`.
+`gma` = fzf wrapper over `giantmem artifact list`.
 
-## 1. By metadata (artifact)
-
-### Current worktree (default scope)
-
-```bash
-giantmem artifact list                          # everything in this worktree
-giantmem artifact list -t proposal              # one type
-giantmem artifact list -t proposal,delta-spec   # multiple types (CSV)
-giantmem artifact list -s ready                 # status filter
-giantmem artifact list -f openspec-compare      # one feature
-giantmem artifact list -d auth                  # one domain
-```
-
-### Across worktrees of the same repo
-
-```bash
-giantmem artifact list --repo claude-code-config --branch feat/openspec-compare
-```
-
-Branch filter is the disambiguator when a repo has multiple worktrees on disk.
-
-### Cross-repo
-
-```bash
-giantmem artifact list --repo all -t delta-spec               # every delta-spec everywhere
-giantmem artifact list --repo all --include-archived          # +~/giantmem_archive/*/latest/
-giantmem artifact list --repo all -f session-cookie           # one feature name across repos
-```
-
-### Stale / orphans
-
-```bash
-giantmem artifact stale --days 30                # this repo, not touched in 30d, status != done
-giantmem artifact stale --all-repos --days 90    # cross-repo
-giantmem artifact orphans                        # files in artifact slots lacking frontmatter
-```
-
-### JSON for piping
-
-```bash
-giantmem artifact list --json | jq .             # pretty print
-giantmem artifact list --json | jq '.artifacts | length'
-```
-
-## 2. By content (keyword / phrase)
-
-`giantmem find` runs FTS5 across **live** workspace docs (live.db) and **archived** workspaces + Claude session transcripts (archives.db).
-
-### Plain queries
-
-```bash
-giantmem find "session timeout"            # phrase
-giantmem find redis OR memcache            # FTS5 operators pass through
-giantmem find auth NOT logout              # boolean
-giantmem find "exact phrase here"          # double-quoted = literal substring
-giantmem find prefix*                      # FTS5 prefix match
-```
-
-Plain text is auto-quoted so punctuation works: `giantmem find hub-and-spoke` is safe.
-
-### Scope filters
-
-```bash
-giantmem find "session" --project claude-code-config        # LIKE match on project name
-giantmem find "redis" --source workspace                    # workspace | session | domain
-giantmem find "auth" --type research                        # dir_type filter
-giantmem find "jwt" --feature jwt-session-cookie            # live-only feature filter
-giantmem find "rate limit" --since 7d                       # last 7 days
-giantmem find "panic" --until 2026-04-01                    # before date or e.g. 30d ago
-giantmem find "x" --live                                    # live.db only (current workspaces)
-giantmem find "x" --archive                                 # archives.db only
-```
-
-### Session-transcript per-line expansion
-
-When searching session transcripts, `--tool` / `--ext` flips results from file-level to per-line matches. Each row = one Claude tool_use line decoded into role + tool + file + excerpt.
-
-```bash
-giantmem find "session_id" --source session --tool Write,Edit       # find writes
-giantmem find "TODO" --source session --tool Bash                   # bash commands
-giantmem find "import" --source session --ext py                    # python files touched
-giantmem find "session" --source session --tool Read --include-read # Read calls (hidden by default)
-```
-
-### Output modes
-
-```bash
-giantmem find x --json           # JSON
-giantmem find x --paths          # absolute paths only
-giantmem find x --full           # include matched-content snippet
-giantmem find x -n 50            # bump limit (default 20)
-giantmem find x --no-interactive # disable fzf even in a TTY
-```
-
-In a TTY, `find` defaults to an fzf picker with a preview pane (`bat` highlight, `jq`-decoded for JSONL session lines).
-
-## 3. gma — interactive picker
-
-`gma` wraps `giantmem artifact list --json` through fzf with a preview pane. Default scope: `--repo all`.
-
-```bash
-gma                                          # everything across worktrees
-gma -t delta-spec                            # one type
-gma -t delta-spec -d workflow                # type + domain
-gma -f openspec-compare                      # one feature
-gma --include-archived                       # include ~/giantmem_archive/
-gma --repo claude-code-config                # scope to one repo
-gma --repo current                           # only the current worktree
-gma --path                                   # print path on Enter (no $EDITOR open)
-vim "$(gma --path)"                          # pick + edit pattern
-```
-
-Hotkeys inside fzf:
-
-- `Enter` — open in `$EDITOR` (or print path with `--path`)
-- `Esc` — cancel
-- `Ctrl-/` — toggle preview window
-
-## 4. From inside Claude (MCP, no shell)
-
-The `giantmem-search` MCP server exposes typed-artifact tools:
-
-| Tool | Use |
-|---|---|
-| `find_artifact(type, status, feature, domain, repo, branch, query, limit)` | typed search + optional fulltext `query`. Returns ID + path + status + snippet (when query matches). |
-| `get_artifact(id)` | full frontmatter + body for one ID. |
-| `list_features_with_artifacts(repo, artifact_types)` | "every feature with open delta-specs across all repos." |
-
-Plus content search:
-
-| Tool | Use |
-|---|---|
-| `search_archive(query, project, source_type, topic, tool_filter, ext_filter, include_read, limit)` | FTS5 across archives + sessions. Same engine as `giantmem find`. |
-
-When Claude needs to find something, it should call these — they index typed metadata + content without 12 greps.
-
-## 5. Common recipes
-
-### What's active in this worktree?
-
-```bash
-giantmem artifact list -s ready
-```
-
-### What .md artifacts did I create this week?
-
-```bash
-giantmem artifact list --json \
-  | jq -r '.artifacts[]
-      | select(.created >= (now - 7*86400 | strftime("%Y-%m-%d")))
-      | .id + "\t" + .path'
-```
-
-### What's stale across all my projects?
-
-```bash
-giantmem artifact stale --all-repos --days 60
-```
-
-### Where's that delta-spec I started for auth?
-
-```bash
-gma -t delta-spec -d auth                       # interactive
-giantmem artifact list --repo all -t delta-spec -d auth   # plain
-```
-
-### Across all features in this worktree, only `.md` (skip JSON)
-
-```bash
-giantmem artifact list -t proposal,delta-spec,tasks,design,plan,research,review,notes,facts
-```
-
-(`domain` is the only JSON type in v1 taxonomy. `pattern` + `source-spec` are markdown but repo-level — drop them with the type filter or `select(.feature)` in jq.)
-
-### Search both metadata AND content together
-
-```bash
-# typed query + fulltext within results
-giantmem artifact list --repo all -t research --json \
-  | jq -r '.artifacts[] | .worktree + "/.giantmem/" + .path' \
-  | xargs grep -lE "session.*timeout"
-```
-
-Or with MCP:
-
-```
-find_artifact(type="research", query="session timeout", repo="all")
-```
-
-### Find every Claude session that touched a feature's specs
-
-```bash
-giantmem find "openspec-compare" --source session --tool Write,Edit
-```
-
-### Find every place I've ever proposed something about JWT
-
-```bash
-giantmem artifact list --repo all --include-archived -t proposal --json \
-  | jq -r '.artifacts[] | .id + "\t" + (.worktree // "?") + "/.giantmem/" + .path' \
-  | xargs -I{} sh -c 'echo "=== {} ==="; grep -li jwt "{}" 2>/dev/null'
-```
-
-## 6. When in doubt
+## When in doubt
 
 | Question | Reach for |
 |---|---|
-| I know the type, status, or feature | `giantmem artifact list` |
-| I just remember a phrase | `giantmem find "..."` |
-| I want to click through options | `gma` |
-| I'm inside Claude | `find_artifact` MCP |
-| Content + frontmatter combined | JSON pipe through jq |
+| Know the type/status/feature | `giantmem artifact list` |
+| Just remember a phrase | `giantmem find "..."` |
+| Click through options | `gma` |
+| Inside Claude | MCP `find_artifact` |
 | Recent activity | `--since 7d` on `find`, or jq date filter on `artifact list` |
-| Old / forgotten | `giantmem artifact stale` |
-| What's missing frontmatter | `giantmem artifact orphans` |
-| Cross-repo by scope | `--scope <id>` (artifact list, find_artifact MCP) |
+| Old / forgotten | `giantmem artifact stale [--days 0]` |
+| Missing frontmatter | `giantmem artifact orphans` |
+| Cross-repo by scope | `--scope <id>` on `artifact list` or MCP `find_artifact(scope=)` |
 | Pending review candidates | `--lifecycle candidate` or `/review-memory` |
 | Most-touched artifacts | `giantmem access top` |
-| Counts dashboard | MCP `get_stats(scope=..., repo=..., feature=...)` |
+| Counts dashboard | MCP `get_stats(scope=, repo=, feature=)` |
+| Semantic search | `giantmem artifact search <q>` or MCP `find_artifact(semantic=true)` |
 
-## 7. Filtering by scope and lifecycle
-
-### Scope filter (cross-repo)
+## Typed query — `giantmem artifact`
 
 ```bash
-giantmem scope init                              # one-time seed
+giantmem artifact list                               # current workspace
+giantmem artifact list -t delta-spec -s ready
+giantmem artifact list --repo all -t proposal
+giantmem artifact list --feature scoped-memory
+giantmem artifact list --domain auth
+giantmem artifact list --include-archived            # with --repo all
+giantmem artifact list --json | jq '.artifacts[] | select(.size > 5000)'
+giantmem artifact list --paths                       # absolute paths only
+
+giantmem artifact show <id>                          # frontmatter + body
+giantmem artifact reindex                            # rebuild artifacts.json
+giantmem artifact orphans                            # files missing frontmatter
+giantmem artifact stale --days 30                    # fixed cutoff
+giantmem artifact stale --days 0                     # tier policy: A=never, B=180d, C=90d
+```
+
+### Scope + lifecycle filters
+
+```bash
+giantmem scope init                                  # one-time seed
 giantmem scope add-repo personal dotfiles giant-tooling
 
 giantmem artifact list --scope personal -t delta-spec
 giantmem artifact list --repo all --scope personal --lifecycle durable
-```
-
-Scope membership = the artifact's `Repo` matches a repo listed under that scope id in `~/.giantmem-global/scopes.yaml`. An artifact whose frontmatter has `scope: X` overrides repo membership for that artifact.
-
-### Lifecycle filter
-
-```bash
-giantmem artifact list --lifecycle candidate     # things awaiting /review-memory
+giantmem artifact list --lifecycle candidate         # awaiting /review-memory
 giantmem artifact list --lifecycle durable,deprecated
-giantmem artifact stale --days 0                 # tier policy (A=never, B=180d, C=90d)
 ```
 
-`--lifecycle` is repeatable / CSV. Empty means "all stages" (today's default behavior).
+Scope membership = repo match OR explicit `scope:` frontmatter override.
 
 ### Access log
 
 ```bash
-giantmem access top --limit 10                   # top by 30d count
-giantmem access prune --older-than 180d          # trim live.db.artifact_access
-giantmem access prune --older-than 30d --dry-run # report row count without writing
+giantmem access top --limit 10                       # top by 30d count
+giantmem access prune --older-than 180d              # trim
+giantmem access prune --older-than 30d --dry-run     # row count only
 ```
 
-JSON output of `artifact list --json` and MCP `find_artifact` now carry `access_count` (30-day window) and `lifecycle` per row.
+`artifact list --json` carries `access_count` (30d) + `lifecycle` per row.
 
-## 8. Semantic search (phase 2)
-
-Hybrid scoring blends FTS + vector + recency + access. Opt-in; default behavior unchanged.
+## Content search — `giantmem find`
 
 ```bash
-# one-time backfill (stub backend = fast, deterministic, NOT real semantic)
-giantmem embed --backfill --backend stub
-
-# semantic-style search against the current filter set
-giantmem artifact search "scope registry yaml" -t proposal --limit 5
-
-# JSON breakdown with per-component scores
-giantmem artifact search "lifecycle" --json --limit 10
-
-# real semantic backends
-GIANTMEM_EMBED_BACKEND=python giantmem embed --backfill            # needs sentence-transformers
-GIANTMEM_EMBED_BACKEND=ollama giantmem artifact search "auth flow" # needs Ollama on :11434
+giantmem find "jwt refresh"
+giantmem find "jwt refresh" --live                   # current .giantmem only
+giantmem find "jwt refresh" --archive                # archives.db only
+giantmem find "jwt refresh" -s session               # transcripts only
+giantmem find "jwt refresh" -p cc-wt                 # project
+giantmem find "jwt refresh" --since 7d --until 1d
+giantmem find "jwt refresh" --tool Write,Edit        # only lines where Claude used these tools
+giantmem find "jwt refresh" --ext md,go              # only matches touching these files
+giantmem find "jwt refresh" --no-interactive        # no fzf
+giantmem find "jwt refresh" --paths                  # path-only output
+giantmem find "jwt refresh" --full                   # snippet inline
+giantmem find "jwt refresh" -n 5
 ```
 
-Backends:
+FTS5 syntax: `term1 term2` (AND), `"phrase"`, `t1 OR t2`, `t1 NOT t2`, `prefix*`. Punctuation auto-quoted by CLI.
 
-| Backend | Runtime dep | Use when |
-|---|---|---|
-| `stub` | none | Testing the pipeline. Deterministic hash vectors — NOT semantic. |
-| `python` | `python3` + `sentence-transformers` in PATH | Real semantic ranking. Long-running daemon, ~3s cold start. |
-| `ollama` | Ollama daemon on `OLLAMA_HOST` (default `http://127.0.0.1:11434`) | Already running Ollama. HTTP per call. |
+## Semantic search
 
-Weights (env tunable; sum must == 1.0):
+Opt-in. Requires `giantmem embed --backfill` first.
 
 ```bash
+giantmem embed --backfill --backend stub             # one-time, fast, NOT semantic
+GIANTMEM_EMBED_BACKEND=python giantmem embed --backfill --repo all
+
+giantmem artifact search "scope yaml registry" -t proposal --limit 5
+giantmem artifact search "lifecycle" --json
+```
+
+Default behavior unchanged — `giantmem find` and `artifact list` stay FTS-only. Semantic is opt-in.
+
+Backends: `stub` (none, default), `python` (sentence-transformers), `ollama` (HTTP).
+
+Weights sum-to-1.0:
+
+```
 GIANTMEM_HYBRID_FTS_WEIGHT=0.5
 GIANTMEM_HYBRID_VEC_WEIGHT=0.25
 GIANTMEM_HYBRID_RECENCY_WEIGHT=0.15
 GIANTMEM_HYBRID_ACCESS_WEIGHT=0.1
 ```
 
-MCP `find_artifact(semantic=true, query=...)` runs the same pipeline. Default remains FTS-only when `semantic` is omitted.
-
-## 9. Watch + suggest-domain + entity (phase 3)
-
-### Auto-reindex watcher
+## fzf — `gma`
 
 ```bash
-giantmem watch start                       # fork background daemon
-giantmem watch status
-giantmem watch stop
-giantmem watch install                     # macOS LaunchAgent
+gma                                                  # all repos
+gma --scope personal -t delta-spec
+gma --lifecycle candidate
 ```
 
-Watches every `.giantmem/` under `$GIANTMEM_DEV_ROOTS` (or `~/dev`). Debounced 2s per workspace. Edits trigger `giantmem artifact reindex` against the owning worktree. PID at `~/.cache/giantmem/giantmem-watch.pid`; log at `…/giantmem-watch.log`.
+Pipes selection into `$EDITOR` or prints `path:line`.
 
-### TF-IDF domain suggester
+## MCP tools
 
-```bash
-giantmem suggest-domain "JWT session refresh middleware"
-echo "scope registry yaml" | giantmem suggest-domain --json --limit 5
-```
+| Tool | Purpose |
+|---|---|
+| `find_artifact` | Typed lookup. Args: type, status, feature, domain, repo, branch, scope, lifecycle, query, semantic, limit |
+| `get_artifact` | Full body + frontmatter by id |
+| `list_features_with_artifacts` | Group by feature, one or all repos |
+| `get_stats` | Counts by type/lifecycle/status/repo + recent_writes_24h + recent_accesses_24h + top_accessed |
+| `find_entity` | Domain key_file lookup + back-references |
+| `search_archive` | Content FTS over archives.db (sessions + workspace + domain) |
+| `recent_writes` | Recent file activity |
+| `feature_status` | Per-feature state |
+| `workspace_tree` | Workspace layout |
 
-Scores existing `source-spec` domains by TF-IDF over their bodies. Aimed at scaffold time ("which domain should this new delta-spec sit under?"). Returns empty when the corpus has no source-specs.
+## See also
 
-### Entities (domain key_files promotion)
-
-```bash
-giantmem entity list                       # everything cross-repo
-giantmem entity show src/state.rs          # one entity + back-refs
-giantmem entity show main.html --json
-```
-
-Reads `.giantmem/domains/*.json`, promotes each `key_files[]` entry to a typed Entity, then back-references every artifact that mentions the file path. Counterpart MCP tool `find_entity(name, repo)`.
+- [scoped-memory-overview.md](scoped-memory-overview.md) — memory model + scope/lifecycle/hybrid mechanics
+- [session-search-guide.md](session-search-guide.md) — Claude session transcripts (separate corpus)
+- [usage-summary.md](usage-summary.md) — full workflow

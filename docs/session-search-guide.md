@@ -1,129 +1,85 @@
-# Session History & Search Guide
+# Session search
 
-Quick reference for finding past work across workspaces and Claude sessions.
+Find past work across workspaces and Claude session transcripts. **Different corpus from artifacts** — see [gma-search.md](gma-search.md) for typed artifact search.
 
-## Workspace Commands (current project)
-
-### /ws-history
-
-Show recent sessions from `.giantmem/history/sessions.md`:
+## Workspace sessions (current project)
 
 ```bash
-/ws-history              # last 10 sessions
-/ws-history 20           # last 20 sessions
-/ws-history abc12345     # show session details by ID
+/ws-history                 # last 10 sessions
+/ws-history 20              # last 20
+/ws-history abc12345        # details by 8-char id
+/ws-history --search foo    # keyword over prompts + files + commands + discoveries
 ```
 
-### /ws-history --search
+Reads `.giantmem/history/sessions.md` + `.giantmem/history/sessions/*.md`.
 
-Search workspace session files for keywords:
+## Global sessions (all projects, JSONL transcripts)
 
 ```bash
-/ws-history --search foo-service
-/ws-history --search "validation"
+/session-search --list                          # all recent
+/session-search --list --project my-project
+/session-search --list --limit 30
+
+css -q cookie                                   # last 30d, alias for /session-search
+css -q cookie --days 7
+css -q cookie --project agent-chat
+css -q "preprod session" --all                  # all time
+css -q cookie --limit 5
+css -q cookie --paths                           # pipeable paths only
 ```
 
-Searches: user prompts, files touched, commands run, discoveries.
+`css` extracts human/assistant text only, filters tool results / diffs / system reminders. Each result includes `cd <dir> && claude --resume <id>` + raw JSONL path.
 
----
-
-## Global Commands (all projects)
-
-### /session-search --list
-
-List JSONL sessions from `~/.claude/projects/`:
+## Drill into one session
 
 ```bash
-/session-search --list                          # all recent sessions
-/session-search --list --project my-project     # filter by project name
-/session-search --list --limit 30               # last 30 sessions
+csr -f <path.jsonl> -q preprod_session          # matches + 2 surrounding messages
+csr -f <path.jsonl> -q cookie -C 5              # more context
+csr -f <path.jsonl> --no-filter                 # full conversation
 ```
 
-### /session-search (`css`)
-
-Search actual Claude conversation content. Alias: `css`.
+## Chain
 
 ```bash
-css -q cookie                          # last 30 days
-css -q cookie --days 7                 # last 7 days
-css -q cookie --project agent-chat     # filter to project
-css -q "preprod session" --all         # search all time
-css -q cookie --limit 5               # cap results
-css -q cookie --paths                  # output only JSONL paths (for piping)
-```
-
-Extracts only human/assistant text from JSONL (filters out tool results, diffs, patches), ranks sessions by match count, shows clean snippets with `[YOU]`/`[CLAUDE]` tags. Each result includes `cd <dir> && claude --resume <id>` and the raw JSONL path.
-
-### session-read (`csr`)
-
-Drill into a specific session JSONL with clean filtered output. Alias: `csr`.
-
-```bash
-csr -f <path.jsonl> -q preprod_session       # show matches + 2 surrounding messages
-csr -f <path.jsonl> -q cookie -C 5           # more context around matches
-csr -f <path.jsonl> --no-filter              # dump entire conversation clean
-```
-
-Strips tool results, diffs, and system reminders. Marks matching messages with `<<`.
-
-### Chaining css + csr
-
-Use `--paths` on `css` to pipe the top result into `csr`:
-
-```bash
-# find sessions about cookies, then read the top hit for "preprod_session"
+# top hit's "preprod_session" detail
 csr -f "$(css -q cookie --days 3 --paths | head -1)" -q preprod_session
 
-# pick the 2nd result instead
+# 2nd result
 csr -f "$(css -q cookie --paths | sed -n 2p)" -q preprod_session
 
-# dump the full conversation of the top hit (no query filter)
+# full conversation of top hit
 csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 ```
 
-The workflow is: `css` finds which session, `--paths` gives a pipeable path, `csr` reads it clean.
-
----
-
-## Common Searches
+## Common searches
 
 | Goal | Command |
-|------|---------|
-| Find where I discussed X | `css -q "X"` |
-| Drill into a specific match | `csr -f "$(css -q X --paths \| head -1)" -q "Y"` |
-| What files did I create for feature Y | `/ws-history --search Y` then check "Files Touched" |
-| Find a doc Opus wrote | `grep -r "topic" ~/dev/project/.giantmem/` |
-| List recent work in project | `/ws-history` |
-| Resume a specific session | `cd <project-dir> && claude --resume <session-id>` |
+|---|---|
+| Where I discussed X | `css -q "X"` |
+| Drill into a match | `csr -f "$(css -q X --paths \| head -1)" -q "Y"` |
+| Files I created for feature Y | `/ws-history --search Y` |
+| Find Opus prose | `grep -r "topic" ~/dev/project/.giantmem/` |
+| Recent project work | `/ws-history` |
+| Resume session | `cd <dir> && claude --resume <uuid>` |
 
----
+## Data locations
 
-## Data Locations
-
-| Data | Location |
-|------|----------|
+| Data | Path |
+|---|---|
 | Workspace session index | `.giantmem/history/sessions.md` |
 | Workspace session details | `.giantmem/history/sessions/*.md` |
 | Workspace discoveries | `.giantmem/context/discoveries.md` |
-| JSONL conversations | `~/.claude/projects/{project}/*.jsonl` |
-| Global history index | `~/.claude/history.jsonl` |
-
----
+| JSONL transcripts | `~/.claude/projects/{project}/*.jsonl` |
+| Global history | `~/.claude/history.jsonl` |
 
 ## Tips
 
-- Session files contain: user prompts, files modified/created/read, bash commands, discoveries
-- JSONL files contain: full conversation including Claude's thinking and responses
-- Use `/session-search` when looking for Claude's explanations
-- Use `/ws-history --search` when looking for what files were touched
-- Session IDs are 8-char hex (e.g., `abc12345`) - use full UUID for `claude --resume`
-
----
+- Session files = prompts + files touched + commands + discoveries.
+- JSONL = full conversation including Claude thinking.
+- `/session-search` for Claude's explanations. `/ws-history --search` for what files were touched.
+- Session IDs are 8-char hex; use full UUID for `claude --resume`.
 
 ## See also
 
-Different corpus, easy to confuse with this one:
-
-- [gma-search.md](gma-search.md) — typed artifact search (`giantmem artifact`, `gma`, MCP `find_artifact`). Covers proposal / delta-spec / tasks / plan / research / etc. Includes `--scope` / `--lifecycle` / `--semantic` filters.
-- [usage-summary.md](usage-summary.md) — full artifact + spec workflow.
-- This doc covers Claude session transcripts + workspace session indexes (a completely separate index from artifacts).
+- [gma-search.md](gma-search.md) — typed artifact search (different corpus: proposals, delta-specs, tasks, etc.)
+- [usage-summary.md](usage-summary.md) — artifact + spec workflow
