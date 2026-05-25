@@ -94,7 +94,14 @@ if ! command -v rustup >/dev/null; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 fi
 "$HOME/.cargo/bin/rustup" component add rust-analyzer
-sudo snap install lua-language-server --classic
+# lua-language-server: not in apt or snap. GitHub release tarball.
+LLS_VER=3.18.2
+if [ ! -x "$HOME/.local/lua-language-server/bin/lua-language-server" ]; then
+  mkdir -p "$HOME/.local/lua-language-server" "$HOME/.local/bin"
+  curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VER}/lua-language-server-${LLS_VER}-linux-x64.tar.gz" \
+    | tar -xz -C "$HOME/.local/lua-language-server"
+fi
+ln -sf "$HOME/.local/lua-language-server/bin/lua-language-server" "$HOME/.local/bin/lua-language-server"
 green "  pyright + typescript-language-server + rust-analyzer + lua-language-server ok"
 
 # === 4. giant-tooling sibling ===

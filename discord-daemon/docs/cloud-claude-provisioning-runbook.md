@@ -302,7 +302,10 @@ sudo apt-get install -y nodejs
 sudo npm install -g pyright typescript-language-server typescript
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 ~/.cargo/bin/rustup component add rust-analyzer
-sudo snap install lua-language-server --classic
+LLS_VER=3.18.2  # check https://github.com/LuaLS/lua-language-server/releases for latest
+mkdir -p ~/.local/lua-language-server ~/.local/bin
+curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VER}/lua-language-server-${LLS_VER}-linux-x64.tar.gz" | tar -xz -C ~/.local/lua-language-server
+ln -sf ~/.local/lua-language-server/bin/lua-language-server ~/.local/bin/lua-language-server
 
 # Ensure ~/.cargo/bin on PATH for new shells
 grep -q '.cargo/bin' ~/.bashrc || echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
@@ -310,6 +313,7 @@ grep -q '.cargo/bin' ~/.bashrc || echo 'export PATH="$HOME/.cargo/bin:$PATH"' >>
 
 Gotchas:
 - `rust-analyzer` NOT in Ubuntu 24.04 apt (`E: Unable to locate package`). Snap `--beta` channel has it but the binary is from 2023 (`v0.0.0`). Rustup gives current builds; pay the ~200MB toolchain cost.
+- `lua-language-server` NOT in Ubuntu apt and NOT in snap (`error: snap "lua-language-server" not found`). GitHub release tarball is the canonical install. Pin a version (LLS_VER) — auto-fetching "latest" via API churns on every fresh provision.
 - `typescript-language-server@5.x` requires node ≥20. Node 18 install reports `npm WARN EBADENGINE` and the binary won't start.
 
 Verify:
