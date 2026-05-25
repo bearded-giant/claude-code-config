@@ -18,7 +18,9 @@ Always overwrite. After writing, print the markdown in chat, then the file path 
 
 2. **Branch context**: current branch, commits via `git log <base>..HEAD`, full diff via `git diff <base>..HEAD`. Read diff for understanding.
 
-3. **Group changes into clusters**: each logical change (often one commit, sometimes multiple related commits) becomes one cluster of bullets. Multi-commit branches with distinct themes get multiple clusters separated by blank lines or `### subheading` lines.
+3. **Identify the theme, not the changes**: read the diff to understand what the MR *accomplishes* — the user-visible behavior change, the architectural shift, the bug fix. Write to that level. Reviewers read the diff for what changed file-by-file; the description tells them *why this MR exists* and *how the pieces fit together at a high level*.
+
+   Group bullets by theme only when the branch genuinely has multiple distinct themes (e.g., a feature + an unrelated bug fix snuck into the same MR). Single-theme branches — even large ones spanning many files — get ONE cluster, no subheadings. Do NOT create subheadings per file or per module (`### prompt changes (file.py)`, `### graph + synthesis (graph.py, post_synthesis.py)`) — that's the diff's job, not the description's.
 
 4. **Betaflags (diff only, NOT whole codebase)**: scan added lines for `BetaService` imports or `is_enabled(` calls. Note flag strings. Omit section if none.
 
@@ -64,57 +66,86 @@ example response:
 
 **Bullets, not prose paragraphs.** User has consistently wanted bullets for MR descriptions. Previous attempts at prose were wrong direction.
 
+**Length target: 3–7 bullets total.** File count is irrelevant. A branch touching 1 file = 3–7 bullets. A branch touching 15 files = 3–7 bullets. A branch touching 50 files = 3–7 bullets. The diff scales; the description does not. If you find yourself listing files or modules, stop and ask "what is the *behavior* this MR changes?" — write that instead.
+
+**Scale test (apply before writing):** if this branch hypothetically grew to 15 files across 6 directories, what would change in the description? Answer MUST be: nothing. Same 3–7 bullets, same themes. If you can't pass this test, you're describing implementation, not change.
+
 Bullet style:
 - lowercase first letter
 - no trailing period
 - substantive: pack what + why into one bullet, commas/clauses OK
-- include code refs when they help the reviewer: file paths (`tokens_controller.py`), function names (`TokensController.validate_claims`), endpoints (`/api/chat_integration`), field names with types (`is_admin (bool)`, `user_email (string)`)
+- describe the *behavior or architectural shift*, not the file edits — `"compound questions trigger both tools and synthesize one reply"` beats `"counts distinct tool slugs in graph.py, forces synthesize_response=True"`
+- code refs are OK when they identify *what* changed at the system level (a public endpoint, a public function, a tool slug) — NOT to enumerate every internal helper that moved
 - include the "why" inline when it's not obvious: `sentinel caused NoResultFound in TokensController.validate_claims → 404 on chat endpoints`
 - arrows OK: `→` for cause/effect, `=` for equivalence
 - past tense or present, match what reads naturally
 
 Cluster style:
-- group related bullets together (no blank lines within cluster)
-- separate clusters with blank lines
-- multi-commit branches: optional `### short header` per cluster
-- single-commit/single-theme branches: one cluster, no header
+- single-theme branch (default — 95% of MRs) → ONE cluster, NO `###` subheadings, even if the branch touches many files
+- multi-theme branch (rare — bundles distinct unrelated changes, e.g. a feature plus an unrelated bug fix) → one cluster per theme, separated by blank lines, optional `### short header` per cluster
+- subheadings MUST describe **distinct functional themes** (`### fix unrelated JWT 404`) — NEVER files, modules, directories, layers, or stages of one feature:
+  - banned: `### prompts.py changes`, `### graph + synthesis`, `### orchestrator/`, `### backend`, `### tests`, `### docs`, `### config`, `### step 1`, `### prompt layer`, `### synthesis layer`
+  - all of the above are *one theme*: the feature. Use one cluster with no subheading.
+- if every subheading you're considering describes a different *part of the same feature*, the answer is zero subheadings, not several
 
 What NOT to do:
 - no prose paragraphs in description body — bullets only
 - no "this MR adds", "this PR introduces", "this branch implements" — drop the meta phrase, start with the verb: "adds X", "enables Y"
 - no splitting one substantive bullet into three thin ones
-- no listing changed files (the diff handles that)
+- **no per-file or per-module subheadings.** `### prompt changes (orchestrator/prompts.py)` is wrong. `### graph + synthesis (graph.py, post_synthesis.py)` is wrong. The reviewer can read the diff for which files moved. Subheadings only exist for genuinely distinct themes (unrelated bug fix bundled in, etc.).
+- no enumerating every file edited — list the *behavior change*, not the implementation walk-through
 - **NO tests in the description.** Skip test files entirely. Do NOT add an "integration tests" / "unit tests" / "test coverage" cluster. Do NOT mention `tests/...` paths. Do NOT describe what the tests cover. Reviewers see test files in the diff — they don't need a recap. This rule is absolute, no exceptions.
+- no recap of internal helpers, constants, or config knobs renamed — only mention if they are public surface the reviewer needs to know about
+- no walking through the diff layer-by-layer (prompt → graph → adapter → tests) — that *is* describing the diff
 
 ## Example output
+
+Single-theme branch (default — note: NO subheadings, ~5 bullets, focused on the behavior change not the file walk-through):
 
 ```markdown
 # description
 
-- enables downstream services (Clay) to distinguish admin vs merchant callers
-- adds is_admin (bool) and user_email (string) to orchestrator inbound chat request
-- note: customcheckout resolves both at the agent_chat endpoint and sends in the POST body
+- enables multi-tool turns: when a turn invokes 2+ distinct tool slugs, the orchestrator fuses outputs into one synthesized reply instead of returning the last tool's output
+- driver: compound merchant questions like *"what's my cancellation rate this month and how can I reduce it"* — analytics for the metric, clay for the guidance, single answer back
+- the LLM is now allowed to pick multiple tools in one turn; mutual-exclusion language in the system prompt that previously forced single-tool selection is gone
+- single-tool turns unchanged, reuses the existing post-synthesis model knob, statsd tagged `multi=true|false` for downstream A/B
+- runbook updated so new tools auto-participate in multi-tool turns with no extra wiring
+```
 
-- values flow through ContextVars so any tool or hook can read them during a turn
-- ask_clay tool forwards both to support-agent's /api/chat_integration
+Multi-theme branch (only when a branch genuinely bundles distinct unrelated changes):
 
-- purely additive, defaults (is_admin=False, user_email=None) make it backward-compatible
+```markdown
+# description
+
+- enables downstream services (Clay) to distinguish admin vs merchant callers via `is_admin (bool)` + `user_email (string)` on the orchestrator chat request
+- values flow through ContextVars so any tool/hook reads them mid-turn; ask_clay forwards both to support-agent's `/api/chat_integration`
+- purely additive, defaults make it backward-compatible
 
 ### fix JWT claims for agent chat internal token minting
 
-- remove duplicate store_id claim — already in base JWT from recharge_api_token_dto
-- skip account_id claim when using sentinel 9999999 fallback (admin staff without matching account)
-- sentinel caused NoResultFound in TokensController.validate_claims → 404 on chat endpoints
-- remove stale comment in tokens_controller.py (redundant with outer is_internal guard)
-- preserve defense-in-depth: account existence + user_id validation still runs for internal tokens with real account IDs
-- only scope-subset check bypassed for internal callers (unchanged from original design)
-
-### v2.2 chat path
-
-- passed chart data straight to frontend with no fallback — analytics tables were invisible
-- added markdown table conversion with proper value formatting (currency, integers, percentages) handling the column format from the orchestrator
-- threaded charting beta flag through both POST and GET message paths so tables render consistently on send and history reload
+- skip account_id claim when using sentinel 9999999 fallback (admin staff without matching account) — sentinel caused NoResultFound in TokensController.validate_claims → 404 on chat endpoints
+- defense-in-depth preserved: account + user_id validation still runs for internal tokens with real account IDs
 ```
+
+Counter-example — what NOT to produce (too granular, per-file subheadings, walks the diff):
+
+```markdown
+# description (BAD — do not emit)
+
+### prompt changes (`orchestrator/prompts.py`)
+- drop carve-outs in selection_rules
+- new MULTI_SYNTHESIS_PROMPT constant
+- compose_system_prompt emits `## Combining tools` section when len(fragments) > 1
+- docstrings on analyze_merchant_data + ask_clay updated
+
+### graph + synthesis (`orchestrator/graph.py`, `orchestrator/post_synthesis.py`)
+- counts distinct tool slugs
+- forces synthesize_response=True
+- new synthesize_multi_response aggregates direct_outputs
+...
+```
+
+That style describes implementation, not behavior. Collapse the whole thing into 3–5 thematic bullets.
 
 ## Section omission
 
