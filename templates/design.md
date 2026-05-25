@@ -2,6 +2,7 @@
 type: design
 feature: {feature}
 status: ready
+lifecycle: durable
 created: {today}
 updated: {today}
 ---

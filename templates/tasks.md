@@ -2,6 +2,7 @@
 type: tasks
 feature: {feature}
 status: draft
+lifecycle: durable
 created: {today}
 updated: {today}
 ---

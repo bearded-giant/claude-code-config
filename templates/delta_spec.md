@@ -3,6 +3,7 @@ type: delta-spec
 feature: {feature}
 domain: {domain}
 status: ready
+lifecycle: durable
 created: {today}
 updated: {today}
 ---

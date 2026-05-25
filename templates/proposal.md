@@ -2,6 +2,7 @@
 type: proposal
 feature: {name}
 status: ready
+lifecycle: durable
 created: {today}
 updated: {today}
 ---

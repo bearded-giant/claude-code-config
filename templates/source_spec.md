@@ -2,6 +2,7 @@
 type: source-spec
 domain: {domain}
 status: done
+lifecycle: durable
 created: {today}
 updated: {today}
 ---
