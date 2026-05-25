@@ -52,3 +52,4 @@ __pycache__/
 
 # transient memory state
 .memory-project.json
+.mdlive/

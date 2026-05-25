@@ -10,10 +10,13 @@ Generate a QA validation report for a feature using goal-backward verification.
 
 ## Steps
 
-1. Identify the target feature folder in .giantmem/features/
-2. Read `spec.md` -- extract acceptance criteria as "truths that must be true"
-3. Read `facts.md` -- extract test commands, beta flags, config keys
-4. For each acceptance criterion, verify 3 levels:
+1. Identify the target feature folder in `.giantmem/features/`.
+2. **Extract acceptance criteria:**
+   - **Primary path:** scan `features/{name}/specs/{domain}/spec.md` (delta-specs) for `### Requirement:` blocks. Each Requirement + its `#### Scenario:` blocks become the "truths that must be true". Given/When/Then is the verification recipe.
+   - **Fallback (legacy):** if no `specs/` subdir or no delta-specs present, scan `proposal.md` (or legacy `spec.md` symlink) for `## Acceptance Criteria` bullets.
+   - If both empty: print "no acceptance criteria found — feature has no behavior contract" and prompt user whether to continue with a manual report.
+3. Read `facts.md` — extract test commands, beta flags, config keys.
+4. For each Requirement/scenario or legacy bullet, verify 3 levels:
 
 ### Verification Levels
 
@@ -79,3 +82,4 @@ Items that cannot be verified by code inspection alone:
 - A criterion that passes Substantive but fails Wired is dead code -- flag it clearly
 - Swarm commands should always call this as part of validation
 - For regular work, user explicitly invokes when ready for QA
+- Completion ratio (truths-passing / total) is decoupled from `meta.json.status`. A feature can be `complete` without all criteria green — user often completes for non-shipping reasons (scope cut, problem solved elsewhere). Surface both signals in the report.

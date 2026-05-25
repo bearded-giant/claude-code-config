@@ -38,7 +38,9 @@ If no argument provided:
 - If multiple in_progress, list them and ask
 - If none, tell the user to run `/new-feature` or `/start-feature` first
 
-Validate `.giantmem/features/{feature}/spec.md` exists. Read it.
+Validate `.giantmem/features/{feature}/proposal.md` exists (or legacy `spec.md` symlink). Read it.
+
+Also read all delta-specs at `.giantmem/features/{feature}/specs/{domain}/spec.md` (may be empty) and any source-specs at `.giantmem/specs/{domain}/spec.md` for domains the feature touches. Delta-specs describe what behavior changes; source-specs describe current behavior. Both inform the plan.
 
 ### 2. Ensure domains directory exists
 
@@ -50,9 +52,10 @@ Read `.giantmem/domains/_index.json`.
 
 Domains are NOT user-supplied. Claude derives them by:
 
-1. Reading the feature spec for clues about what code areas are involved
+1. Reading the proposal + delta-specs for clues about what code areas are involved
 2. Doing a quick scan of the codebase structure (top-level dirs, module layout, key config files) to understand how the repo is organized
 3. Cross-referencing with existing domain index (if any domains already exist)
+4. Cross-referencing with existing source-specs at `.giantmem/specs/` — a source-spec for a given name signals that area has already accumulated behavior contracts
 
 From this, propose a set of domains to the user. Each domain should represent a distinct, bounded area of the codebase. Use snake_case names that describe the area, not the feature (e.g., `auth_session` not `jwt_enforcement`).
 
