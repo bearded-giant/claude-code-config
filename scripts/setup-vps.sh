@@ -74,6 +74,16 @@ mkdir -p "$HOME/.nvm/versions/node/v24.11.1/bin"
 ln -sfn "$NODE_BIN" "$HOME/.nvm/versions/node/v24.11.1/bin/node"
 green "  node bridge → $NODE_BIN"
 
+# === 3b. LSP runtimes for claude-code-config ===
+# claude-code-config enables 4 LSP plugins (settings.json):
+#   pyright-lsp, typescript-lsp, rust-analyzer-lsp, lua-lsp
+# These need their language servers on PATH or the LSP tool no-ops.
+step "LSP runtimes"
+sudo npm install -g --silent pyright typescript-language-server typescript
+sudo apt-get install -y rust-analyzer
+sudo snap install lua-language-server --classic
+green "  pyright + typescript-language-server + rust-analyzer + lua-language-server ok"
+
 # === 4. giant-tooling sibling ===
 step "giant-tooling sibling repo"
 if [ ! -d "$TOOLING_DIR" ]; then

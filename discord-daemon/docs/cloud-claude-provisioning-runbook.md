@@ -287,7 +287,27 @@ ssh bryan@claude-vps
 curl -fsSL https://claude.ai/install.sh | bash    # or npm path, whichever Anthropic recommends
 ```
 
-### 4.2 settings.json snippet
+### 4.2 LSP runtimes
+
+`claude-code-config` enables 4 LSP plugins via `settings.json` (pyright-lsp, typescript-lsp, rust-analyzer-lsp, lua-lsp). The language servers themselves are not bundled — install them or the LSP tool silently no-ops.
+
+`setup-vps.sh` step `3b` handles this on fresh provisions. For existing VPS or manual fix:
+
+```bash
+sudo npm install -g pyright typescript-language-server typescript
+sudo apt-get install -y rust-analyzer
+sudo snap install lua-language-server --classic
+```
+
+Verify:
+
+```bash
+for cmd in pyright typescript-language-server rust-analyzer lua-language-server; do
+  command -v "$cmd" || echo "MISSING $cmd"
+done
+```
+
+### 4.3 settings.json snippet
 
 ```bash
 mkdir -p ~/.claude
@@ -308,14 +328,14 @@ EOF
 
 (Daemon and sessions run on same host → loopback works; tailnet-bind from Phase 2.3 still required for other VPSes or laptop testing.)
 
-### 4.3 Export token in shell
+### 4.4 Export token in shell
 
 ```bash
 echo "export DISCORD_DAEMON_TOKEN=$(grep DAEMON_TOKEN ~/.claude/channels/discord/.env | cut -d= -f2)" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 4.4 Launch session
+### 4.5 Launch session
 
 ```bash
 tmux new -s main
