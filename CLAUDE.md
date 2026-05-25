@@ -68,6 +68,8 @@ Before grepping or scanning, use the typed index:
 
 Rebuild the index after any feature command writes new files: `giantmem artifact reindex` (already wired into `/new-feature` and `/complete-feature`).
 
+Full search cheat sheet (typed + content + interactive + MCP): [`docs/gma-search.md`](docs/gma-search.md).
+
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
 - Renamed/removed/added a slash command, skill, agent, or hook
