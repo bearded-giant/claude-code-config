@@ -64,23 +64,34 @@ sudo mkdir -p /Users
 [ -L /Users/bryan ] || sudo ln -sfn "$HOME" /Users/bryan
 green "  /Users/bryan → $HOME"
 
+# Node 22 LTS via NodeSource — Ubuntu 24.04 ships v18, too old for
+# typescript-language-server (requires >=20). Reinstall if current is <20.
+NODE_MAJOR_REQ=20
+need_node=true
 if command -v node >/dev/null; then
-  NODE_BIN="$(command -v node)"
-else
-  sudo apt-get install -y nodejs
-  NODE_BIN="$(command -v node)"
+  cur="$(node -p 'process.versions.node.split(".")[0]')"
+  [ "$cur" -ge "$NODE_MAJOR_REQ" ] && need_node=false
 fi
+if $need_node; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+fi
+NODE_BIN="$(command -v node)"
 mkdir -p "$HOME/.nvm/versions/node/v24.11.1/bin"
 ln -sfn "$NODE_BIN" "$HOME/.nvm/versions/node/v24.11.1/bin/node"
-green "  node bridge → $NODE_BIN"
+green "  node bridge → $NODE_BIN ($(node --version))"
 
 # === 3b. LSP runtimes for claude-code-config ===
 # claude-code-config enables 4 LSP plugins (settings.json):
 #   pyright-lsp, typescript-lsp, rust-analyzer-lsp, lua-lsp
 # These need their language servers on PATH or the LSP tool no-ops.
+# Notes:
+#   - rust-analyzer not in Ubuntu 24.04 apt; snap channel beta has it.
+#   - typescript-language-server requires node >=20 (handled above).
 step "LSP runtimes"
 sudo npm install -g --silent pyright typescript-language-server typescript
-sudo apt-get install -y rust-analyzer
+sudo snap install --classic --beta rust-analyzer
+sudo ln -sf /snap/rust-analyzer/current/rust-analyzer /usr/local/bin/rust-analyzer
 sudo snap install lua-language-server --classic
 green "  pyright + typescript-language-server + rust-analyzer + lua-language-server ok"
 

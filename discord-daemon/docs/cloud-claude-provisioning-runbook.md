@@ -294,10 +294,20 @@ curl -fsSL https://claude.ai/install.sh | bash    # or npm path, whichever Anthr
 `setup-vps.sh` step `3b` handles this on fresh provisions. For existing VPS or manual fix:
 
 ```bash
+# Node 22 LTS (Ubuntu 24.04 default is v18, too old for typescript-language-server)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# LSPs
 sudo npm install -g pyright typescript-language-server typescript
-sudo apt-get install -y rust-analyzer
+sudo snap install --classic --beta rust-analyzer
+sudo ln -sf /snap/rust-analyzer/current/rust-analyzer /usr/local/bin/rust-analyzer
 sudo snap install lua-language-server --classic
 ```
+
+Gotchas:
+- `rust-analyzer` NOT in Ubuntu 24.04 apt (`E: Unable to locate package`). Snap `--beta` is where it lives.
+- `typescript-language-server@5.x` requires node ≥20. Node 18 install reports `npm WARN EBADENGINE` and the binary won't start.
 
 Verify:
 
