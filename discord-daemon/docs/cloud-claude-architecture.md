@@ -178,7 +178,7 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 ```
 dclaude  (= claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions)
   └─► spawn session-mcp
-        └─► session_id = `cwd-<sha1(cwd)[:16]>`  (stable per cwd; override w/ CLAUDE_SESSION_ID)
+        └─► session_id = `cwd-<sha1(cwd)[:8]>-<rand[:8]>`  (fresh per lift; CLAUDE_SESSION_ID overrides; CLAUDE_SESSION_STABLE=1 for legacy cwd-derived id)
         └─► POST /sessions {session_id, label, cwd, pid}
               ├─► registry.get(session_id) hit?
               │     ├─ yes  → reuse existing threadId, flip state → 'active'
@@ -194,11 +194,12 @@ claude exits / SIGTERM   (soft close — preserves thread mapping)
               ├─ state → 'dormant', subscribers cleared, entry retained
               └─ thread archived in Discord (auto-unarchives on next send)
 
-claude --resume in same cwd  →  same session_id  →  same threadId  →  same Discord thread
+Re-lift same cwd  →  NEW session_id (random suffix)  →  NEW thread
+Resume specific past thread  →  CLAUDE_SESSION_ID=<old-id> dclaude  →  reattach
+Legacy stable-per-cwd  →  CLAUDE_SESSION_STABLE=1 dclaude  →  cwd-<sha1[:16]>
 
 Hard removal (intentional teardown):
-  DM `kill <label>` → registry.delete(session_id) + archive thread. Next register
-  in that cwd will create a fresh thread.
+  DM `kill <label>` → registry.delete(session_id) + archive thread.
 ```
 
 ### Inbound message (Discord → claude)

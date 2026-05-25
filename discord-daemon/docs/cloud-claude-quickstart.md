@@ -35,28 +35,24 @@ laptop                                   VPS
                     └─────────────►  dclaude --continue
 ```
 
-## Worktrees, not branches
+## Session IDs and threads
 
-The session-to-thread mapping is **one Discord thread per cwd**. The daemon derives a stable `session_id` from the working directory of the launched claude process, so a relaunch in the same directory resumes the same thread (see [thread reuse](#thread-reuse-on-resume)).
+Each `dclaude` lift gets a **fresh `session_id`** (format: `cwd-<sha1(cwd)[:8]>-<rand[:8]>`) and a **new Discord thread**. Same cwd lifted twice → two separate threads. This is intentional: each work session is independent, no context bleed.
 
-That makes **git worktrees the recommended pattern** for parallel work on the same repo:
-
-| Pattern | Behavior |
+| Need | How |
 |---|---|
-| **Worktree per branch** (`~/dev/myrepo-featureA`, `~/dev/myrepo-featureB`, ...) | Each has its own cwd → own session_id → own Discord thread. Switch context by `cd`-ing to the worktree. Recommended. |
-| Single clone, switch branches with `git checkout` | Same cwd across branches → all branches share one Discord thread → you can't tell which branch's session is talking. Avoid. |
-| Two concurrent claude sessions in the same cwd | Both register the same `session_id` → second one steals the thread mapping from the first. Don't do this. |
+| Resume a specific past session's thread | `CLAUDE_SESSION_ID=<old-id> dclaude` |
+| Stable-per-cwd (legacy: same cwd = same thread forever) | `CLAUDE_SESSION_STABLE=1 dclaude` → id = `cwd-<sha1[:16]>` |
+| Custom id for scratch session | `CLAUDE_SESSION_ID=scratch-foo dclaude` |
 
-If you don't already work in worktrees, the rough flow is:
+Worktrees still recommended for parallel work — they isolate file state, not just threads. Lift any cwd as many times as you want; old threads stay archived in Discord, new lift opens fresh thread.
 
 ```bash
 cd ~/dev/myrepo
-git worktree add ../myrepo-featureA -b featureA   # new branch in sibling dir
+git worktree add ../myrepo-featureA -b featureA
 cd ../myrepo-featureA
-dclaude                                           # gets its own Discord thread
+dclaude                                           # fresh thread
 ```
-
-For a single-task scratch session that doesn't merit a worktree, override the cwd-derived id explicitly: `CLAUDE_SESSION_ID=scratch-foo dclaude`.
 
 ---
 
@@ -378,11 +374,15 @@ Naming `dclaude` (not aliasing plain `claude`) keeps unflavored `claude` usable 
 
 **Note on `--dangerously-skip-permissions`:** Discord can't easily relay the per-tool permission prompt back to the phone, so `dclaude` skips them. Claude will run any tool (Bash, Edit, Write, MCP calls) without asking. Acceptable when you're the only one driving sessions on a tailnet-locked VPS — only your own prompts reach claude. Do **not** use this pattern if anyone else has access to the Discord bot.
 
-### Thread reuse on resume
+### Fresh thread per lift, opt-in resume
 
-The daemon derives a stable `session_id` from the cwd (sha1 prefix). Exiting claude marks the session **dormant** but keeps the thread mapping; relaunching `dclaude` in the same cwd (or `claude --resume`) reattaches to the same Discord thread. Discord auto-unarchives on the first outbound message.
+Each `dclaude` lift mints a new `session_id` (`cwd-<sha1[:8]>-<rand[:8]>`) → new Discord thread. Exiting claude marks dormant + archives thread; thread mapping retained for explicit resume.
 
-Worktree-per-project pattern is the assumption — two concurrent claude sessions in the same cwd would collide on the same thread. Use `kill <label>` via DM to hard-delete (drops the mapping so the next launch creates a fresh thread). Override the cwd-derived id with `CLAUDE_SESSION_ID=<id> dclaude` if you need a different scheme.
+- Resume specific thread: `CLAUDE_SESSION_ID=<old-id> dclaude` — reattaches, Discord auto-unarchives on next send.
+- Stable-per-cwd (old behavior): `CLAUDE_SESSION_STABLE=1 dclaude` → `cwd-<sha1[:16]>`.
+- Hard-delete a thread mapping: DM `kill <label>` to bot.
+
+List dormant sessions via `list` DM if you need an id to resume.
 
 ### Nested tmux (local + VPS)
 
@@ -397,7 +397,7 @@ If you run tmux locally too, leader collision is the main hazard — the outer t
 
 A red status bar with a `VPS` tag is set on the remote tmux so you can tell which layer you're in at a glance. Newcomers unfamiliar with tmux will still find the nesting confusing — open question how to ergonomically support them.
 
-Phone workflow: open Discord, find the thread, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
+Phone workflow: open Discord, find the active thread for your current lift, post a message — the VPS claude session replies in the same thread. DM the bot for control commands.
 
 **DM control commands:**
 

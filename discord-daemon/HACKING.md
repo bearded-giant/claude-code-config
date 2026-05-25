@@ -166,7 +166,7 @@ DAEMON_ARCHIVE_ON_EXIT=1                    # optional — archive threads on SI
 }
 ```
 
-`state` is `active` while a session-mcp is registered + heartbeating, `dormant` after a soft unregister (session-mcp shutdown) or heartbeat lapse. Dormant entries retain their `threadId` so a subsequent register with the same `sessionId` reuses the Discord thread. Hard delete (drops the mapping) only via `kill <label>` DM command. Backward compat on load: missing `state` field defaults to `active`.
+`state` is `active` while a session-mcp is registered + heartbeating, `dormant` after a soft unregister (session-mcp shutdown) or heartbeat lapse. Dormant entries retain their `threadId` so a subsequent register with the same `sessionId` reuses the Discord thread. Since `session-mcp/src/server.ts` mints a fresh random `sessionId` per lift by default, dormant entries are reached only via explicit `CLAUDE_SESSION_ID=<old-id>` or legacy `CLAUDE_SESSION_STABLE=1`. Hard delete (drops the mapping) only via `kill <label>` DM command. Backward compat on load: missing `state` field defaults to `active`.
 
 Written via atomic `tmp + rename`. Debounced 1s on register/heartbeat/markDormant/delete. Synchronous flush on SIGTERM.
 

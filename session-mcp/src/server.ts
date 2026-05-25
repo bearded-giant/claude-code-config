@@ -16,7 +16,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { DaemonClient } from './daemon-client.ts'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { basename } from 'path'
 
 const DAEMON_URL = process.env.DISCORD_DAEMON_URL ?? 'http://127.0.0.1:7777'
@@ -28,10 +28,16 @@ if (!DAEMON_TOKEN) {
 }
 
 const CWD = process.cwd()
-// Stable session id derived from cwd so claude --resume reattaches to the
-// same Discord thread. Worktree-per-project pattern guarantees no collision.
-// Override with CLAUDE_SESSION_ID env if you want a different scheme.
-const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? `cwd-${createHash('sha1').update(CWD).digest('hex').slice(0, 16)}`
+// Fresh session id per lift — same cwd lifted twice gets two distinct
+// Discord threads. cwd-hash prefix kept for grep/debug; random suffix
+// guarantees uniqueness across re-lifts.
+//   CLAUDE_SESSION_ID=<id>         resume a specific past session (reattach thread)
+//   CLAUDE_SESSION_STABLE=1        legacy deterministic id (cwd-<sha1[:16]>)
+const CWD_HASH = createHash('sha1').update(CWD).digest('hex').slice(0, 8)
+const DEFAULT_SESSION_ID = process.env.CLAUDE_SESSION_STABLE
+  ? `cwd-${createHash('sha1').update(CWD).digest('hex').slice(0, 16)}`
+  : `cwd-${CWD_HASH}-${randomBytes(4).toString('hex')}`
+const SESSION_ID = process.env.CLAUDE_SESSION_ID ?? DEFAULT_SESSION_ID
 const LABEL = process.env.CLAUDE_SESSION_LABEL ?? basename(CWD)
 
 const daemon = new DaemonClient({ url: DAEMON_URL, token: DAEMON_TOKEN })

@@ -155,8 +155,9 @@ async function registerSession(req: Request, bot: DiscordBot): Promise<Response>
 }
 
 // Session-mcp shutting down → soft unregister. Keep thread mapping so a future
-// register with same sessionId (same cwd hash, on resume) reattaches to the
-// same Discord thread. Archive the thread; Discord auto-unarchives on next send.
+// register with same sessionId (explicit CLAUDE_SESSION_ID resume, or legacy
+// stable-per-cwd mode) reattaches to the same Discord thread. Archive the
+// thread; Discord auto-unarchives on next send.
 async function deleteSession(sessionId: string, bot: DiscordBot): Promise<Response> {
   const dormant = registry.markDormant(sessionId)
   if (!dormant) return json({ error: 'no such session' }, 404)
