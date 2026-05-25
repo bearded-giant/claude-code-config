@@ -300,13 +300,16 @@ sudo apt-get install -y nodejs
 
 # LSPs
 sudo npm install -g pyright typescript-language-server typescript
-sudo snap install --classic --beta rust-analyzer
-sudo ln -sf /snap/rust-analyzer/current/rust-analyzer /usr/local/bin/rust-analyzer
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+~/.cargo/bin/rustup component add rust-analyzer
 sudo snap install lua-language-server --classic
+
+# Ensure ~/.cargo/bin on PATH for new shells
+grep -q '.cargo/bin' ~/.bashrc || echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
 ```
 
 Gotchas:
-- `rust-analyzer` NOT in Ubuntu 24.04 apt (`E: Unable to locate package`). Snap `--beta` is where it lives.
+- `rust-analyzer` NOT in Ubuntu 24.04 apt (`E: Unable to locate package`). Snap `--beta` channel has it but the binary is from 2023 (`v0.0.0`). Rustup gives current builds; pay the ~200MB toolchain cost.
 - `typescript-language-server@5.x` requires node ≥20. Node 18 install reports `npm WARN EBADENGINE` and the binary won't start.
 
 Verify:

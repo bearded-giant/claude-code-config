@@ -86,12 +86,14 @@ green "  node bridge → $NODE_BIN ($(node --version))"
 #   pyright-lsp, typescript-lsp, rust-analyzer-lsp, lua-lsp
 # These need their language servers on PATH or the LSP tool no-ops.
 # Notes:
-#   - rust-analyzer not in Ubuntu 24.04 apt; snap channel beta has it.
+#   - rust-analyzer not in Ubuntu 24.04 apt; snap beta is stale (2023). Use rustup.
 #   - typescript-language-server requires node >=20 (handled above).
 step "LSP runtimes"
 sudo npm install -g --silent pyright typescript-language-server typescript
-sudo snap install --classic --beta rust-analyzer
-sudo ln -sf /snap/rust-analyzer/current/rust-analyzer /usr/local/bin/rust-analyzer
+if ! command -v rustup >/dev/null; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+fi
+"$HOME/.cargo/bin/rustup" component add rust-analyzer
 sudo snap install lua-language-server --classic
 green "  pyright + typescript-language-server + rust-analyzer + lua-language-server ok"
 
@@ -200,7 +202,7 @@ add_export() {
   local line="$1"
   grep -qxF "$line" "$RC" || echo "$line" >> "$RC"
 }
-add_export "export PATH=\"\$HOME/.local/bin:\$PATH\""
+add_export "export PATH=\"\$HOME/.local/bin:\$HOME/.cargo/bin:\$PATH\""
 add_export "export GIANT_TOOLING_DIR=\"$TOOLING_DIR\""
 add_export "[ -f \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\" ] && source \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\""
 add_export "export DISCORD_DAEMON_TOKEN=$TOKEN"
