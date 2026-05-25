@@ -46,19 +46,46 @@ Skip all remaining steps below. Done.
 2. **Read current state**
 
    Read these files (do not proceed without reading them first):
-   - `.giantmem/features/{feature}/spec.md`
+   - `.giantmem/features/{feature}/proposal.md` (or legacy `spec.md` symlink)
    - `.giantmem/features/{feature}/facts.md`
+   - `.giantmem/features/{feature}/specs/` — enumerate delta-specs by domain
    - `.giantmem/features/{feature}/plan_context.json` (if it exists)
    - `.giantmem/features/_index.md`
    - `.giantmem/plans/current.md`
 
-3. **Update spec.md**
+3. **Merge delta-specs into source-of-truth (loose-rules — skippable)**
 
-   - Change `status: in_progress` to `status: complete`
-   - Add `completed: {today's date}` after the `created:` line
-   - Review acceptance criteria: mark all completed items as `[x]`
-   - If any criteria are NOT met, warn the user and ask whether to proceed or address them first
-   - Update scope, architecture, and files sections to reflect final implementation (not the plan, the result)
+   Per migration_plan decision 3, this step never blocks completion. Three paths:
+
+   - `features/{feature}/specs/` empty or missing → silent skip
+   - `--no-merge` flag passed → skip merge but continue completion. Reason should be captured in step 3b.
+   - delta-specs present + no `--no-merge` → run:
+
+     ```bash
+     python3 ~/dev/giant-tooling/workspace/scripts/merge_delta_spec.py {feature} \
+         --reason "$REASON"
+     ```
+
+     The script:
+     - Walks `features/{feature}/specs/{domain}/spec.md` for each domain
+     - Applies `ADDED` → append, `MODIFIED` → replace by Requirement name, `REMOVED` → delete
+     - Creates `.giantmem/specs/{domain}/spec.md` if missing
+     - Flips each delta-spec `status: ready` → `status: done` in frontmatter
+     - Appends entries to per-feature `spec_history.md` AND repo-level `.giantmem/specs/_history.md`
+     - Updates `.giantmem/specs/_index.md` with new domains
+     - Is idempotent — re-running on already-merged deltas reports `skipped idempotent` and skips history/index writes
+
+   **3a. Dry-run first** (recommended for first contact): append `--dry-run`. Shows +/~/- counts per domain without writing.
+
+   **3b. Capture `--reason`**: if interactive, prompt user for a one-line reason ("shipped", "scope cut", "moved to feature X", etc.). Non-interactive: pass `--reason "{feature} completion"`.
+
+4. **Update proposal.md**
+
+   - Add or update top-level frontmatter `status: done`
+   - Add `completed: {today's date}` in frontmatter
+   - Review legacy `## Acceptance Criteria` bullets (if any) and mark completed items `[x]`
+   - If any acceptance criteria are NOT met AND no delta-specs exist, warn the user and ask whether to proceed
+   - Update scope / approach sections to reflect final implementation
 
 4. **Update facts.md**
 
@@ -127,17 +154,29 @@ Skip all remaining steps below. Done.
    - Report `frontend.branch` and `frontend.worktree` so they can handle it
    - Do NOT remove the counterpart worktree or branch — that's the user's responsibility
 
-11. **Report**
+11. **Rebuild artifact index**
+
+   Run `giantmem artifact reindex` so the delta-spec status flip + source-spec
+   updates are reflected in `.giantmem/artifacts.json`. Soft-fail if binary
+   missing — print warning, continue.
+
+12. **Report**
 
    ```
    Feature '{feature}' marked complete.
 
+   Merge:
+     - Domains merged: {list, or "none (no delta-specs)"}
+     - Added/Modified/Removed Requirements: +N ~N -N
+     - History: features/{feature}/spec_history.md + .giantmem/specs/_history.md
+
    Updated:
-     - spec.md (status, acceptance criteria, completed date)
+     - proposal.md (status -> done, completed date)
      - facts.md (commands, files, benchmarks)
      - _index.md (status -> complete)
      - features.json (cache updated)
-     - plans/current.md (moved to completed)
+     - plans/current.md (moved to completed, transient cleared)
+     - artifacts.json (reindexed)
      - domains: {list of refreshed domains, or "none (no domain changes detected)"}
 
    Unchecked criteria: {count or "none"}
