@@ -1,0 +1,38 @@
+version: 1
+
+# Preload packs drive the session-start hook. Each pack is one or more
+# ordered layers. Each layer emits a "=== PRELOAD PACK: <pack>/<layer> ==="
+# block. Reordering layers reorders the output.
+#
+# Placeholders inside query / query_template / repo_filter:
+#   {active_scope}    - inferred from cwd + ~/.giantmem-global/scopes.yaml
+#   {active_feature}  - feature in features.json with status: in_progress
+#   {repo}            - repo containing cwd
+#   {branch}          - current git branch
+#
+# Missing variables resolve to empty string. The layer continues without
+# error.
+#
+# `static_files` inlines each file's content verbatim. `query` (or
+# `query_template`) runs as a search via `giantmem`. `types` / `lifecycle`
+# are CSV-like filters passed through.
+
+packs:
+  default:
+    layer_1:
+      name: global_preferences
+      static_files:
+        - ~/.claude/CLAUDE.md
+    layer_2:
+      name: scope_active_work
+      query_template: "{active_scope} architecture decisions"
+      scope_filter: "{active_scope}"
+      limit: 5
+      lifecycle: [durable]
+    layer_3:
+      name: repo_recent_work
+      query_template: "{active_feature}"
+      repo_filter: current
+      limit: 5
+      types: [proposal, delta-spec, design, tasks]
+      lifecycle: [durable, candidate]
