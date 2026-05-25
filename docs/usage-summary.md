@@ -235,6 +235,44 @@ giantmem artifact search "scope registry yaml" --limit 5
 
 Body hash on artifact_embedding_meta ensures re-embedding only fires when the body actually changes; idempotent backfill is the norm.
 
+## Phase 3: watch + TF-IDF + entities
+
+### Watch daemon
+
+`giantmem watch start|stop|status|run|install` runs a background fsnotify daemon. Edits to any `.giantmem/**` file trigger `giantmem artifact reindex` against the owning workspace; debounced 2s per workspace so bulk saves coalesce. Default excludes `node_modules`, `.venv`, `.git`, `dist`, `build`, `.next`, `.turbo`, `target`, `vendor`.
+
+```bash
+giantmem watch start                              # forks into background
+giantmem watch status                             # report PID + log path
+giantmem watch stop
+giantmem watch install                            # macOS launchd auto-start
+```
+
+PID + log at `~/.cache/giantmem/giantmem-watch.{pid,log}`. Stale pidfile detected on next `start`. Auto-reindex events MUST NOT pollute `artifact_access` (the daemon shells out via `artifact reindex`, which does not log access).
+
+### TF-IDF domain suggester
+
+`giantmem suggest-domain [text]` ranks existing source-spec domains by TF-IDF similarity to the supplied text. Builds the corpus from every `source-spec` artifact's body. Reads stdin when no positional arg.
+
+```bash
+giantmem suggest-domain "JWT session refresh middleware"
+echo "scope yaml registry" | giantmem suggest-domain --limit 5 --json
+```
+
+Future `/new-feature` flag will call this for an interactive scaffold-time domain prompt.
+
+### Entity promotion
+
+`giantmem entity list|show <path>` derives file-level entities from each `.giantmem/domains/*.json` (the cross-repo knowledge base produced by `/plan-feature`). Each entity carries its path, owning domain, purpose, exports, and a back-reference list of every artifact whose body mentions the path.
+
+```bash
+giantmem entity list                              # all entities cross-repo
+giantmem entity show src/state.rs                 # one entity + back-refs
+giantmem entity show main.html --json
+```
+
+MCP `find_entity(name, repo)` mirrors the show path — useful for "which features touched this file" without grepping bodies.
+
 ## What is NOT done (deferred follow-ups)
 
 Tracked, not blocking:

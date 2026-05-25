@@ -299,3 +299,35 @@ GIANTMEM_HYBRID_ACCESS_WEIGHT=0.1
 ```
 
 MCP `find_artifact(semantic=true, query=...)` runs the same pipeline. Default remains FTS-only when `semantic` is omitted.
+
+## 9. Watch + suggest-domain + entity (phase 3)
+
+### Auto-reindex watcher
+
+```bash
+giantmem watch start                       # fork background daemon
+giantmem watch status
+giantmem watch stop
+giantmem watch install                     # macOS LaunchAgent
+```
+
+Watches every `.giantmem/` under `$GIANTMEM_DEV_ROOTS` (or `~/dev`). Debounced 2s per workspace. Edits trigger `giantmem artifact reindex` against the owning worktree. PID at `~/.cache/giantmem/giantmem-watch.pid`; log at `…/giantmem-watch.log`.
+
+### TF-IDF domain suggester
+
+```bash
+giantmem suggest-domain "JWT session refresh middleware"
+echo "scope registry yaml" | giantmem suggest-domain --json --limit 5
+```
+
+Scores existing `source-spec` domains by TF-IDF over their bodies. Aimed at scaffold time ("which domain should this new delta-spec sit under?"). Returns empty when the corpus has no source-specs.
+
+### Entities (domain key_files promotion)
+
+```bash
+giantmem entity list                       # everything cross-repo
+giantmem entity show src/state.rs          # one entity + back-refs
+giantmem entity show main.html --json
+```
+
+Reads `.giantmem/domains/*.json`, promotes each `key_files[]` entry to a typed Entity, then back-references every artifact that mentions the file path. Counterpart MCP tool `find_entity(name, repo)`.
