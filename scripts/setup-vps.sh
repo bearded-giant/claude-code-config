@@ -210,6 +210,18 @@ add_export() {
   grep -qxF "$line" "$RC" || echo "$line" >> "$RC"
 }
 add_export "export PATH=\"\$HOME/.local/bin:\$HOME/.cargo/bin:\$PATH\""
+# Also write PATH to ~/.profile. Reason: tmux launches dclaude via `bash -lc`
+# (login + command, NON-interactive). Ubuntu's default ~/.bashrc returns
+# early for non-interactive shells, so PATH exports below the interactive
+# guard never run. ~/.profile is read by login shells regardless.
+PROFILE="$HOME/.profile"
+if ! grep -q "# LSP runtimes + giantmem" "$PROFILE" 2>/dev/null; then
+  cat >> "$PROFILE" <<'EOF'
+
+# LSP runtimes + giantmem (visible to login non-interactive shells like bash -lc)
+export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/.cargo/bin:$PATH"
+EOF
+fi
 add_export "export GIANT_TOOLING_DIR=\"$TOOLING_DIR\""
 add_export "[ -f \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\" ] && source \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\""
 add_export "export DISCORD_DAEMON_TOKEN=$TOKEN"
