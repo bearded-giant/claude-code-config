@@ -68,6 +68,14 @@ updated: {today}
 
 # Proposal: {Title}
 
+## Open Questions for User
+
+<!--
+ALWAYS at top. Numbered list. Mark each [BLOCKING] or [non-blocking].
+Remove this section once empty. Buried questions get missed.
+-->
+1. ...
+
 ## Intent
 
 <!-- one paragraph: the problem this solves -->
@@ -104,6 +112,14 @@ updated: {today}
 ---
 
 # Proposal: {Title}
+
+## Open Questions for User
+
+<!--
+ALWAYS at top. Numbered list. Mark each [BLOCKING] or [non-blocking].
+Remove this section once empty. Buried questions get missed.
+-->
+1. ...
 
 ## Intent
 

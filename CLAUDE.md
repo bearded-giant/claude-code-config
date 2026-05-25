@@ -135,6 +135,23 @@ System uses GNU stow. NEVER edit files in `~/.config` or other home locations di
 
 When feature/skill needs multiple inputs (branch, base branch, etc.), MUST present as numbered menu, ONE question at a time. User selects 1/2/3. Never combine into a single free-text question.
 
+### Open Questions Placement (ALWAYS)
+
+Any LLM-generated doc with unresolved questions for the user MUST put them at the TOP under `## Open Questions for User`. Before frontmatter body, TOC, summary, intent, or any other section. Applies to proposals, designs, plans, research, reviews, kaizen docs, MR descriptions, ad-hoc analysis — every doc.
+
+- Format: numbered list, each item marked `[BLOCKING]` or `[non-blocking]`
+- Remove the section once all items resolved (don't leave empty stub)
+- If a template scaffolds the section by default, leave it in until populated/resolved — buried questions get missed
+
+```markdown
+## Open Questions for User
+
+1. [BLOCKING] Auth token expiry — 1h or 24h?
+2. [non-blocking] Redis vs Postgres for session store?
+```
+
+Supersedes any per-skill placement rule. Also enforced in `workspace-rules` skill for `.giantmem/` docs.
+
 ## Code Comment Rules
 
 <code_comment_rules>
