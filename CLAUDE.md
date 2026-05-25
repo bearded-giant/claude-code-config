@@ -24,8 +24,10 @@ On session start or context refresh, IF files exist, read in order:
 1. `.giantmem/WORKSPACE.md`
 2. `.giantmem/features/features.json` — find active feature (status `in_progress`)
 3. Active feature's `plans/current.md` if exists, else `.giantmem/plans/current.md`
+4. `.giantmem/artifacts.json` (typed artifact index, built by `giantmem artifact reindex`) — gives proposal/delta-spec/tasks/design state per feature. Session-start hook already injects an `ACTIVE ARTIFACTS` block summarizing this; the file itself is the authority when the hook output is stale or absent.
+5. Active feature's `specs/{domain}/spec.md` (delta-specs) and `.giantmem/specs/{domain}/spec.md` (source-specs) for the domains the feature touches.
 
-Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-3.
+Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-5.
 </session_recovery>
 
 ## Feature & Workspace Output
@@ -38,6 +40,33 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - When a feature has status `in_progress`, plans/research/reviews/filebox go inside that feature dir
 - Never write to repo `docs/` unprompted — route to `.giantmem/context/` or the active feature's `research/`
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write
+- Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
+
+## Three-Spec Model (per-feature → repo-truth)
+
+| Artifact | Lives at | Holds |
+|---|---|---|
+| `proposal` | `features/{name}/proposal.md` | intent + scope + approach (NOT behavior) |
+| `delta-spec` | `features/{name}/specs/{domain}/spec.md` | `## ADDED / MODIFIED / REMOVED Requirements` blocks. Each `### Requirement:` carries one or more `#### Scenario:` (GIVEN / WHEN / THEN, RFC 2119). |
+| `source-spec` | `.giantmem/specs/{domain}/spec.md` | accumulated behavior across all completed features. Written ONLY by `/complete-feature` merging delta-specs in. Never hand-edit mid-feature. |
+
+Legacy `features/{name}/spec.md` is a symlink → `proposal.md` (30-day muscle-memory back-compat from the `migrate_spec_to_proposal.py` rename).
+
+## Finding artifacts (cross-repo)
+
+Before grepping or scanning, use the typed index:
+
+| Need | Command |
+|---|---|
+| Current-repo, filter by type/status/feature/domain | `giantmem artifact list -t delta-spec -s ready` |
+| Cross-repo / cross-worktree | `giantmem artifact list --repo all -t proposal` |
+| Include archived snapshots | append `--include-archived` |
+| Interactive picker (fzf) | `gma` (default `--repo all`) |
+| One artifact full content | `giantmem artifact show <id>` |
+| Forgotten / stale | `giantmem artifact stale [--all-repos]` |
+| From inside Claude (no shell) | MCP tools `find_artifact`, `get_artifact`, `list_features_with_artifacts` |
+
+Rebuild the index after any feature command writes new files: `giantmem artifact reindex` (already wired into `/new-feature` and `/complete-feature`).
 
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
