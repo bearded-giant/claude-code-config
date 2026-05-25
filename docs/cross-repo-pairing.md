@@ -12,6 +12,33 @@ Two Claude sessions coordinating via shared file (the old `/sync-feature` approa
 
 Single session with both repos accessible + sub-agents for peer deep dives keeps the plan coherent and the main context clean.
 
+## Should you pair at all?
+
+Most cross-repo work does **not** need `/pair-repo`. Your `additionalDirectories` permission already covers both repos when both live under `~/`; Claude can `Read`/`Edit`/`Grep`/`Glob` across both paths inline. Pairing adds nothing to file access — it's a registry convenience for `/peer-scout`.
+
+Sanity check — answer before pairing:
+
+1. Do you already know which files on each side need to change? **Yes** → no pair, edit both directly.
+2. Does the change touch ≤ 5 files per side? **Yes** → no pair.
+3. Is the peer repo huge (monorepo, deep trees, lots of call sites)? **Yes** → pair + scout. Sub-agent isolation saves context.
+4. Will you investigate the peer 3+ times in this session? **Yes** → pair (short-name resolution beats re-typing paths).
+5. Do you need active_feature context surfaced in sub-agent briefs? **Yes** → pair (probe captures `active_feature`).
+6. Will cross-cutting edits run in parallel across both repos? **Yes** → pair + `/peer-scout --mode parallel`.
+
+If every answer says "no pair," just work on both paths directly.
+
+### Decision table
+
+| Situation | Command |
+|---|---|
+| Know files on both sides, small change | nothing — Read + Edit both |
+| Small investigation, quick grep on peer | nothing — `Grep`/`Read` inline on peer path |
+| Deep investigation in peer, don't want context bloat | `/pair-repo <peer>` then `/peer-scout <name> "<question>"` |
+| Repeated investigations on same peer | `/pair-repo <peer>` once, then `/peer-scout` N times |
+| Contract change hitting 10+ files both sides | `/pair-repo <peer>`, then `/peer-scout` with `--mode edit` or `--mode parallel` |
+| Specialist review of peer (security, correctness) | `/pair-repo <peer>`, then `/peer-scout` with `--agent kai:code-reviewer` |
+| Two active features, one per repo, both driven | Two sessions, each `/pair-repo`s the other. Rare. |
+
 ## Model
 
 | Layer | Responsibility |
@@ -172,3 +199,14 @@ If you previously saw Claude spawn 6+ bash calls with inline `python -c` during 
 ## Migration from `/sync-feature`
 
 The old commands (`/sync-feature`, `/read-sync`, `/update-sync`, `/sync-stop`) and the `sync-feature` skill have been removed. Old feature metadata fields `sync_refs`, `sync_last_read`, and the `sync_file:` line in `facts.md` are inert — safe to delete but not required to. The sync files under `~/giantmem_archive/sync/` are untouched by this change; delete manually if no longer needed.
+
+## Anti-patterns
+
+- Pairing "just in case" before any investigation — adds noise without payoff.
+- Pairing both directions when only one session is active — second pair is dead metadata.
+- Using `/peer-scout --mode edit` for changes you haven't scoped. Always explore first, edit second.
+- Chaining multiple `--mode parallel` scouts in a row — each dispatch is expensive. Batch into one brief covering all questions.
+
+## TL;DR
+
+Default: single session, no pair. Pair when peer investigation is deep or repeated. Pick scout mode by task shape (`explore` / `edit` / `parallel` / `--agent <specialist>`). Unpair when done.

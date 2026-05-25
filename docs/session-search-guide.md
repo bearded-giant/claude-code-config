@@ -117,3 +117,13 @@ The workflow is: `css` finds which session, `--paths` gives a pipeable path, `cs
 - Use `/session-search` when looking for Claude's explanations
 - Use `/ws-history --search` when looking for what files were touched
 - Session IDs are 8-char hex (e.g., `abc12345`) - use full UUID for `claude --resume`
+
+---
+
+## See also
+
+Different corpus, easy to confuse with this one:
+
+- [gma-search.md](gma-search.md) — typed artifact search (`giantmem artifact`, `gma`, MCP `find_artifact`). Covers proposal / delta-spec / tasks / plan / research / etc. Includes `--scope` / `--lifecycle` / `--semantic` filters.
+- [usage-summary.md](usage-summary.md) — full artifact + spec workflow.
+- This doc covers Claude session transcripts + workspace session indexes (a completely separate index from artifacts).

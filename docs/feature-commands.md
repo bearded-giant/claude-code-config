@@ -16,6 +16,7 @@ Commands for managing feature lifecycle across sessions, branches, and workspace
 | `/feature-report [name]` | QA report. Parses delta-spec Requirements first; falls back to legacy "Acceptance Criteria" bullets when no delta-specs. |
 | `/list-features` | Show all features from cache (fast, no directory scanning) |
 | `/feature-facts <name>` | Quick lookup of a feature's flags, config, branch, test commands |
+| `/review-memory [scope] [repo] [limit]` | Walk `lifecycle: candidate` artifacts. Per-item: approve → durable / reject → deprecated / skip / quit. Persists frontmatter + reindexes. |
 
 ## Lifecycle
 
@@ -49,9 +50,11 @@ Per-feature `spec.md` was split into three typed artifacts:
 
 Legacy `features/{name}/spec.md` is a 30-day back-compat symlink → `proposal.md` (set by `migrate_spec_to_proposal.py`).
 
-Every `.md` / `.yaml` artifact has YAML frontmatter (`type`, `status`, `feature` or `repo`, …). JSON artifacts use the same keys at top level. That's what makes the typed query layer (`giantmem artifact`, MCP `find_artifact`, fzf `gma`) possible.
+Every `.md` / `.yaml` artifact has YAML frontmatter (`type`, `status`, `feature` or `repo`, `lifecycle`, …). JSON artifacts use the same keys at top level. That's what makes the typed query layer (`giantmem artifact`, MCP `find_artifact`, fzf `gma`) possible.
 
-Full breakdown: [usage-summary.md](usage-summary.md).
+Templates stamp `lifecycle: durable` on every scaffolded artifact. AI-captured discoveries / research land as `lifecycle: candidate` and surface in `/review-memory`. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
+
+Full breakdown: [usage-summary.md](usage-summary.md). Scoped-memory model: [scoped-memory-overview.md](scoped-memory-overview.md) / [scoped-memory-guide.md](scoped-memory-guide.md).
 
 ## Features Cache (`features.json`)
 
