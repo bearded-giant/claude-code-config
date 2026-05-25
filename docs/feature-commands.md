@@ -6,11 +6,14 @@ Commands for managing feature lifecycle across sessions, branches, and workspace
 
 | Command | What it does |
 |---------|-------------|
-| `/new-feature <name>` | Create feature folder. Auto-selects status: `in_progress` if nothing active, `pending` if another feature is in progress. |
+| `/new-feature <name>` | Create feature folder. Scaffolds `proposal.md` + `tasks.md` + empty `specs/` (all with YAML frontmatter), runs `giantmem artifact reindex`. Auto-selects status: `in_progress` if nothing active, `pending` if another feature is in progress. |
 | `/start-feature [name]` | Pick up a pending feature, create branch, start working |
 | `/pause-feature [name]` | Snapshot state, mark paused, stay on current branch |
 | `/reopen-feature [name]` | Resume paused/completed feature, checkout its branch |
-| `/complete-feature [name]` | Mark done, finalize spec and facts |
+| `/complete-feature [name] [--no-merge] [--reason "..."]` | Mark done. Merges feature's `specs/{domain}/spec.md` (delta-specs) into `.giantmem/specs/{domain}/spec.md` (source-of-truth) unless `--no-merge` or no delta-specs exist. Writes per-feature + repo-level history. Reindexes. |
+| `/feature-validate <name> [--fix]` | Lint feature structure + frontmatter; `--fix` auto-repairs (rename, backfill, scaffold). |
+| `/feature-next [name]` | Informational. Reads `artifacts.json` + DAG config, prints next ready artifact + path + hint. |
+| `/feature-report [name]` | QA report. Parses delta-spec Requirements first; falls back to legacy "Acceptance Criteria" bullets when no delta-specs. |
 | `/list-features` | Show all features from cache (fast, no directory scanning) |
 | `/feature-facts <name>` | Quick lookup of a feature's flags, config, branch, test commands |
 
@@ -33,6 +36,22 @@ The status is determined automatically:
 3. If none exists: new feature is created as `in_progress` (you're starting fresh)
 
 This removes the extra step of having to say `start` or run `/start-feature` separately when you're ready to work.
+
+## Three-spec model (post-migration)
+
+Per-feature `spec.md` was split into three typed artifacts:
+
+| Artifact | Path | Holds |
+|---|---|---|
+| `proposal` | `features/{name}/proposal.md` | Intent + scope + approach. NOT behavior. |
+| `delta-spec` | `features/{name}/specs/{domain}/spec.md` | `## ADDED / MODIFIED / REMOVED Requirements` blocks. Each `### Requirement:` carries `#### Scenario:` (GIVEN/WHEN/THEN, RFC 2119). |
+| `source-spec` | `.giantmem/specs/{domain}/spec.md` | Accumulated behavior across every completed feature. Written ONLY by `/complete-feature` merging delta-specs in. Never hand-edit mid-feature. |
+
+Legacy `features/{name}/spec.md` is a 30-day back-compat symlink → `proposal.md` (set by `migrate_spec_to_proposal.py`).
+
+Every `.md` / `.yaml` artifact has YAML frontmatter (`type`, `status`, `feature` or `repo`, …). JSON artifacts use the same keys at top level. That's what makes the typed query layer (`giantmem artifact`, MCP `find_artifact`, fzf `gma`) possible.
+
+Full breakdown: [usage-summary.md](usage-summary.md).
 
 ## Features Cache (`features.json`)
 
@@ -65,7 +84,7 @@ If the cache is missing but feature directories exist, `/list-features` rebuilds
 /new-feature session-cleanup
 ```
 
-Auto-detects no active feature, creates as `in_progress`. Prompts for branch name and base branch. Creates `.giantmem/features/session-cleanup/` with spec, facts, and meta.json. Checks out the new branch.
+Auto-detects no active feature, creates as `in_progress`. Prompts for branch name and base branch. Creates `.giantmem/features/session-cleanup/` with `proposal.md` (intent only), `tasks.md` (empty checkbox scaffold), empty `specs/` (delta-specs land here later), `facts.md`, `meta.json` — all with YAML frontmatter. Checks out the new branch. Runs `giantmem artifact reindex` so `.giantmem/artifacts.json` reflects the new entries immediately.
 
 ### 2. Discovery during another feature
 
@@ -99,10 +118,24 @@ Pause captures resumption notes and working state in spec and facts. Reopen chec
 ### 5. Finish a feature
 
 ```
-/complete-feature
+/complete-feature                                  # default merge
+/complete-feature --no-merge                       # explicit skip even when delta-specs exist
+/complete-feature --reason "scope cut, moved to X" # captured in both history files
 ```
 
-Finalizes spec (marks acceptance criteria), cleans up facts, updates the index. Does not touch git -- you handle the merge/PR separately.
+Loose rules — never blocks. Steps:
+
+1. Reads `features/{name}/specs/{domain}/spec.md` (delta-specs).
+2. Merges ADDED / MODIFIED / REMOVED Requirements into `.giantmem/specs/{domain}/spec.md` (source-spec, created if missing). Idempotent — re-runs are no-ops.
+3. Flips each delta-spec's frontmatter `status` from `ready` → `done`.
+4. Appends a merge entry to `features/{name}/spec_history.md` (per-feature) AND `.giantmem/specs/_history.md` (repo-level chronological log).
+5. Updates `.giantmem/specs/_index.md` with new domains.
+6. Flips `meta.json` + `features.json` + `_index.md` status to `complete`.
+7. Runs `giantmem artifact reindex`.
+
+Does not touch git — you handle merge/PR separately.
+
+If `features/{name}/specs/` is empty (no behavior contracts written), the merge step silently skips. Common when the feature was a fix, scope cut, or moved elsewhere.
 
 ## Branch Handling
 
@@ -123,10 +156,17 @@ The branch name is stored in `meta.json`, `facts.md`, and `features.json` so com
 
 | File | `/new-feature` | `/start-feature` | `/pause-feature` | `/reopen-feature` | `/complete-feature` |
 |------|:-:|:-:|:-:|:-:|:-:|
-| `spec.md` | created | expanded | status + resumption notes | status restored | status + criteria |
-| `facts.md` | created | branch added | paused state snapshot | paused state removed | finalized |
+| `proposal.md` | created (frontmatter) | expanded | status + resumption notes | status restored | status → done |
+| `tasks.md` | created (frontmatter, empty checkbox scaffold) | -- | -- | -- | status auto from checkbox % |
+| `specs/{domain}/spec.md` (delta-spec) | dir created, files empty | -- | -- | -- | status → done after merge |
+| `.giantmem/specs/{domain}/spec.md` (source-spec) | -- | -- | -- | -- | created/updated by merge |
+| `spec_history.md` (per-feature) | -- | -- | -- | -- | append on merge |
+| `.giantmem/specs/_history.md` (repo) | -- | -- | -- | -- | append on merge |
+| `.giantmem/specs/_index.md` | -- | -- | -- | -- | new-domain rows |
+| `facts.md` | created (frontmatter) | branch added | paused state snapshot | paused state removed | finalized |
 | `meta.json` | created | status + branch | status | status | status |
 | `features.json` | entry added | status + branch | status | status | status |
-| `_index.md` | row added | pending -> in_progress | in_progress -> paused | paused/complete -> in_progress | in_progress -> complete |
+| `features/_index.md` | row added | pending → in_progress | in_progress → paused | paused/complete → in_progress | in_progress → complete |
 | `plans/current.md` | -- | set active | cleared | set active | moved to completed |
+| `artifacts.json` | reindexed | reindexed | -- | reindexed | reindexed |
 | git branch | created (in_progress only) | created/checkout | -- | checkout | -- |
