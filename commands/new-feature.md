@@ -51,64 +51,104 @@ Fields:
 
    Tell the user which status was auto-selected and why (e.g., "Creating as pending — feature X is currently in_progress" or "Creating as in_progress — no active feature").
 
-3. Create .giantmem/features/{name}/ directory
+3. Create .giantmem/features/{name}/ directory + .giantmem/features/{name}/specs/ subdirectory (empty for now).
 
-4. Create spec.md based on status:
+4. Create proposal.md based on status. Reference template: `~/.claude/templates/proposal.md`. Behavior split: intent + scope + approach go in proposal.md; behavior contracts (Requirements + Scenarios) go in `features/{name}/specs/{domain}/spec.md` as delta-spec — written by user/Claude later, NOT by `/new-feature`.
 
 **4a. If status is `in_progress`:**
 
 ```markdown
-# Feature: {name (title case)}
+---
+type: proposal
+feature: {name}
+status: ready
+created: {today}
+updated: {today}
+---
 
-builds_on: {builds_on or "none"}
-status: in_progress
-created: {today's date}
+# Proposal: {Title}
 
-## Purpose
+## Intent
 
-<!-- describe what this feature does and why -->
+<!-- one paragraph: the problem this solves -->
 
 ## Scope
 
-<!-- what's included and what's out of scope -->
+In scope:
+-
 
-## Key Decisions
+Out of scope:
+-
 
-<!-- architectural decisions made, with rationale -->
+## Approach
 
-## Acceptance Criteria
+<!-- high-level technical direction. Implementation details belong in design.md. -->
 
-- [ ] criterion 1
-- [ ] criterion 2
+## Behavior Deltas
 
-## Files Modified
-
-<!-- list key files created/modified -->
+Tracked separately in `features/{name}/specs/{domain}/spec.md` (delta-spec, `ADDED`/`MODIFIED`/`REMOVED`).
+On `/complete-feature`, deltas merge into `.giantmem/specs/{domain}/spec.md` (source-spec).
 ```
 
 **4b. If status is `pending`:**
 
-Use a minimal template. The user is stubbing this out for later, not starting work now. Fill in the Purpose section with whatever discovery or context the user provides (don't leave it as a placeholder if they gave you a reason).
+Minimal stub. User is queuing this for later. Fill the Intent line with whatever discovery context they provided (don't leave the placeholder if they explained why).
 
 ```markdown
-# Feature: {name (title case)}
+---
+type: proposal
+feature: {name}
+status: draft
+created: {today}
+updated: {today}
+---
 
-builds_on: {builds_on or "none"}
-status: pending
-created: {today's date}
+# Proposal: {Title}
 
-## Purpose
+## Intent
 
-{user's description of why this feature is needed, or "<!-- describe what this feature does and why -->" if none given}
+{user's reason for queuing this, or "<!-- describe what this feature does and why -->" if none given}
 
 ## Discovery Context
 
 {what prompted this stub — e.g., which feature was being worked on, what was discovered}
 
-## Acceptance Criteria
+## Scope
 
-- [ ] criterion 1
+In scope:
+-
+
+Out of scope:
+-
 ```
+
+**4c. Create features/{name}/tasks.md:**
+
+```markdown
+---
+type: tasks
+feature: {name}
+status: draft
+created: {today}
+updated: {today}
+---
+
+# Tasks
+
+<!--
+status auto-derives from checkbox %:
+  0%       = draft
+  0 < x < 100% = ready
+  100%     = done
+no manual status updates needed — `giantmem artifact list -f {name}` reflects live %.
+-->
+
+## 1. {Section}
+
+- [ ] 1.1 ...
+```
+
+**4d. Do NOT scaffold delta-specs.** `features/{name}/specs/` dir exists but stays empty until user writes behavior. `/complete-feature` skips merge step silently when empty (loose-rules per decisions).
 
 5. **Resolve and check out branch (in_progress only, skip for pending)**
 
@@ -186,9 +226,17 @@ created: {today's date}
      - `frontend.base_branch = {counterpart_base}`
      - `frontend.worktree = {counterpart_root}{counterpart_branch}`
 
-7. Create facts.md:
+7. Create facts.md (with frontmatter):
 
 ```markdown
+---
+type: facts
+feature: {name}
+status: ready
+created: {today}
+updated: {today}
+---
+
 # {name} facts
 
 ## Branch
@@ -293,7 +341,10 @@ When paired counterpart is enabled (field name stays `frontend` for back-compat)
    - Add new row to the appropriate table (Pending Features for `pending`, Active Features for `in_progress`)
    - Format: `| [{name}]({name}/) | {status} | | {builds_on or "-"} | {paired counterpart branch if enabled, otherwise -} |`
 
-12. Display the created structure and confirm:
+12. **Rebuild `.giantmem/artifacts.json`** — run `giantmem artifact reindex` from the repo root. Captures the new `proposal.md` + `tasks.md` + `facts.md` (+ delta-specs once user populates `specs/`) as typed entries. Skip silently if `giantmem` binary not on PATH; print warning.
+
+13. Display the created structure and confirm:
    - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
    - If paired counterpart enabled: confirm the counterpart worktree was created and show the path.
+   - Run `giantmem artifact list -f {name}` and show the result so the user sees the new typed artifacts.
