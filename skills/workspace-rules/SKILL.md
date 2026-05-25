@@ -29,11 +29,18 @@ Remove the section once answered.
 
 | Directory | Format | Verbosity | Example |
 |---|---|---|---|
+| `artifacts.json` | Live artifact index | Machine-built, never hand-edit | Built by `giantmem artifact reindex` |
 | `features/_index.md` | Registry table | Terse, table rows | Feature name, status, beta flag |
-| `features/{name}/spec.md` | Feature definition | Medium, structured | Purpose, scope, acceptance |
+| `features/{name}/proposal.md` | Feature intent (renamed from spec.md) | Medium, structured | Intent + scope + approach |
+| `features/{name}/design.md` | Technical design (optional) | Medium | Architecture, decisions, file changes |
+| `features/{name}/tasks.md` | Checkbox list | Hierarchical | Auto-status from checkbox % |
+| `features/{name}/specs/{domain}/spec.md` | Delta-spec | Structured | ADDED / MODIFIED / REMOVED Requirements |
 | `features/{name}/facts.md` | Quick lookup | Terse, key-value | Beta flags, config keys, test cmds |
 | `features/{name}/plan.md` | Implementation plan | Concise, actionable | Steps, file paths, function names |
 | `features/{name}/plan_context.json` | Domain linkage | Machine-readable | Domains that informed plan |
+| `specs/_index.md` | Source-spec registry | Terse, table rows | Domains, last merged, requirement counts |
+| `specs/_history.md` | Spec merge log | Append-only | Chronological per `/complete-feature` merge |
+| `specs/{domain}/spec.md` | Source-of-truth spec | Requirements + Scenarios | RFC 2119, Given/When/Then. Merged from delta-specs. |
 | `domains/_index.json` | Domain registry | Machine-readable | Domain names, key paths, refs |
 | `domains/{name}.json` | Domain exploration | Machine-readable, detailed | Entry points, key files, gotchas |
 | `context/patterns.md` | Curated patterns | Medium, organized | Architectural decisions, gotchas |
@@ -45,12 +52,34 @@ Remove the section once answered.
 
 | Directory | Format | Verbosity | Example |
 |---|---|---|---|
-| `plans/current.md` | Session work | Concise, no phase tracking | Active task steps (transient) |
+| `plans/current.md` | Transient session work | Concise, mutates throughout session | Active task steps. Deleted on `/complete-feature`. |
 | `research/*.md` | Findings + sources | Medium, cite sources | Key findings, code examples |
 | `reviews/*.md` | Issues + locations | Terse, file:line refs | Bullets with code refs |
 | `filebox/*` | Raw data | N/A | JSON, logs, samples |
 
+`tasks.md` vs `plans/current.md`: tasks.md is durable, archived with feature, OpenSpec-style checkbox list with auto-status from checkbox %. `plans/current.md` is transient scratchpad — what you're currently handling, mutates throughout the session, deleted on `/complete-feature`.
+
 `context/discoveries.md` deprecated. Use `context/patterns.md` for curated architectural patterns.
+
+## Frontmatter requirement
+
+Every `.md` and `.yaml` artifact MUST start with YAML frontmatter:
+
+```yaml
+---
+type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | domain | notes | pattern | facts}
+feature: {name}              # for feature-scoped artifacts
+repo: {repo-name}            # for repo-level artifacts (one of feature or repo)
+status: {draft | ready | done | blocked | stale}
+domain: {name}               # optional
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+```
+
+JSON artifacts (`meta.json`, `domains/*.json`) get the same keys at top level (no `---` fences).
+
+Backfill legacy files: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`
 
 ## Anti-patterns — DO NOT
 
