@@ -130,6 +130,14 @@
             "command": "python3 ~/.claude/hooks/debug_stop_check.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/notify_attention.py"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -174,6 +182,14 @@
             "command": "\"/Users/bryan/.nvm/versions/node/v24.11.1/bin/node\" \"/Users/bryan/.claude/hooks/caveman-mode-tracker.js\"",
             "timeout": 5,
             "statusMessage": "Tracking caveman mode..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/clear_attention.py"
           }
         ]
       }

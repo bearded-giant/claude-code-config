@@ -144,9 +144,11 @@ COUNT=$(curl_json GET /sessions | jq '.sessions | length')
 assert_eq "$COUNT" "1" "hydrated from disk"
 grep -q "hydrated" "$TMP/daemon.log" && pass "hydration log present" || fail "no hydration log"
 
-echo "==> unregister"
+echo "==> unregister (soft — entry kept as dormant, thread mapping preserved for resume)"
 assert_eq "$(curl_json DELETE "/sessions/$SID" | jq -r .ok)" "true" "unregister"
-assert_eq "$(curl_json GET /sessions | jq '.sessions | length')" "0" "list empty after unregister"
+SESSIONS=$(curl_json GET /sessions)
+assert_eq "$(echo "$SESSIONS" | jq '.sessions | length')" "1" "session retained after soft unregister"
+assert_eq "$(echo "$SESSIONS" | jq -r ".sessions[] | select(.sessionId==\"$SID\") | .state")" "dormant" "session marked dormant"
 
 # Optional: check daemon log shows mock thread create+archive
 grep -q "createSessionThread" "$TMP/daemon.log" && pass "daemon logged thread create" || fail "missing create log"
