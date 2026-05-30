@@ -46,6 +46,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
      - **concrete direction** (reviewer named the target, e.g. "use request hooks for `internal_chat_api_bp`", "move to its own blueprint") → attempt it, scoped strictly to what was asked.
      - **ambiguous / open question** (e.g. "is this the right layer?", "should this live elsewhere?") → reply `[babysit] needs your input — leaving for human` and skip.
    - `informational` — "looks good", "nit just FYI", no requested change. Skip.
+   - `contradicts_design` — the ask runs counter to a design decision or known reason established in **this session / branch work**. Do not implement. The thread still gets a one-line decline-with-reason reply (step 6.7). Only use this when a concrete established reason actually exists — never fabricate a rationale to dodge work; absent a real reason, fall back to `actionable_*`.
 
 4. **Sync branch first** — once, before any edits:
    ```
@@ -64,20 +65,27 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
       CLEAN otherwise — including multi-file moves/renames the test suite already covers.
    3. **NEEDS-SIGN-OFF** → post the plan as a thread note prefixed `[babysit] plan — needs your sign-off`, leave the thread **unresolved**, and **do not touch code**. (The attention signal in step 7 fires at end of run.)
 
-6. **Execute** each CLEAN thread (and every `actionable_simple`):
+6. **Execute** each CLEAN thread (and every `actionable_simple`). `contradicts_design` threads are handled reply-only per 6.7.
    1. Build the edit, scoped to exactly what was asked — do not expand into adjacent refactors.
    2. Run `py-check` / `ts-check` skill on touched files.
    3. Commit using caveman-commit format. Subject prefix `review:` (e.g., `review: rename foo to bar`). If the repo's commit-msg hook needs a JIRA key, prefix it (derive from branch name or sibling commits). If push is then rejected **by the commit-msg / pre-push policy hook only** (not a non-fast-forward), retry once with `git push --no-verify` — py-check already ran in 6.2.
    4. Push: `git push`
-   5. Reply on thread:
+   5. Reply on thread with a **casual confirmation** — write like a teammate dropping a quick note, not an LLM summary:
+      - One short, plain sentence per item you actually addressed in this thread. Reviewer note bundles N findings → N bullets; single finding → one sentence, no bullet.
+      - Style: `` `foo` handled in tests now ``, `` `_hello_world` guard added ``. No preamble ("I have addressed…"), no restating the finding verbatim, no sha dump, no blanket paragraph.
+      - **Omit** any item you didn't touch (out of scope, silently skipped) — never mention it.
+      - For an item you deliberately did **not** do because it contradicts a design decision / known reason from this session, add one bullet: `<item> not needed: <one-line why>` (e.g. `schema migration not needed: already handled`).
+
+      Build the body (newline-separated bullets) in `$REPLY`, then:
       ```
-      glab api -X POST "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>/notes" -f body="addressed in <short-sha>"
+      glab api -X POST "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>/notes" -f body="$REPLY"
       ```
    6. Resolve thread if `resolvable=true`:
       ```
       glab api -X PUT "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>" -f resolved=true
       ```
       MR-level notes (`resolvable=false`) can't be resolved via API — reply only.
+   7. **`contradicts_design` threads** — no edit, no commit, no resolve. Skip 6.1–6.4 and 6.6. Post only the decline-with-reason bullet (6.5 decline branch) and leave the thread **unresolved**, so the human can accept or contest the rationale.
 
 7. **Raise attention if anything was left for you** — once, at end of run. If any thread was deferred (NEEDS-SIGN-OFF, `actionable_complex` ambiguous, push rejected, pipeline red, rebase conflict):
    ```
@@ -104,8 +112,9 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
 
 Single line:
 ```
-MR !1234 (feat-xyz): 2 addressed, 1 needs sign-off, pipeline green
+MR !1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green
 ```
+Drop any zero-count segment (`declined`, `needs sign-off`).
 If anything needs sign-off, step 7 already fired the attention signal — name the deferred threads + their URLs below the summary so the user can jump straight there.
 
 Followed by deferred-thread URLs (so user can jump straight there).

@@ -30,7 +30,10 @@
       "mcp__plugin_kai_google-sheets",
       "mcp__plugin_kai_watchtower",
       "mcp__gong",
-      "mcp__zendesk"
+      "mcp__zendesk",
+      "Skill(babysit)",
+      "Skill(kai:*)",
+      "Skill(kai-review:*)"
     ],
     "ask": [
       "Bash(git:push)"
