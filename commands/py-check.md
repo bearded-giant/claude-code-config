@@ -1,6 +1,6 @@
 ---
-description: Run Python quality checks (black/ruff/pytest, optional isort/pylint) on modified files. Auto-fires before reporting a Python-touching task done — i.e., after editing any `.py` file in this repo, before final summary to user. Skip only if user explicitly disabled or the change is doc-only.
-allowed-tools: Bash, Grep, Glob, Read, AskUserQuestion
+description: Run Python quality checks (black/ruff/pylint always; isort when imports changed; pytest) on modified files. Auto-fires before reporting a Python-touching task done — i.e., after editing any `.py` file in this repo, before final summary to user. Skip only if user explicitly disabled or the change is doc-only.
+allowed-tools: Bash, Grep, Glob, Read
 ---
 
 Run quality checks on Python code.
@@ -9,15 +9,15 @@ Run quality checks on Python code.
 
 1. **Identify changes** - use `git diff --name-only HEAD` to find modified/added `.py` files
 
-2. **Ask about optional tools** - use AskUserQuestion to ask:
-   - "Run isort?" (yes/no) - not all projects use isort
-   - "Run pylint?" (yes/no) - not all projects use pylint
+2. **Detect new/changed imports** - check whether any changed `.py` file has added import lines:
+   - `git diff HEAD -- <py-files> | grep -E '^\+\s*(import |from \w)'` (excludes `+++` header lines)
+   - Non-empty result → imports changed → run isort in step 3
 
 3. **Run formatters** on changed files:
    - `black <files>` - code formatting (always)
-   - `isort <files>` - import sorting (if user said yes)
+   - `isort <files>` - import sorting (only when step 2 found added imports)
 
-4. **Run pylint** (if user said yes) - only on changed files:
+4. **Run pylint** (always) - only on changed files:
    - `pylint <changed-files>` - lint only the modified `.py` files
    - Report any warnings/errors with file:line references
 
