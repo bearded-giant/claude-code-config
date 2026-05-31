@@ -83,8 +83,10 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 | SessionStart | `sync_settings.py` | Merges repo `settings.json` into live `~/.claude/settings.json` (see note below) |
 | SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
+| SessionStart | `memory_index_sweep.py` | Re-indexes harness memory into live.db (rebuild/multi-machine durability) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
 | SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
+| SessionEnd | `giantmem_backup.py` | Mirrors harness memory md into the giantmem backup repo |
 | SessionEnd | `workspace_session_end.py` | Extracts session summary, indexes into search DB |
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories |

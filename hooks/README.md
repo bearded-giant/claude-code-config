@@ -160,11 +160,13 @@ All hooks are configured in `settings.json`. Here's the full map:
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `sync_settings.py`, `session_prime.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
+| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
 | UserPromptSubmit | `giantmem_recall.py`, `clear_attention.py` | Yes (top FTS5 hits per prompt) |
 | PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
-| SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| SessionEnd | `session_end_ingest.py`, `giantmem_backup.py`, `workspace_session_end.py` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | Stop | `debug_stop_check.py` | No (JSON decision only) |
 
-Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it. No external API, no daemon required.
+Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it.
+
+Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_index_sweep.py` (re-indexes every memory md into live.db, so a `giantmem index live` rebuild or a file from another machine never permanently loses memory). SessionEnd runs `giantmem_backup.py`, which mirrors the memory md files (the source of truth) into `~/giantmem_archive_backup` and commits — add a git remote there for off-machine durability. No external API.

@@ -71,6 +71,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "~/.local/bin/giantmem daemon start >/dev/null 2>&1 || true"
+          },
+          {
+            "type": "command",
             "command": "python3 ~/.claude/hooks/sync_settings.py"
           },
           {
@@ -84,6 +88,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/session_prime.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/memory_index_sweep.py"
           },
           {
             "type": "command",
@@ -130,6 +138,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/session_end_ingest.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/giantmem_backup.py"
           },
           {
             "type": "command",
