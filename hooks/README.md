@@ -163,10 +163,12 @@ All hooks are configured in `settings.json`. Here's the full map:
 | SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
 | UserPromptSubmit | `giantmem_recall.py`, `clear_attention.py` | Yes (top FTS5 hits per prompt) |
 | PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
-| SessionEnd | `session_end_ingest.py`, `giantmem_backup.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | Stop | `debug_stop_check.py` | No (JSON decision only) |
 
 Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it.
 
-Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_index_sweep.py` (re-indexes every memory md into live.db, so a `giantmem index live` rebuild or a file from another machine never permanently loses memory). SessionEnd runs `giantmem_backup.py`, which mirrors the memory md files (the source of truth) into `~/giantmem_archive_backup` and commits — add a git remote there for off-machine durability. No external API.
+Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_index_sweep.py` (re-indexes every memory md into live.db, so a `giantmem index live` rebuild or a file from another machine never permanently loses memory).
+
+Off-machine backup is handled by `scripts/giantmem-restic-backup.sh` on a launchd timer (`com.bryan.giantmem-restic`, every 6h), not a hook. It restic-snapshots the durable sources (`~/.claude/projects` memory md + session transcripts) and the giantmem DBs to an sftp repo on the Tailscale VPS (`sftp:bryan@claude-vps:/home/bryan/giantmem-restic`), deduplicated + encrypted. The repo password lives in the macOS keychain (`giantmem-restic`). The DBs are rebuildable from the sources via `giantmem ingest`, so the sources are what matter. Restore: set `RESTIC_REPOSITORY`/`RESTIC_PASSWORD_COMMAND`, then `restic snapshots` + `restic restore latest --target <dir>`.

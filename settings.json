@@ -141,10 +141,6 @@
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/giantmem_backup.py"
-          },
-          {
-            "type": "command",
             "command": "python3 ~/.claude/hooks/discord_bun_reaper.py"
           }
         ]
