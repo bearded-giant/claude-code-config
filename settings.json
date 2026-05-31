@@ -18,10 +18,35 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(chmod)",
+      "Bash(black:*)",
+      "Bash(ruff:*)",
+      "Bash(isort:*)",
+      "Bash(pylint:*)",
+      "Bash(flake8:*)",
+      "Bash(mypy:*)",
+      "Bash(pyright:*)",
+      "Bash(basedpyright:*)",
+      "Bash(eslint:*)",
+      "Bash(prettier:*)",
+      "Bash(tsc:*)",
+      "Bash(biome:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx biome:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(pnpm format:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo check:*)",
+      "Bash(rustfmt:*)",
+      "Skill(py-check)",
+      "Skill(ts-check)",
       "WebFetch(domain:alexop.dev)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.anthropic.com)",
-      "WebFetch(domain:docs.claude-mem.ai)",
       "WebFetch(domain:github.com)",
       "mcp__plugin_kai_ai-tools-directory",
       "mcp__plugin_kai_atlassian",
@@ -35,13 +60,9 @@
       "Skill(kai:*)",
       "Skill(kai-review:*)"
     ],
-    "ask": [
-      "Bash(git:push)"
-    ],
+    "ask": ["Bash(git:push)"],
     "defaultMode": "default",
-    "additionalDirectories": [
-      "/Users/bryan/"
-    ]
+    "additionalDirectories": ["/Users/bryan/"]
   },
   "model": "Opus",
   "hooks": {
@@ -50,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_session_start.py"
+            "command": "python3 ~/.claude/hooks/sync_settings.py"
           },
           {
             "type": "command",
@@ -90,10 +111,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_curate.py"
-          },
-          {
-            "type": "command",
             "command": "date +%s > /tmp/claude-compact-ts"
           },
           {
@@ -106,10 +123,6 @@
     "SessionEnd": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_curate.py"
-          },
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/workspace_session_end.py"
@@ -174,7 +187,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_inject.py"
+            "command": "python3 ~/.claude/hooks/giantmem_recall.py"
           }
         ]
       },
@@ -244,16 +257,11 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": [
-        "mcp",
-        "serve"
-      ]
+      "args": ["mcp", "serve"]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
-      ]
+      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
     },
     "snowflake": {
       "type": "http",

@@ -150,9 +150,9 @@ Skips the check when `stop_hook_active` is true (already continuing from a prior
 
 Blocks writes to protected directories: `archive/`, `plugins/marketplaces/`, `plugins/cache/`, `node_modules/`. Returns a block decision with a reason explaining the path is read-only. Prevents swarm workers and main sessions from accidentally modifying third-party or archived code.
 
-## memory_*.py
+## giantmem_recall.py
 
-Memory-related hooks for the claude-mem MCP integration (separate system).
+UserPromptSubmit hook. Sanitizes the prompt into a keyword OR-query, runs `giantmem find --live --json` (FTS5 over workspace docs across all worktrees), and prepends the top hits — cross-project recall. Best-effort: prints nothing on miss/timeout so the prompt is never blocked. Tunable via `GIANTMEM_RECALL_LIMIT` / `GIANTMEM_RECALL_SINCE`. Replaced the dead RLabs `:8765` hooks (`memory_inject`, `memory_session_start`, `memory_curate`).
 
 ## Hook Wiring Summary
 
@@ -160,11 +160,11 @@ All hooks are configured in `settings.json`. Here's the full map:
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `memory_session_start.py`, `workspace_session_hook.py` | Yes (one-time) |
-| UserPromptSubmit | `memory_inject.py` | Yes (every prompt, up to 5 memories) |
-| PreCompact | `memory_curate.py`, timestamp file | No (stderr + file) |
-| SessionEnd | `memory_curate.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| SessionStart | `sync_settings.py`, `session_prime.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
+| UserPromptSubmit | `giantmem_recall.py`, `clear_attention.py` | Yes (top FTS5 hits per prompt) |
+| PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
+| SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | Stop | `debug_stop_check.py` | No (JSON decision only) |
 
-Memory hooks talk to the claude-mem API. Workspace hooks read/write local `.giantmem/` files. They're complementary -- memory handles cross-session recall, workspace handles project structure and session logging.
+Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it. No external API, no daemon required.

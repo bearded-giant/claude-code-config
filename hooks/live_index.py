@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook for Claude Code: index .giantmem/**/*.md writes into live.db.
+PostToolUse hook for Claude Code: index workspace + memory *.md writes into live.db.
 
 Hook: PostToolUse (matcher: Write, Edit, MultiEdit)
 
 Captures:
   - path, project (worktree-aware), worktree_path, feature (active in_progress),
-    dir_type (research|plans|...), session_id (from CLAUDE_SESSION_ID env or
+    dir_type (research|plans|...|memory), session_id (from CLAUDE_SESSION_ID env or
     transcript path), git_sha (HEAD), mtime, content.
 
-Filter: only files under a `.giantmem/` directory in the repo. Anything else is
-skipped fast.
+Filter: files under a `.giantmem/` directory, OR harness memory files under
+`~/.claude/projects/<slug>/memory/`. Anything else is skipped fast. Memory files
+are tagged dir_type=memory so giantmem_recall surfaces them cross-project.
 
 Stdlib only. No external dependencies.
 
@@ -26,10 +27,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ARCHIVE_BASE = Path(os.environ.get("GIANTMEM_ARCHIVE_BASE", os.path.expanduser("~/giantmem_archive")))
+ARCHIVE_BASE = Path(
+    os.environ.get("GIANTMEM_ARCHIVE_BASE", os.path.expanduser("~/giantmem_archive"))
+)
 LIVE_DB = ARCHIVE_BASE / "live.db"
 
 GIANTMEM_RE = re.compile(r"/\.giantmem/")
+MEMORY_RE = re.compile(r"/\.claude/projects/[^/]+/memory/")
 
 
 def detect_project(cwd: str, archive_base: Path) -> tuple[str, str]:
@@ -81,7 +85,7 @@ def dir_type_from_path(path: str) -> str:
     m = GIANTMEM_RE.search(path)
     if not m:
         return ""
-    rest = path[m.end():]
+    rest = path[m.end() :]
     parts = rest.split("/", 1)
     if not parts or not parts[0]:
         return "root"
@@ -93,16 +97,34 @@ def feature_from_path(path: str) -> str:
     idx = path.find("/.giantmem/features/")
     if idx < 0:
         return ""
-    rest = path[idx + len("/.giantmem/features/"):]
+    rest = path[idx + len("/.giantmem/features/") :]
     parts = rest.split("/", 1)
     return parts[0] if parts and parts[0] else ""
+
+
+def project_from_memory_path(path: str) -> str:
+    """Best-effort project label from a ~/.claude/projects/<slug>/memory/ path.
+
+    Slugs encode the original cwd with '/' -> '-'. Names contain real dashes, so
+    exact decode is ambiguous; strip the common home/dev prefix and keep the rest.
+    """
+    m = re.search(r"/projects/([^/]+)/memory/", path)
+    if not m:
+        return "memory"
+    slug = m.group(1)
+    for prefix in ("-Users-bryan-dev-", "-Users-bryan-"):
+        if slug.startswith(prefix):
+            return slug[len(prefix) :] or slug
+    return slug.lstrip("-") or "memory"
 
 
 def git_sha(worktree_path: str) -> str:
     try:
         r = subprocess.run(
             ["git", "-C", worktree_path, "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         return r.stdout.strip()
     except Exception:
@@ -172,7 +194,10 @@ def open_db() -> sqlite3.Connection:
 def _try_log(msg: str) -> None:
     try:
         import importlib.util
-        spec = importlib.util.spec_from_file_location("_giantmem_log", os.path.join(os.path.dirname(__file__), "_giantmem_log.py"))
+
+        spec = importlib.util.spec_from_file_location(
+            "_giantmem_log", os.path.join(os.path.dirname(__file__), "_giantmem_log.py")
+        )
         if spec and spec.loader:
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
@@ -195,21 +220,33 @@ def main():
         return
     if not file_path.endswith(".md"):
         return
-    if not GIANTMEM_RE.search(file_path):
+    is_giantmem = bool(GIANTMEM_RE.search(file_path))
+    is_memory = bool(MEMORY_RE.search(file_path))
+    if not (is_giantmem or is_memory):
         return
     if not os.path.isabs(file_path):
         file_path = os.path.abspath(file_path)
     if not os.path.exists(file_path):
         return  # write may have failed
 
-    cwd = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.path.dirname(file_path)
-    project, worktree = detect_project(cwd, ARCHIVE_BASE)
-
-    # prefer in-tree feature.json detection over path inference
-    feature = feature_from_path(file_path) or feature_from_giantmem(worktree)
-    dir_type = dir_type_from_path(file_path)
+    if is_giantmem:
+        cwd = (
+            os.environ.get("CLAUDE_PROJECT_DIR")
+            or data.get("cwd")
+            or os.path.dirname(file_path)
+        )
+        project, worktree = detect_project(cwd, ARCHIVE_BASE)
+        # prefer in-tree feature.json detection over path inference
+        feature = feature_from_path(file_path) or feature_from_giantmem(worktree)
+        dir_type = dir_type_from_path(file_path)
+        sha = git_sha(worktree)
+    else:
+        project = project_from_memory_path(file_path)
+        worktree = ""
+        feature = ""
+        dir_type = "memory"
+        sha = ""
     sid = session_id_from_env(data)
-    sha = git_sha(worktree)
 
     try:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
@@ -244,7 +281,18 @@ def main():
                 ingested_at=excluded.ingested_at,
                 content=excluded.content
             """,
-            (file_path, project, worktree, feature, dir_type, sid, sha, mtime, now, content),
+            (
+                file_path,
+                project,
+                worktree,
+                feature,
+                dir_type,
+                sid,
+                sha,
+                mtime,
+                now,
+                content,
+            ),
         )
         db.commit()
     except Exception as e:

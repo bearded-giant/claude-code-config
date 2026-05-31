@@ -31,15 +31,6 @@
         "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
       }
     ],
-    "claude-mem@thedotmack": [
-      {
-        "scope": "user",
-        "installPath": "/Users/bryan/.claude/plugins/cache/thedotmack/claude-mem/8.5.9",
-        "version": "8.5.9",
-        "installedAt": "2026-01-05T14:36:40.471Z",
-        "lastUpdated": "2026-01-05T14:36:40.471Z"
-      }
-    ],
     "rust-analyzer-lsp@claude-plugins-official": [
       {
         "scope": "user",
@@ -118,6 +109,15 @@
         "installedAt": "2026-05-19T12:44:08.434Z",
         "lastUpdated": "2026-05-19T12:44:08.434Z",
         "gitCommitSha": "7b9458950d38bb01ddb48b669f9fa89bcdfd98b8"
+      }
+    ],
+    "clangd-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-05-31T00:20:50.721Z",
+        "lastUpdated": "2026-05-31T00:20:50.721Z"
       }
     ]
   }

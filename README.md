@@ -80,13 +80,16 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 
 | Event | Hook | Purpose |
 |-------|------|---------|
-| SessionStart | `memory_session_start.py` | Injects session primer from memory API |
+| SessionStart | `sync_settings.py` | Merges repo `settings.json` into live `~/.claude/settings.json` (see note below) |
+| SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
-| UserPromptSubmit | `memory_inject.py` | Queries memory API for relevant memories |
-| PreCompact | `memory_curate.py` | Triggers memory curation before compaction |
-| SessionEnd | `memory_curate.py` | Triggers memory curation on session end |
+| UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
+| SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
 | SessionEnd | `workspace_session_end.py` | Extracts session summary, indexes into search DB |
+| PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories |
+
+Unlike everything else here, `settings.json` is **not** a stow symlink. Claude Code rewrites that file at runtime (theme, model, plugin toggles, survey state), so a symlink either gets clobbered by the app's atomic save or pollutes the git tree with machine-local state. Instead `sync_settings.py` runs each session start and merges: the repo wins for structural config (hooks, env, statusLine, mcpServers, marketplaces, permission mode); `enabledPlugins` and `permissions.allow`/`ask` are unioned so runtime additions survive; and `model`, `effortLevel`, `theme`, `feedbackSurveyState` stay whatever the live file says. Edit structural config in the repo and it goes live next session — no restow, no manual copy. It only writes the home file, never the repo copy, so `git status` stays clean.
 
 ## Key Commands
 
