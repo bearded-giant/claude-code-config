@@ -72,9 +72,9 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    4. Push: `git push`
    5. Reply on thread with a **casual confirmation** — write like a teammate dropping a quick note, not an LLM summary:
       - One short, plain sentence per item you actually addressed in this thread. Reviewer note bundles N findings → N bullets; single finding → one sentence, no bullet.
-      - Style: `` `foo` handled in tests now ``, `` `_hello_world` guard added ``. No preamble ("I have addressed…"), no restating the finding verbatim, no sha dump, no blanket paragraph.
+      - Style: `` `foo` handled in tests now ``, `` `_hello_world` guard added ``. One line per item, ~15 words. No preamble ("I have addressed…"), no restating the finding verbatim, no file/doc-path citations (`CLAUDE.md → …`), no justification the reviewer didn't ask for, no sha dump, no blanket paragraph.
       - **Omit** any item you didn't touch (out of scope, silently skipped) — never mention it.
-      - For an item you deliberately did **not** do because it contradicts a design decision / known reason from this session, add one bullet: `<item> not needed: <one-line why>` (e.g. `schema migration not needed: already handled`).
+      - For an item you deliberately did **not** do (contradicts a design decision / known reason from this session, or you're keeping as-is), add one bullet stating the decision + one reason, nothing more. Examples: `` `app.logger` is the repo standard — leaving as-is, will revisit in a follow-up ``, `` email-in-logs intentional for rollout; TODO already flags it for revisit ``, `schema migration not needed: already handled`.
 
       Build the body (newline-separated bullets) in `$REPLY`, then:
       ```
