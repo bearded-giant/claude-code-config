@@ -158,8 +158,9 @@ Any human-readable doc I generate MUST be written in caveman style on the FIRST 
 - Delta-specs (`features/{name}/specs/{domain}/spec.md`) and source-specs (`.giantmem/specs/{domain}/spec.md`) — RFC 2119 normative keywords (MUST / MUST NOT / SHOULD / MAY) and GIVEN/WHEN/THEN scenarios MUST stay exact. Caveman the surrounding prose only.
 - Code comments — already governed by `## Code Comment Rules`
 - Commit messages — governed by `caveman-commit` skill
-- MR descriptions — governed by `create-mr-description` skill (already terse-by-design)
 - LLM-system prompts (e.g. `MULTI_SYNTHESIS_PROMPT`, `ANALYTICS_SYNTHESIS_PROMPT`) — wording is tuned for model behavior, do not paraphrase
+
+Explicit caveman invocation (`/caveman <file>`, "caveman this MR/PR/doc") ALWAYS applies to the named target, overriding any exemption above except code syntax / specs / system-prompt wording.
 
 ### Wizard-Style Prompts
 

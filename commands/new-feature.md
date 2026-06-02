@@ -359,13 +359,25 @@ When paired counterpart is enabled (field name stays `frontend` for back-compat)
 
 12. **Rebuild `.giantmem/artifacts.json`** — run `giantmem artifact reindex` from the repo root. Captures the new `proposal.md` + `tasks.md` + `facts.md` (+ delta-specs once user populates `specs/`) as typed entries. Skip silently if `giantmem` binary not on PATH; print warning.
 
-13. Display the created structure and confirm:
+13. **Pin session topic to feature name.** So `giantmem session list` shows this feature instead of an auto-detected keyword. Resolve the current session's UUID (newest jsonl in this project's claude dir) and pin:
+
+   ```bash
+   PROJ_DIR="$HOME/.claude/projects/$(pwd | sed 's|/|-|g')"
+   SID=$(ls -t "$PROJ_DIR"/*.jsonl 2>/dev/null | head -1 | xargs -I{} basename {} .jsonl)
+   if [ -n "$SID" ] && command -v giantmem >/dev/null; then
+     giantmem session set-topic "$SID" "{name}" || true
+   fi
+   ```
+
+   Skip silently if `giantmem` is missing or no jsonl found. Pin survives re-ingest (stored in `session_topic_overrides` table).
+
+14. Display the created structure and confirm:
    - If `pending`: note that `/start-feature {name}` will transition it to `in_progress` and create the branch when ready.
    - If `in_progress`: confirm the branch checkout.
    - If paired counterpart enabled: confirm the counterpart worktree was created and show the path.
    - Run `giantmem artifact list -f {name}` and show the result so the user sees the new typed artifacts.
 
-14. **Echo Open Questions to chat.**
+15. **Echo Open Questions to chat.**
 
    If `proposal.md` contains any items under `## Open Questions for User` (i.e. the section has at least one populated question, not just the placeholder `1. ...`), surface them in the chat reply under a `## Open Questions` heading. Preserve `[BLOCKING]` / `[non-blocking]` tags and the numbering as written in the doc.
 
