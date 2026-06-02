@@ -215,7 +215,14 @@ function usageGauges() {
     const cacheFile = path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json');
     if (!fs.existsSync(cacheFile)) return '';
 
-    const cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    let cache;
+    try {
+      cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    } catch (e) {
+      // corrupt cache — drop it so next tick refetches clean
+      try { fs.unlinkSync(cacheFile); } catch (e2) {}
+      return '';
+    }
     const now = Date.now() / 1000;
 
     if (!cache.expires_at || cache.expires_at < now) {

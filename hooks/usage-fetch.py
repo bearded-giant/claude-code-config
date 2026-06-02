@@ -235,6 +235,8 @@ def main():
         tmp = CACHE_FILE + ".tmp"
         with open(tmp, "w") as f:
             json.dump(cache, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         os.rename(tmp, CACHE_FILE)
     except Exception:
         pass
