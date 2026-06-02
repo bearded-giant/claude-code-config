@@ -144,50 +144,12 @@ def session_id_from_env(input_data: dict) -> str:
     return ""
 
 
-SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS live_docs (
-    path TEXT PRIMARY KEY,
-    project TEXT NOT NULL,
-    worktree_path TEXT,
-    feature TEXT,
-    dir_type TEXT,
-    session_id TEXT,
-    git_sha TEXT,
-    mtime INTEGER NOT NULL,
-    ingested_at TEXT NOT NULL,
-    content TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_live_project ON live_docs(project);
-CREATE INDEX IF NOT EXISTS idx_live_session ON live_docs(session_id);
-CREATE INDEX IF NOT EXISTS idx_live_feature ON live_docs(feature);
-CREATE VIRTUAL TABLE IF NOT EXISTS live_docs_fts USING fts5(
-    path, project, feature, dir_type, content,
-    tokenize='porter unicode61',
-    content='live_docs', content_rowid='rowid'
-);
-CREATE TRIGGER IF NOT EXISTS live_docs_ai AFTER INSERT ON live_docs BEGIN
-    INSERT INTO live_docs_fts(rowid, path, project, feature, dir_type, content)
-    VALUES (new.rowid, new.path, new.project, COALESCE(new.feature,''), COALESCE(new.dir_type,''), new.content);
-END;
-CREATE TRIGGER IF NOT EXISTS live_docs_ad AFTER DELETE ON live_docs BEGIN
-    INSERT INTO live_docs_fts(live_docs_fts, rowid, path, project, feature, dir_type, content)
-    VALUES ('delete', old.rowid, old.path, old.project, COALESCE(old.feature,''), COALESCE(old.dir_type,''), old.content);
-END;
-CREATE TRIGGER IF NOT EXISTS live_docs_au AFTER UPDATE ON live_docs BEGIN
-    INSERT INTO live_docs_fts(live_docs_fts, rowid, path, project, feature, dir_type, content)
-    VALUES ('delete', old.rowid, old.path, old.project, COALESCE(old.feature,''), COALESCE(old.dir_type,''), old.content);
-    INSERT INTO live_docs_fts(rowid, path, project, feature, dir_type, content)
-    VALUES (new.rowid, new.path, new.project, COALESCE(new.feature,''), COALESCE(new.dir_type,''), new.content);
-END;
-"""
-
-
 def open_db() -> sqlite3.Connection:
+    # schema owned by giantmem Go migrations; peer must not create tables here
     ARCHIVE_BASE.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(str(LIVE_DB), timeout=5.0)
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA synchronous=NORMAL")
-    db.executescript(SCHEMA_SQL)
     return db
 
 
