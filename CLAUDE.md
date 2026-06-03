@@ -14,6 +14,34 @@ Decision rule for action-vs-exploration:
 
 Across all rows: never propose edits to a file you have not read in this session.
 
+## Code is truth — docs and comments are not
+
+Markdown docs, code comments, docstrings, and `.giantmem/` notes are snapshots from the moment they were written. They drift. Treat them as hints about *intent*, never as authority on *current behavior*.
+
+Authoritative sources, in order:
+
+1. The code itself — function bodies, route handlers, schemas, control flow
+2. Live data — actual HTTP responses, DB rows, log lines, observed ticket IDs / job states the user shared
+3. Tests — assert what the code currently does (still verify the test isn't itself stale)
+4. Docs / comments / `.md` files / docstrings — LAST. Only quote when you've already verified the claim against 1–3.
+
+Forbidden moves:
+
+- Citing a doc/comment as evidence for *current* behavior without verifying the code matches
+- Quoting a docstring's "today returns stub" / "not yet implemented" / "once X ships" / "TODO" framing as a present-tense fact
+- Building a plan or recommendation on top of doc claims you have not cross-checked against the code
+- Repeating a doc's prediction ("once edge N ships") as if the predicate is still unresolved — check whether it already shipped
+
+When a doc and the code disagree:
+
+- The code wins. Say so explicitly to the user.
+- Offer to refresh the stale doc/comment in the same turn, or flag it as a follow-up.
+- Never silently "average" the two or hedge ("the doc says X but maybe…"). State the divergence directly.
+
+This applies to MR descriptions, proposals, kaizens, runbooks, ADRs, frontmatter — every text artifact. The artifact is a snapshot; the running system is the truth.
+
+Corollary — do not author the staleness you would later have to ignore. When editing or generating code, NEVER write comments / docstrings / module banners that describe *current* functional behavior, response shapes, return values, request/response flow, "today returns X" / "ships dark" / "once Y lands" framing, fallback chains, or any other claim that the code itself already states. The reader will read the code; your comment will rot the moment the code changes. See `## Code Comment Rules` for the only permitted comment shape (the *why* of a non-obvious choice, one line). If you find yourself describing *what* a function does in a docstring, delete the docstring.
+
 <context_management>
 Context auto-compacts as it approaches limits. Continue indefinitely. Do not stop early for token concerns. Be persistent, complete tasks fully.
 </context_management>
