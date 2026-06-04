@@ -1,0 +1,19 @@
+diff --git i/plugins/kai/skills/review-adversarial/SKILL.md w/plugins/kai/skills/review-adversarial/SKILL.md
+index 2b910ae..6e3dcc2 100644
+--- i/plugins/kai/skills/review-adversarial/SKILL.md
++++ w/plugins/kai/skills/review-adversarial/SKILL.md
+@@ -8,6 +8,14 @@ argument-hint: "[MR/PR URL or file path]"
+ 
+ # Adversarial Code Review
+ 
++## Output Style
++
++Write all findings terse. Drop articles (a/an/the), filler (just/really/basically/actually/simply), hedging ("might possibly", "it seems", "perhaps consider"), and pleasantries. Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for").
++
++Preserve EXACTLY: code blocks, file paths, line numbers, identifiers, URLs, quoted error strings, and any normative verdict labels this skill defines (e.g. CONFIRMED / REFUTED / UNVERIFIABLE). Never paraphrase quoted MR/PR claims — quote them verbatim.
++
++One short paragraph per claim. No meta-narration ("Here is my review...", "I will now verify..."). No marker comments or banners indicating the style.
++
+ Never trust the MR/PR description at face value. Verify every claim by reading the actual code.
+ 
+ ## Methodology

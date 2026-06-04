@@ -1,0 +1,19 @@
+diff --git i/plugins/kai/skills/review-code/SKILL.md w/plugins/kai/skills/review-code/SKILL.md
+index 4b87faf..a4e7ce6 100644
+--- i/plugins/kai/skills/review-code/SKILL.md
++++ w/plugins/kai/skills/review-code/SKILL.md
+@@ -6,6 +6,14 @@ allowed-tools: Read, Grep, Glob, Bash, Skill
+ 
+ # review-code
+ 
++## Output Style
++
++Write all review prose terse. Drop articles (a/an/the), filler (just/really/basically/actually/simply), hedging ("might possibly", "it seems", "perhaps consider"), and pleasantries. Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for").
++
++Preserve EXACTLY: code blocks, file paths, line numbers, identifiers, URLs, quoted error strings, and any normative template headers below. Never paraphrase quoted text or section names the template requires.
++
++One short paragraph per finding. No restating the template back to the reader. No meta-narration ("Here is my review...", "I will now check..."). No marker comments or banners indicating the style.
++
+ This skill is the single source of truth for the Recharge code review workflow. It is invoked from two places:
+ 
+ 1. **Slash command** — `/review-code [target] [domain-filter] [--post]`. `$ARGUMENTS` is parsed.
