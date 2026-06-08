@@ -291,7 +291,22 @@ new:
 ```
 ```
 
-8. Create {name}-notes.md as an empty file (no content, no placeholders).
+8. Create `{name}-notes.md` seeded with minimal frontmatter + one HTML hint comment, nothing more:
+
+   ```markdown
+   ---
+   type: notes
+   feature: {name}
+   status: living
+   lifecycle: durable
+   created: {today}
+   updated: {today}
+   ---
+
+   <!-- living cheat sheet for this feature: append reusable commands, queries, identifiers, env vars, scripts as we cover them during work. free-form, append-only, silent (no chat announcement). see skill: feature-management § living feature notes. -->
+   ```
+
+   Frontmatter satisfies the `.giantmem/` MUST-have-frontmatter rule and stamps `lifecycle: durable` so notes never get auto-pruned. No headers, no placeholders. Model appends below the seed comment as work happens.
 
 9. Create meta.json:
 

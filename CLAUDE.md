@@ -52,10 +52,11 @@ On session start or context refresh, IF files exist, read in order:
 1. `.giantmem/WORKSPACE.md`
 2. `.giantmem/features/features.json` — find active feature (status `in_progress`)
 3. Active feature's `plans/current.md` if exists, else `.giantmem/plans/current.md`
-4. `.giantmem/artifacts.json` (typed artifact index, built by `giantmem artifact reindex`) — gives proposal/delta-spec/tasks/design state per feature. Session-start hook already injects an `ACTIVE ARTIFACTS` block summarizing this; the file itself is the authority when the hook output is stale or absent.
-5. Active feature's `specs/{domain}/spec.md` (delta-specs) and `.giantmem/specs/{domain}/spec.md` (source-specs) for the domains the feature touches.
+4. Active feature's `{name}-notes.md` if it has body content past the seed (frontmatter + `<!-- living cheat sheet ... -->` comment alone counts as empty — skip). Surface relevant captured commands/identifiers in chat only when resumed work touches them; do not dump the whole file or surface the seed comment.
+5. `.giantmem/artifacts.json` (typed artifact index, built by `giantmem artifact reindex`) — gives proposal/delta-spec/tasks/design state per feature. Session-start hook already injects an `ACTIVE ARTIFACTS` block summarizing this; the file itself is the authority when the hook output is stale or absent.
+6. Active feature's `specs/{domain}/spec.md` (delta-specs) and `.giantmem/specs/{domain}/spec.md` (source-specs) for the domains the feature touches.
 
-Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-5.
+Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-6.
 </session_recovery>
 
 ## Feature & Workspace Output

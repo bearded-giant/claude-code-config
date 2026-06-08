@@ -127,6 +127,78 @@ When a feature has status `in_progress` in `features.json`, it is the **active f
 | `.giantmem/reviews/{subject}.md` | `.giantmem/features/{name}/reviews/{subject}.md` |
 | `.giantmem/filebox/*` | `.giantmem/features/{name}/filebox/*` |
 
+## Living feature notes (`{name}-notes.md`) — append during work
+
+`/new-feature` seeds `features/{name}/{name}-notes.md` with minimal frontmatter and a single hint comment. Treat it as a **living cheat sheet**. Append silently as work happens — no permission ask, no chat announcement.
+
+### Silent-background contract (CRITICAL — overrides default no-write bias)
+
+When the active feature has status `in_progress` and an append trigger fires below, the model MUST:
+
+1. **Append without asking.** Skip "should I save this?" — the trigger list IS the permission. Notes file exists (seeded), so it's an `Edit`, not a new-file `Write` — the global no-write-without-permission rule does not apply.
+2. **Append silently.** Do NOT mention the append in chat. No "saved to notes", no "added to cheat sheet". Pure background. User reads the file when they want.
+3. **Append in the same tool batch as the action being captured.** Don't defer to end-of-turn — model forgets. The Bash that runs a `kubectl` command and the Edit that appends it ship in one batch.
+4. **Tiebreaker: append.** When unsure if a command is "reusable enough," append. Cost of noise in notes < cost of forgetting the command. Only skip if confidently single-use boilerplate.
+
+### When to append (moderate — reusable signal)
+
+- Bash / shell one-liner authored together OR pasted by the user (will likely re-run)
+- `redis-cli`, `kubectl`, `gcloud`, `gh`, `glab`, `psql`, `mysql`, `curl`, `bq`, `vault`, `aws` commands that returned useful state or are worth re-running
+- DB query that surfaced a non-obvious row / state worth re-querying
+- env var, config knob, beta flag, or feature flag discovered mid-session (also mirror flag/endpoints into `facts.md`)
+- Specific identifier worth keeping (e.g. `shop_id 47281 reproduces the bug`, `job_id abc123 = stuck task`, customer email, MR URL, Jira ticket)
+- Script / function written for the feature, even tiny
+- Path to a useful log file, dashboard URL, monitoring query, repro endpoint
+- User explicitly says "save this" / "good for later" / "note that" / "we'll need this again" — append immediately, override every skip rule
+
+### When NOT to append
+
+- Single-use debug command obviously throwaway (e.g. one-shot `ls`, `cat <file>` to peek)
+- Generic Linux commands every dev already knows (`git status`, `ls -la`)
+- Content that belongs in another feature artifact — put it there instead:
+  - intent / scope / approach → `proposal.md`
+  - beta flag / endpoints / test commands / key files → `facts.md`
+  - checkbox work items → `tasks.md`
+  - behavior contracts (Requirements / Scenarios) → `specs/{domain}/spec.md`
+- Spec quote, RFC 2119 wording — those are normative, live in delta-specs
+- Anything inside `/complete-feature` execution — see Lifecycle below
+
+### Sensitive data — REDACT before append
+
+NEVER append raw:
+- `Authorization: Bearer ...` tokens, API keys, vault tokens, OAuth secrets
+- DB connection strings with embedded passwords
+- Customer PII (email, phone, address) unless the user explicitly said save it
+- `.env` file contents, GPG keys, SSH private keys
+
+Redact with `<REDACTED:token>`, `<REDACTED:password>`, `<REDACTED:pii>` placeholders. Keep the surrounding command shape so it's still re-runnable after the user re-injects the secret.
+
+### Format — VERY loose, no prescribed structure
+
+- Append-only. Never reorder past entries. Never reformat past entries. Never delete past entries unless user explicitly asks.
+- Group loosely by topic if helpful, otherwise chronological is fine.
+- Code blocks for commands — preserve EXACTLY, no caveman compression inside fenced blocks.
+- Prose around the block: caveman style, one short line, *why* not *what*.
+- No section banners (`# === foo ===`), no decorative headers.
+- Do NOT touch the seed frontmatter — append below it.
+
+### Read on session resume — `non-empty` semantics
+
+Read `{name}-notes.md` on resume when file has **content past the seed line** — i.e. >1 line of body beyond the frontmatter + seed `<!-- ... -->` comment. A file containing only frontmatter + seed comment counts as empty for resume purposes; skip it, do not surface the seed comment in chat.
+
+When body content exists and resumed work touches a captured command/snippet, surface the relevant entry once ("last session we used: `<cmd>`") so it gets reused. Don't dump the whole file.
+
+### When no feature is `in_progress`
+
+Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user to create a feature. Useful commands from session work go in `.giantmem/plans/current.md` if relevant to the current task, otherwise let them go. Notes file is feature-scoped by design.
+
+### Lifecycle
+
+- **During in_progress:** append per rules above.
+- **During `/pause-feature`:** stop appending. Resume on `/start-feature` or `/reopen-feature`.
+- **During `/complete-feature` execution itself:** do NOT append further. File freezes as durable reference at the moment `/complete-feature` starts.
+- **After complete:** file stays in `features/{name}/`. Not merged into source-specs. Not pruned by `giantmem artifact stale`. Treated as `lifecycle: durable` per its frontmatter.
+
 ## Always global — NEVER feature-scoped
 
 - `domains/` — repo-level code knowledge
@@ -145,5 +217,6 @@ Read in order if files exist:
 1. `.giantmem/WORKSPACE.md`
 2. `.giantmem/features/features.json` — find active feature
 3. Active feature's `plans/current.md`, else `.giantmem/plans/current.md`
+4. Active feature's `{name}-notes.md` if non-empty — living cheat sheet, surface relevant commands when resuming related work
 
-If step 1's file is missing, skip steps 2-3.
+If step 1's file is missing, skip steps 2-4.
