@@ -62,7 +62,7 @@
       "Skill(kai-review:*)"
     ],
     "ask": ["Bash(git:push)"],
-    "defaultMode": "default",
+    "defaultMode": "bypassPermissions",
     "additionalDirectories": ["/Users/bryan/"]
   },
   "model": "Opus",
