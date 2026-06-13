@@ -127,23 +127,59 @@ function effortLabel(data) {
   return `${color}${e}${RST}`;
 }
 
+// --- account badge ---
+
+function accountBadge() {
+  try {
+    const raw = fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8');
+    const j = JSON.parse(raw);
+    const oa = j.oauthAccount || {};
+    const type = (oa.organizationType || '').toLowerCase();
+    const name = (oa.organizationName || '').toLowerCase();
+    // team_tier / claude_team / name contains "team" -> T
+    // enterprise / contains "inc" -> E
+    const isTeam = type.includes('team') || name.includes('team');
+    const isEnt = type.includes('enterprise') || name.includes('inc');
+    if (isTeam) return `${GREEN}[T]${RST}`;
+    if (isEnt) return `${BLINK_RED}[E]${RST}`;
+    if (type) return `${YELLOW}[${type[0].toUpperCase()}]${RST}`;
+    return '';
+  } catch (e) { return ''; }
+}
+
 // --- git info ---
 
 function getGitInfo(dir) {
   const info = { branch: null, dirty: false, untracked: false, ahead: 0, behind: 0 };
   try {
     let gitDir = null;
+    let headPath = null;
     let current = dir;
     while (current !== '/') {
-      const gitHead = path.join(current, '.git', 'HEAD');
-      if (fs.existsSync(gitHead)) {
-        const content = fs.readFileSync(gitHead, 'utf8').trim();
+      const dotGit = path.join(current, '.git');
+      try {
+        const st = fs.statSync(dotGit);
+        if (st.isDirectory()) {
+          headPath = path.join(dotGit, 'HEAD');
+        } else if (st.isFile()) {
+          // worktree/submodule: ".git" is a file containing "gitdir: <path>"
+          const ref = fs.readFileSync(dotGit, 'utf8').trim();
+          const m = ref.match(/^gitdir:\s*(.+)$/);
+          if (m) {
+            const resolved = path.isAbsolute(m[1]) ? m[1] : path.resolve(current, m[1]);
+            headPath = path.join(resolved, 'HEAD');
+          }
+        }
+      } catch (e) { /* not here, keep walking */ }
+      if (headPath && fs.existsSync(headPath)) {
+        const content = fs.readFileSync(headPath, 'utf8').trim();
         info.branch = content.startsWith('ref: refs/heads/')
           ? content.slice(16)
           : content.slice(0, 7);
         gitDir = current;
         break;
       }
+      headPath = null;
       current = path.dirname(current);
     }
     if (!gitDir) return info;
@@ -522,7 +558,10 @@ process.stdin.on('end', () => {
       modelPart = `${inner} ${DIM}\u2502${RST} `;
     }
 
-    const line1 = `${modelPart}${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
+    const acct = accountBadge();
+    const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
+
+    const line1 = `${acctPart}${modelPart}${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
 
     // minimal: one line only
     if (cfg.style === 'minimal' || !cfg.line2) {
