@@ -185,7 +185,7 @@ function getGitInfo(dir) {
     if (!gitDir) return info;
 
     try {
-      const status = execSync(`git -C "${gitDir}" status --porcelain -b 2>/dev/null`, {
+      const status = execSync(`git -C "${gitDir}" --no-optional-locks status --porcelain -b 2>/dev/null`, {
         timeout: 150, encoding: 'utf8',
       });
       const lines = status.split('\n');

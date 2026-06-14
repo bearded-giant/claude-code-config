@@ -123,111 +123,121 @@
     "bigquery@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/bigquery/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "fargate-jobs@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/fargate-jobs/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "linear-triage@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/linear-triage/1.0.10",
         "version": "1.0.10",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "opensearch-logs@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/opensearch-logs/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "subscriptions@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/subscriptions/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "worktrees@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/worktrees/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "debug-features@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/debug-features/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "hasura-schema@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/hasura-schema/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "shopify-extensions@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/shopify-extensions/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
       }
     ],
     "dev-workflow@skio": [
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/skio/frost",
         "installPath": "/Users/bryan/.claude/plugins/cache/skio/dev-workflow/1.0.0",
         "version": "1.0.0",
         "installedAt": "2026-06-05T16:22:52.937Z",
         "lastUpdated": "2026-06-05T16:22:52.937Z",
-        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89",
-        "projectPath": "/Users/bryan/dev/skio/frost"
+        "gitCommitSha": "a1a35ec47062de3722011a3b304fbe276dfc5c89"
+      }
+    ],
+    "ponytail@ponytail": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/ponytail/ponytail/4.2.0",
+        "version": "4.2.0",
+        "installedAt": "2026-06-13T14:06:54.758Z",
+        "lastUpdated": "2026-06-13T14:06:54.758Z",
+        "gitCommitSha": "0882e2d256fd953c6a3e90b946f68ce4f9f35153"
       }
     ]
   }
