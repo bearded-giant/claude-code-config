@@ -160,7 +160,7 @@ All hooks are configured in `settings.json`. Here's the full map:
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
+| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `doit_session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
 | UserPromptSubmit | `giantmem_recall.py`, `clear_attention.py` | Yes (top FTS5 hits per prompt) |
 | PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
 | SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |

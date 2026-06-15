@@ -1,6 +1,6 @@
 ---
 name: feature-management
-description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active.
+description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces user-actionable follow-ups to park in the feature's doit list.
 ---
 
 Feature system for `.giantmem/features/`. Persistent capabilities that span sessions.
@@ -198,6 +198,81 @@ Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user
 - **During `/pause-feature`:** stop appending. Resume on `/start-feature` or `/reopen-feature`.
 - **During `/complete-feature` execution itself:** do NOT append further. File freezes as durable reference at the moment `/complete-feature` starts.
 - **After complete:** file stays in `features/{name}/`. Not merged into source-specs. Not pruned by `giantmem artifact stale`. Treated as `lifecycle: durable` per its frontmatter.
+
+## Feature todos → doit sync
+
+Hard link between multi-step feature work and the doit MCP. Items the USER must act on (not the model) get parked in a per-feature doit list so they survive the session. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
+
+### Trigger — model-initiated ask
+
+During multi-step work — feature OR bare repo — when a cluster of user-actionable follow-ups appears — "review this MR", "run X later", "decide Y", "remember Z before ship" — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below). Show the proposed items (text + bucket) so user edits before write.
+
+- Ask ONCE per cluster, never per item.
+- Never auto-write todos — the ask is the gate.
+- Model-only next-steps (things the model does this turn) are NOT todos — skip them.
+- No active feature → use the bare `{repo}` list, still offer. User works outside features often — do NOT skip. Touch `daily` only on explicit user request.
+- Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
+
+### List resolution — repo-qualified, worktree-aware
+
+List name carries repo (+ worktree) so it stays legible across 4-6 parallel sessions — bare feature names lose context. Derive:
+
+```bash
+root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+leaf=$(basename "$root"); par=$(basename "$(dirname "$root")")
+case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
+# active in_progress feature → "$base-$feature", else "$base"
+```
+
+| cwd | active feature | list name |
+|---|---|---|
+| `~/dev/claude-code-config` | `oauth-ttl` | `claude-code-config-oauth-ttl` |
+| `~/dev/claude-code-config` | none | `claude-code-config` |
+| `~/dev/python/cc-wt/local-dev-runner` | `retry-loop` | `cc-wt-local-dev-runner-retry-loop` |
+| `~/dev/python/cc-wt/local-dev-runner` | none | `cc-wt-local-dev-runner` |
+
+- Worktree = parent dir ends `-wt` → prepend it (`{parent}-{leaf}`). Else `{leaf}`.
+- Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
+- Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
+- Session start: the `doit_session_prime` hook prints this session's derived list name + whether it exists. Re-derive on cwd / worktree / feature change.
+- `daily` stays the manual cross-repo priority sweep — qualified lists never auto-dump into it.
+
+### Bucket → doit priority
+
+| Bucket | doit `priority` | Means |
+|---|---|---|
+| critical | `critical` | blocks ship / on critical path / breaks if skipped |
+| urgent | `urgent` | time-sensitive, do soon |
+| important | `important` | matters, not time-boxed |
+| default | omit (none) | nice-to-have / someday |
+
+No mirroring to `daily` — feature list is the only home (user choice).
+
+### Numbering
+
+Prefix every item text with `N.` = do-order / critical-path sequence across the whole list (`1. wire token refresh`, `2. add ttl config`). The number is the explicit priority signal the user reads — doit exposes no visible ordinal. Bucket conveys urgency; number conveys "do this Nth". Skip `order_index` unless the visible sort drifts from the numbers.
+
+### Description — more than a post-it
+
+Set `add_todo` `description` (or `add_note` after) ONLY when the item carries:
+- doc link — repo path or URL
+- script / command to run — exact, fenced or backticked
+- identifier — MR URL, Jira ticket, `shop_id`, `job_id`, dashboard link
+
+Preserve commands / paths / URLs EXACTLY (no caveman inside them). Redact secrets per the notes rules above (`<REDACTED:token>` etc.). Plain reminders get no description.
+
+### Create vs update (idempotent)
+
+1. `list_todos list={feature}` first.
+2. Dedupe — skip items whose text fuzzy-matches an existing todo.
+3. Append new items; continue numbering from current max `N`.
+4. Re-bucket / add notes on existing items via `update_todo` / `add_note` only when their priority or context changed.
+
+Never silently renumber the whole list — append-extend. Reorder only on explicit user request.
+
+### Model-assignable items (`claude:` prefix)
+
+When a proposed item is something the model can execute (not just a user reminder), prefix its text with `claude:` so a later `/burn` picks it up. User-only items get no prefix. In the AskUserQuestion batch, mark which items are `claude:`-assigned so the user sees the hand-off. Full burn-down loop → `burn` skill.
 
 ## Always global — NEVER feature-scoped
 

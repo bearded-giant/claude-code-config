@@ -34,6 +34,12 @@
 | `/complete-feature {name}` | Mark feature complete |
 | `/feature-report {name}` | Generate QA validation report |
 
+## Todos
+
+| Skill | Purpose |
+|-------|---------|
+| `/burn` | Burn down `claude:`-marked doit todos, priority-first (`--list`, `--priority`, `--max`, `--dry-run`) |
+
 ## Workspace
 
 | Skill | Purpose |

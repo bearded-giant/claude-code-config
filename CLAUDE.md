@@ -72,6 +72,30 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
 - Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated discoveries / research land as `candidate` and get reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
 
+### Todos → doit (repo / feature list)
+
+When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE: offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+
+- List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
+- Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
+- Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
+- Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
+- Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
+- Session start: `doit_session_prime` hook surfaces this session's list name + whether it exists. If it exists, `list_todos` it and surface pending `claude:` items. Re-derive when cwd / worktree / feature changes mid-session.
+
+Full convention + procedure → `feature-management` skill.
+
+### Burn-down queue (`claude:` marker)
+
+Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, priority-first (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, marking done with an outcome note. Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
+
+- Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
+- Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.
+- Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for human.
+- When the model proposes a feature-todo batch, items it can execute get the `claude:` prefix; user-only items don't.
+
+Full procedure → `burn` skill.
+
 ## Scope + Lifecycle (cross-repo memory unit)
 
 Two new pieces let memory cross worktrees + age gracefully:

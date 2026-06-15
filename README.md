@@ -82,6 +82,7 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 |-------|------|---------|
 | SessionStart | `sync_settings.py` | Merges repo `settings.json` into live `~/.claude/settings.json` (see note below) |
 | SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer |
+| SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list name for this session (for `claude:` assignment + `/burn`) |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
 | SessionStart | `memory_index_sweep.py` | Re-indexes harness memory into live.db (rebuild/multi-machine durability) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |

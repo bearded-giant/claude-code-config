@@ -92,6 +92,10 @@
           },
           {
             "type": "command",
+            "command": "python3 ~/.claude/hooks/doit_session_prime.py"
+          },
+          {
+            "type": "command",
             "command": "python3 ~/.claude/hooks/memory_index_sweep.py"
           },
           {
