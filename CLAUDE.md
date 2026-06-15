@@ -87,7 +87,7 @@ Full convention + procedure → `feature-management` skill.
 
 ### Burn-down queue (`claude:` marker)
 
-Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, priority-first (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, marking done with an outcome note. Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
+Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, priority-first (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
 
 - Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
 - Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.

@@ -48,9 +48,25 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
    - commit / push / MR → normal git rules. A todo that explicitly says "commit & push X" IS the authorization; silent default = no push.
    - destructive / irreversible / outward-facing NOT named in the todo → pause, surface, don't execute.
    - sev-5 (data loss, security, prod mutation) → stop, flag for human.
-4. **Close** — success → `complete_todo` + `add_note` (files changed, commit sha, MR url, key output — identifiers EXACT, secrets redacted).
-5. **Blocked** (missing info / needs decision / external dep) → `add_note` with the blocker, `revert_todo` (→ pending, re-queueable), collect for end summary, continue.
+4. **Close (success)** — `complete_todo` (mark done) + `add_note` mode=`append` with the completion record (below). `append` keeps the user's original note (doc / script / context) intact.
+5. **Blocked** (missing info / needs decision / external dep) → `add_note` (append) `BLOCKED {ts} — {what's needed}`, `revert_todo` (→ pending, re-queueable), collect for end summary, continue.
 6. Next item.
+
+## Completion record (appended on done)
+
+Get the user's local clock — run `date "+%Y-%m-%d %H:%M %Z"` — then `add_note` mode=`append` this block:
+
+```
+DONE {timestamp}
+- what was done
+- files touched / commit sha / MR url / key output / decision made
+- … (max 6 bullets)
+```
+
+- `{timestamp}` = the `date` output verbatim (the user's system time, not the model's idea of now).
+- ≤ 6 bullets. Tight — what changed + identifiers, not narration.
+- Identifiers (sha, MR url, shop_id) EXACT. Redact secrets.
+- Append only — NEVER overwrite the original note.
 
 ## Stop conditions
 
