@@ -23,6 +23,7 @@ plugins/marketplaces/
 plugins/repos/
 plugins/subtask/
 plugins/install-counts-cache.json
+plugins/.last_inuse_sweep
 
 # system files
 .DS_Store
