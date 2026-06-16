@@ -1,6 +1,6 @@
 ---
 name: api-designer
-description: Design Flask API endpoints, blueprint organization, request/response schemas, validation, error handling, and RESTful conventions. Use when the user says "design endpoint", "new API route", "organize routes", "add endpoint", "bulk update endpoint", or asks how to structure an API. Skip for non-Flask APIs or pure data work (use data-analytics-processor instead).
+description: Design Flask API endpoints, blueprint organization, request/response schemas, validation, error handling, and RESTful conventions. Use when the user says "design endpoint", "new API route", "organize routes", "add endpoint", "bulk update endpoint", or asks how to structure an API. Skip for non-Flask APIs.
 model: sonnet
 color: orange
 ---

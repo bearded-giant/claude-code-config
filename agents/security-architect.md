@@ -1,6 +1,6 @@
 ---
 name: security-architect
-description: Design and review auth/authz, data protection, and API security — JWT, OAuth, RBAC, token refresh, session management, security headers, CORS, rate limiting, PII encryption at rest. Use when the user says "add JWT auth to API", "implement RBAC", "secure this endpoint", "review our auth flow", "encrypt user PII", "design token refresh". Skip for narrow JWT-only mechanics (use jwt-expert) or Auth0-specific config (use auth0-expert).
+description: Design and review auth/authz, data protection, and API security — JWT, OAuth, RBAC, token refresh, session management, security headers, CORS, rate limiting, PII encryption at rest. Use when the user says "add JWT auth to API", "implement RBAC", "secure this endpoint", "review our auth flow", "encrypt user PII", "design token refresh". Skip for Auth0-specific config (use auth0-expert).
 model: inherit
 color: pink
 ---

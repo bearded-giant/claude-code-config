@@ -1,7 +1,7 @@
 ---
 name: debugger
 description: Trace bugs, errors, and unexpected behavior in isolated context. Use when the user pastes a stack trace, reports a test failure, says "why is X failing", "trace this bug", "the API returns empty but DB has rows", or any multi-file data-flow issue. Keeps main conversation clean by doing the trace in a subagent. Skip for one-line typos or known-cause fixes.
-model: sonnet
+model: inherit
 color: red
 ---
 
