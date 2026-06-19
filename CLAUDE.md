@@ -14,6 +14,10 @@ Decision rule for action-vs-exploration:
 
 Across all rows: never propose edits to a file you have not read in this session.
 
+### Gitignored files are editable
+
+`.gitignore` controls what git *tracks*, not what you may *edit*. A gitignored file — or any file inside an ignored directory — is editable exactly like a tracked file. There is no instruction anywhere that bars editing ignored files; do not invent one. Read, edit, create, and delete them under the same gates as everything else (read-before-edit, confirm before destructive/outward-facing). Never stop, skip, or ask permission *solely because* a path is gitignored — that is not a reason to halt.
+
 ## Code is truth — docs and comments are not
 
 Markdown docs, code comments, docstrings, and `.giantmem/` notes are snapshots from the moment they were written. They drift. Treat them as hints about *intent*, never as authority on *current behavior*.
