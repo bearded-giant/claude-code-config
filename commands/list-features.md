@@ -2,29 +2,18 @@
 description: List all features in the current workspace from the features cache. Auto-fires when user invokes /list-features, asks "what features are there", "show my features", "list active features", or "what's in progress".
 ---
 
-List all features in the current workspace from the features cache.
+Run the script — do NOT walk the cache by hand:
 
-## Steps
-
-1. Check if `.giantmem/features/features.json` exists.
-   - If yes, proceed to step 2.
-   - If no, check if `.giantmem/features/` exists.
-     - If `.giantmem/features/` doesn't exist, inform user to run `/ws-init` first. Stop.
-     - If `.giantmem/features/` exists with feature subdirectories but no `features.json`, build the cache by scanning ONLY those subdirectories (read each `meta.json` or `spec.md` for status, branch, dates) and write `features.json`. Then proceed.
-     - If `.giantmem/features/` exists but has NO feature subdirectories (only `_index.md` or empty), display "no features yet" and stop. **Do not** pull from `~/giantmem_archive/`, sibling worktrees, or any other source. Archived features are not live features.
-
-2. Read `.giantmem/features/features.json` and parse it.
-
-3. Display a table with these columns, sorted by last_session descending (most recent first):
-
-```
-| Feature | Status | Branch | Paired | Last Modified |
+```bash
+list-features
 ```
 
-The `Paired` column shows the paired counterpart branch (cross-repo linkage). Schema field is still `frontend.*` for back-compat — see `/new-feature` note.
-- The counterpart branch name (`frontend.branch`) if `frontend.enabled` is `true`
-- `-` if frontend is `null` or `frontend.enabled` is `false`
+(`~/.claude/scripts/list-features`, on PATH. Reads `.giantmem/features/features.json`, prints a
+table sorted by last_session desc. Handles missing dir / missing cache / no features itself.
+Read-only — never mutates anything. Scans only `.giantmem/features`, never the archive.)
 
-4. If the cache is empty, display "no features found".
+Show its output. That's the whole command.
 
-5. If user asks about a specific feature, read its `spec.md` and `facts.md` from `.giantmem/features/{name}/`. When the feature has a paired counterpart enabled, also show `frontend.worktree` (counterpart worktree path).
+If the user then asks about ONE specific feature, read that feature's `facts.md` + `proposal.md`
+from `.giantmem/features/{name}/` (and `frontend.worktree` from its `meta.json` if a paired
+counterpart is enabled).
