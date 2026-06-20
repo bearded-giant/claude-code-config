@@ -1,104 +1,19 @@
 ---
 description: "Pause current feature: mark as paused, capture context for later resumption"
-argument-hint: "[feature-name] (optional, inferred from plans/current.md)"
+argument-hint: "[feature-name]"
 ---
 
-# Pause Feature
+Compose the resumption context from THIS session first, then delegate — that's the one judgment slot.
 
-Pause an in-progress feature to switch context. Captures enough state to resume later.
+1. Figure out, from the session so far: what was in progress, the next steps to pick up, any blockers. And a one-line paused-state snapshot (e.g. "endpoints wired, untested").
+2. Run (feature inferred from the single in_progress one if omitted):
 
-## Arguments
+```bash
+python3 ~/dev/giant-tooling/workspace/scripts/feature.py pause [feature] \
+  --note "<what was in progress; next steps; blockers>" \
+  --paused-state "<last working state; uncaptured partial work>" --cwd "$(pwd)"
+```
 
-- feature: (optional) Feature name in kebab-case. If not provided, infer from `.giantmem/plans/current.md` or ask.
+The CLI validates status==in_progress, flips to paused across proposal.md/facts.md/meta.json/features.json/_index.md, appends `## Resumption Notes` + `## Paused State`, reindexes. Prints JSON.
 
-## Steps
-
-1. **Identify the feature**
-
-   If no argument provided:
-   - Read `.giantmem/plans/current.md` for active feature context
-   - If unclear, ask the user
-
-   Validate `.giantmem/features/{feature}/` exists with spec.md.
-
-2. **Read current state**
-
-   Read these files (do not proceed without reading them first):
-   - `.giantmem/features/{feature}/spec.md`
-   - `.giantmem/features/{feature}/facts.md`
-   - `.giantmem/features/_index.md`
-   - `.giantmem/plans/current.md`
-
-   Verify the feature status is `in_progress`. If `complete` or already `paused`, inform the user and stop.
-
-3. **Update spec.md**
-
-   - Change `status: in_progress` to `status: paused`
-   - Add `paused: {today's date}` after the `created:` line
-   - Under `## Key Decisions`, append a `### Resumption Notes` subsection with:
-     - What was in progress when paused
-     - Next steps to pick up (infer from plans/current.md)
-     - Any blockers or open questions
-
-4. **Update facts.md**
-
-   - Ensure all current values are accurate (beta flags, config keys, endpoints, key files, test commands)
-   - Remove any placeholder or template text that was never filled in
-   - Add a `## Paused State` section at the bottom with:
-     - Last known working state (e.g., "endpoints wired but untested", "model done, API in progress")
-     - Any partial work not yet captured elsewhere (draft config values, WIP file paths)
-   - This section gets removed on `/reopen-feature`
-
-5. **Update feature index**
-
-   In `.giantmem/features/_index.md`, change the feature's status from `in_progress` to `paused`.
-
-6. **Update meta.json** (if it exists)
-
-   ```json
-   {
-     "status": "paused",
-     "last_session": "{today's date}"
-   }
-   ```
-
-7. **Update features.json cache**
-
-   Read `.giantmem/features/features.json`, update the feature entry:
-
-   ```json
-   {
-     "status": "paused",
-     "last_session": "{today's date}"
-   }
-   ```
-
-   Write the updated JSON back to `.giantmem/features/features.json`.
-
-8. **Update plans/current.md**
-
-   - Clear active steps for this feature
-   - Leave a one-liner: `Paused: {feature} - see features/{feature}/spec.md for resumption notes`
-
-9. **Report**
-
-   ```
-   Feature '{feature}' paused.
-
-   Updated:
-     - spec.md (status -> paused, added resumption notes)
-     - facts.md (snapshot current state, added paused state)
-     - _index.md (status -> paused)
-     - features.json (cache updated)
-     - plans/current.md (cleared active steps)
-
-   Resume with: /reopen-feature {feature}
-   ```
-
-## Rules
-
-- Do NOT create any new files
-- Do NOT modify code files, only scratch workspace files
-- Read every file before modifying it
-- Resumption notes should be brief but sufficient to pick up cold
-- Keep all updates terse and factual per workspace output rules
+If you have no real context to write, omit the flags — the CLI inserts a placeholder you (or the user) fill later. Report the `resume_with` line.

@@ -2,16 +2,10 @@
 description: Quick lookup of feature facts (beta flags, config keys, endpoints, test commands) from .giantmem/features/{name}/facts.md. Auto-fires before answering "what beta flag is X", "how do I test feature Y", "what's the config key for Z", "where's the endpoint for the W feature", "how do I run the tests for X" — match against features.json before guessing.
 ---
 
-Quick lookup of feature facts (beta flags, config, endpoints, test commands).
+Delegates to the feature CLI (partial name match supported):
 
-## Arguments
+```bash
+python3 ~/dev/giant-tooling/workspace/scripts/feature.py facts <name> --cwd "$(pwd)"
+```
 
-- name: Feature name (or partial match)
-
-## Steps
-
-1. Search .giantmem/features/ for matching feature folder
-2. If exact match found, read .giantmem/features/{name}/facts.md
-3. If partial match, list matching features and ask for clarification
-4. Display the facts.md content
-5. If meta.json exists, also show last_session date
+Prints `# feature: {name}  last_session: {date}` then the full facts.md. If the name is ambiguous it prints `{"ambiguous": [...]}` — show those and ask which. Then answer the user's actual question (beta flag / config key / endpoint / test command) from the facts content.
