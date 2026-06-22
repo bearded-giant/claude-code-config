@@ -42,7 +42,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
 
 ## Burn loop (per item — autonomous)
 
-1. **Claim** — `start_todo` (→ in_progress). This IS the lock: parallel sessions see it taken, won't double-grab.
+1. **Claim** — `start_todo` (→ in_progress) FIRST, before any work, as its own tool call. MUST land before reading/working the item — never skip, never batch, never go straight to `complete_todo`. Two purposes: (a) the lock — parallel sessions see it taken, won't double-grab; (b) the user tracks the live item visually in their doit tooling. Item stays in_progress for its whole work window, until step 4/5 closes it.
 2. **Read** — strip `claude:`; read instruction + the todo's note (doc / script / ids).
 3. **Work** — end-to-end. Existing gates HOLD:
    - commit / push / MR → normal git rules. A todo that explicitly says "commit & push X" IS the authorization; silent default = no push.
