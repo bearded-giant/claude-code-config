@@ -59,11 +59,35 @@
       "mcp__doit",
       "Skill(babysit)",
       "Skill(kai:*)",
-      "Skill(kai-review:*)"
+      "Skill(kai-review:*)",
+      "Bash(cd *)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git blame*)",
+      "Bash(pnpm lint-changes*)",
+      "Bash(pnpm build*)",
+      "Bash(pnpm test:unit*)",
+      "Bash(pnpm generate-no-watch*)",
+      "Bash(pnpm --dir apps/cli run skio generateTranslations*)",
+      "Bash(pnpm --filter @frost/cli build*)",
+      "Bash(pnpm --filter @frost/cli analyze*)",
+      "Bash(pnpm --filter cli build*)",
+      "Bash(pnpm --filter cli analyze*)",
+      "Bash(tsc --build*)",
+      "Bash(NODE_OPTIONS=--max_old_space_size=8192 npx eslint*)",
+      "Bash(ls *)",
+      "Bash(npx shopify app function build*)",
+      "Bash(find *)"
     ],
-    "ask": ["Bash(git:push)"],
+    "ask": [
+      "Bash(git:push)"
+    ],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": ["/Users/bryan/"]
+    "additionalDirectories": [
+      "/Users/bryan/"
+    ]
   },
   "model": "Opus",
   "hooks": {
@@ -269,11 +293,16 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
+      "args": [
+        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
+      ]
     },
     "snowflake": {
       "type": "http",

@@ -94,10 +94,10 @@
     "slack@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/slack/1.0.0",
-        "version": "1.0.0",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/slack/1.1.0",
+        "version": "1.1.0",
         "installedAt": "2026-05-19T12:44:08.434Z",
-        "lastUpdated": "2026-05-19T12:44:08.434Z",
+        "lastUpdated": "2026-06-23T12:47:15.637Z",
         "gitCommitSha": "7b9458950d38bb01ddb48b669f9fa89bcdfd98b8"
       }
     ],
