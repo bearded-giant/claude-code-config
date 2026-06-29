@@ -81,13 +81,9 @@
       "Bash(npx shopify app function build*)",
       "Bash(find *)"
     ],
-    "ask": [
-      "Bash(git:push)"
-    ],
+    "ask": ["Bash(git:push)"],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      "/Users/bryan/"
-    ]
+    "additionalDirectories": ["/Users/bryan/"]
   },
   "model": "Opus",
   "hooks": {
@@ -257,7 +253,7 @@
     "subtask": true,
     "commit-commands@claude-code-plugins": true,
     "feature-dev@claude-code-plugins": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
     "discord@claude-plugins-official": true,
@@ -293,16 +289,11 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": [
-        "mcp",
-        "serve"
-      ]
+      "args": ["mcp", "serve"]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
-      ]
+      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
     },
     "snowflake": {
       "type": "http",
@@ -310,3 +301,4 @@
     }
   }
 }
+
