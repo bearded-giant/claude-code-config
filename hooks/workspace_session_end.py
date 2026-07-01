@@ -23,7 +23,7 @@ Output files:
 - .giantmem/plans/current.md  (updated if plans found)
 
 Auto-init creates (if .giantmem/ missing):
-- .giantmem/{context,plans,history,filebox,prompts,research,reviews}/
+- .giantmem/{context,plans,history,filebox,research,reviews}/
 - .giantmem/history/sessions/
 - .giantmem/WORKSPACE.md
 - .giantmem/.gitkeep
@@ -708,7 +708,7 @@ def workspace_init(cwd: Path) -> Path:
     workspace_dir = cwd / ".giantmem"
     name = cwd.name
 
-    subdirs = ['context', 'plans', 'history', 'filebox', 'prompts', 'research', 'reviews']
+    subdirs = ['context', 'plans', 'history', 'filebox', 'research', 'reviews']
     for subdir in subdirs:
         (workspace_dir / subdir).mkdir(parents=True, exist_ok=True)
 

@@ -118,7 +118,6 @@ def read_workspace_context(cwd: str) -> dict:
     context = {
         "workspace_md": None,
         "discoveries": None,
-        "tree": None,
         "current_plan": None,
         "recent_sessions": None,
         "feature_index": None,
@@ -144,17 +143,6 @@ def read_workspace_context(cwd: str) -> dict:
             # get last 20 discoveries (most recent context)
             lines = content.strip().split("\n")
             context["discoveries"] = "\n".join(lines[-20:])
-        except Exception:
-            pass
-
-    # read tree (truncated)
-    tree_file = workspace_dir / "context" / "tree.md"
-    if tree_file.exists():
-        try:
-            content = tree_file.read_text()
-            # truncate to first 100 lines
-            lines = content.split("\n")[:100]
-            context["tree"] = "\n".join(lines)
         except Exception:
             pass
 
@@ -187,7 +175,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
 
     if bootstrapped:
         parts.append(f"[Workspace bootstrapped for {project_name}]")
-        parts.append("Created .giantmem/ with: context/, plans/, history/, prompts/, research/, reviews/, filebox/")
+        parts.append("Created .giantmem/ with: context/, plans/, history/, research/, reviews/, filebox/")
         parts.append("")
 
     if context.get("workspace_md"):

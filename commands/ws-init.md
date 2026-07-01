@@ -14,7 +14,6 @@ source ~/.claude/lib/workspace/workspace-lib.sh && workspace_bootstrap
 This will:
 - Create .giantmem/ structure if missing
 - Migrate loose files IN .giantmem/ to subdirs (context/, plans/, etc.)
-- Generate tree.md
 
 2. If CLAUDE.md exists in current directory, read it briefly to get project purpose.
 
