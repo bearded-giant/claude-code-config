@@ -9,7 +9,7 @@ This config is **not** standalone. It requires a companion repo for workspace li
 | Repo | What it provides |
 |------|-----------------|
 | [claude-code-config](https://github.com/bearded-giant/claude-code-config) (this repo) | CLAUDE.md, hooks, commands, agents, skills, settings, MCP configs |
-| [giant-tooling](https://github.com/bearded-giant/giant-tooling) | Workspace library, giantmem-archive, domain search, worktree helpers |
+| [giant-tooling](https://github.com/bearded-giant/giant-tooling) | Workspace library, giantmem search/archive/sessions, worktree helpers |
 
 The workspace library (`workspace-lib.sh`) lives in giant-tooling and is symlinked into this repo at `lib/workspace/`. Session hooks, slash commands, and archive scripts all depend on it.
 
@@ -48,7 +48,6 @@ source "$GIANT_TOOLING_DIR/workspace/workspace-lib.sh"
 
 alias gmq='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-search.py'
 alias giantmem-archive='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-archive.sh'
-alias domains='$GIANT_TOOLING_DIR/domain-search/domains'
 ```
 
 ### Prerequisites
@@ -123,7 +122,7 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 | Command | Purpose |
 |---------|---------|
 | `/new-feature <name>` | Scaffold a feature folder |
-| `/plan-feature` | Explore code domains, draft implementation plan |
+| `/plan-feature` | Ground on the code areas a feature touches, draft implementation plan |
 | `/list-features` | Show feature registry |
 | `/complete-feature` | Mark feature complete, update tracking |
 
@@ -136,7 +135,7 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 
 ## Archive Search
 
-Unified FTS5 search across workspace archives, session transcripts, and domain knowledge. See [giant-tooling/docs/search-usage.md](https://github.com/bearded-giant/giant-tooling/blob/main/docs/search-usage.md) for full usage.
+Unified FTS5 search across workspace archives and session transcripts. See [giant-tooling/docs/search-usage.md](https://github.com/bearded-giant/giant-tooling/blob/main/docs/search-usage.md) for full usage.
 
 ```bash
 gmq search "jwt refresh"                # search everything

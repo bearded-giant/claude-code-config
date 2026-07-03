@@ -20,4 +20,3 @@ Prints JSON (`merge` line shows merge result or why skipped).
 After it runs, only if warranted (the CLI leaves these to you):
 1. Clean up facts.md (final commands, key files, drop placeholders).
 2. Mark `## Acceptance Criteria` items `[x]`; if some are unmet and there were no delta-specs, flag to the user.
-3. If domains were used (`plan_context.json` lists `domains_referenced`) and their files changed, run `/update-domains` for the stale ones.

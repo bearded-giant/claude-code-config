@@ -20,7 +20,6 @@ features/
 │   ├── facts.md           # beta flags, config, test commands
 │   ├── meta.json          # machine-readable (swarm)
 │   ├── plan.md            # /plan-feature output
-│   ├── plan_context.json  # domain linkage
 │   ├── plans/current.md   # transient session scratchpad (deleted on complete)
 │   ├── research/          # scoped research
 │   ├── reviews/           # scoped reviews
@@ -57,16 +56,6 @@ Every feature command (new/start/pause/complete/reopen) MUST update both:
 
 When adding beta flags or key config, add to Quick Reference section.
 
-## Domain knowledge base
-
-```
-domains/
-├── _index.json
-├── {domain-name}.json
-```
-
-Repo-level, not feature-scoped. Created by `/plan-feature`, refreshed by `/update-domains` and `/complete-feature`. Load relevant domain JSONs at session start instead of re-reading code.
-
 ## When to create a feature folder
 
 - Distinct capability, not a bug fix
@@ -79,10 +68,7 @@ Repo-level, not feature-scoped. Created by `/plan-feature`, refreshed by `/updat
 |---|---|
 | `/list-features` | display registry |
 | `/new-feature <name>` | scaffold folder (auto-detects pending vs in_progress) |
-| `/plan-feature [name] [--refresh]` | explore domains, draft plan |
-| `/list-domains [--verbose]` | show indexed domains |
-| `/search-domains <query> [--load]` | search domain JSONs |
-| `/update-domains [domains] [--all-stale]` | refresh domain JSONs |
+| `/plan-feature [name]` | ground on the code areas a feature touches, draft plan |
 | `/feature-facts <name>` | quick lookup |
 | `/feature-report [feature]` | validation report (parses delta-spec Requirements) |
 | `/feature-validate <name> [--fix]` | lint structure; `--fix` auto-repairs |
@@ -276,7 +262,6 @@ When a proposed item is something the model can execute (not just a user reminde
 
 ## Always global — NEVER feature-scoped
 
-- `domains/` — repo-level code knowledge
 - `history/` — session log spans all features
 - `prompts/` — reusable templates
 - `context/patterns.md` — curated architectural patterns (repo-level)

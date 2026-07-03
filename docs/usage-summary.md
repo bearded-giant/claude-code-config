@@ -108,7 +108,6 @@ giantmem entity show src/state.rs                      # one entity + back-refs
 | `Index` keyed on `(repo, branch, feature)` | Separate entries for same feature in different branches |
 | Loose `/complete-feature` | empty specs = silent skip; `--no-merge` to skip even when present |
 | Both histories | per-feature `spec_history.md` AND repo `.giantmem/specs/_history.md` |
-| Domain reuse | `domains/{name}.json` (code KB) and `specs/{name}/spec.md` (behavior contract) share namespace |
 
 ## Deferred / NOT done
 

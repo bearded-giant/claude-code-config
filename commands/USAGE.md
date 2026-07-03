@@ -127,7 +127,7 @@ Renaming the schema would require a coordinated update across all five feature c
 ccmd complete-feature logging-extras --quick
 ```
 
-`$ARGUMENTS` = `logging-extras --quick`. Skips facts.md / plans/current.md / domain refresh / paired-counterpart check; only updates status + completion date + index + features.json.
+`$ARGUMENTS` = `logging-extras --quick`. Skips facts.md / plans/current.md / paired-counterpart check; only updates status + completion date + index + features.json.
 
 ### `/new-feature` from BE side, with paired FE
 

@@ -37,12 +37,9 @@ Remove the section once answered.
 | `features/{name}/specs/{domain}/spec.md` | Delta-spec | Structured | ADDED / MODIFIED / REMOVED Requirements |
 | `features/{name}/facts.md` | Quick lookup | Terse, key-value | Beta flags, config keys, test cmds |
 | `features/{name}/plan.md` | Implementation plan | Concise, actionable | Steps, file paths, function names |
-| `features/{name}/plan_context.json` | Domain linkage | Machine-readable | Domains that informed plan |
 | `specs/_index.md` | Source-spec registry | Terse, table rows | Domains, last merged, requirement counts |
 | `specs/_history.md` | Spec merge log | Append-only | Chronological per `/complete-feature` merge |
 | `specs/{domain}/spec.md` | Source-of-truth spec | Requirements + Scenarios | RFC 2119, Given/When/Then. Merged from delta-specs. |
-| `domains/_index.json` | Domain registry | Machine-readable | Domain names, key paths, refs |
-| `domains/{name}.json` | Domain exploration | Machine-readable, detailed | Entry points, key files, gotchas |
 | `context/patterns.md` | Curated patterns | Medium, organized | Architectural decisions, gotchas |
 | `context/*.md` | Reference docs | Minimal prose, lists ok | API lists, dep maps |
 | `history/sessions.md` | Session log | One line per session | `- 2026-05-18: worked on auth` |
@@ -67,7 +64,7 @@ Every `.md` and `.yaml` artifact MUST start with YAML frontmatter:
 
 ```yaml
 ---
-type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | domain | notes | pattern | facts}
+type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | notes | pattern | facts}
 feature: {name}              # for feature-scoped artifacts
 repo: {repo-name}            # for repo-level artifacts (one of feature or repo)
 status: {draft | ready | done | blocked | stale}
@@ -79,7 +76,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-JSON artifacts (`meta.json`, `domains/*.json`) get the same keys at top level (no `---` fences).
+JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 
 Lifecycle stage rules:
 - `durable` (default): human-authored, scaffolded by `/new-feature`, accumulated source-specs. Never auto-pruned.
