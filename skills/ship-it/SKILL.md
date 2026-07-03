@@ -1,6 +1,6 @@
 ---
 name: ship-it
-description: End-to-end ship chain — commit + push + write MR description + open MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+description: End-to-end ship chain — commit + push + write MR description + open MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→org kai template, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (org template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -38,16 +38,28 @@ Otherwise:
 
 ### Step 3 — Write MR description
 
-Invoke the `create-mr-description` command. It writes the markdown to disk per its own routing rules (active feature dir → `.giantmem/` → repo root) and prints the file path.
+Two formats exist. Pick ONE deterministically, generate it, write it to disk. This step is the ONLY MR-description generator in the chain — Step 4 consumes the file, never regenerates.
 
-After it writes, apply caveman post-processing per the rules already inside `create-mr-description.md`: tighten phrasing, drop filler, KEEP bullet structure (do NOT convert bullets to prose).
+**Format selection (first match wins):**
+
+1. Brief opt-in — invocation contains `brief`, `short`, or `--brief` → **personal bullet format**.
+2. Full opt-in — invocation contains `full`, `standard`, or `--full` → **org kai format**.
+3. Default by MR-target remote host (the same remote Step 4 opens against — `git remote get-url origin`):
+   - `gitlab.rechargeapps.net` / any GitLab → **org kai format** (org repos default to the team template)
+   - `github.com` → **personal bullet format** (your own repos default to your bullets)
+
+**Personal bullet format:** invoke the `create-mr-description` command. It writes the markdown per its own routing rules (active feature dir → `.giantmem/` → repo root) and prints the file path. Then apply caveman post-processing per the rules inside `create-mr-description.md`: tighten phrasing, drop filler, KEEP bullet structure (do NOT convert bullets to prose).
+
+**Org kai format:** do NOT invoke `create-mr-description`. Generate the description using the team template — the exact structure from `kai:open-mr` Step 7 (source of truth, do not duplicate/paraphrase it here): `## Description`, `## Impacted Areas in Application`, `## Related Issues`, `## Post Deploy Monitoring`, `## How to QA`, `## Post Deploy Action`, `## Risk Assessment`. Write it to `mr-description.md` at the same routing (active feature dir → `.giantmem/` → repo root) and print the path. Do NOT caveman this format — it is the normative team template; keep it verbatim.
+
+Either branch ends with a description file on disk and its path printed.
 
 Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — this is the only acceptable interruption in the chain. Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
 
 ### Step 4 — Open MR
 
 Pick the host based on remote:
-- `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the description file from step 3 as the MR body and `mr_base_branch` as the target.
+- `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the step-3 description file as the MR body (`--description "$(cat <path-from-step-3>)"`) and `mr_base_branch` as the target. `kai:open-mr` MUST use this supplied description and MUST NOT regenerate from its own Step 7 default template — Step 3 already chose the format.
 - `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`
 
 Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Do NOT prefix with "MR:" or "PR:".
@@ -87,5 +99,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  commit (caveman) → push -u → create-mr-description → kai:open-mr (or gh pr create) → print desc + URL
+ship it  →  commit (caveman) → push -u → MR desc (GitLab→org kai / GitHub→bullets; `brief`|`full` overrides) → kai:open-mr (or gh pr create) → print desc + URL
 ```

@@ -323,7 +323,7 @@ MUST NOT spawn agents for:
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
 - commit + push without re-confirmation when user invokes `/commit`, `/commit-push-pr`, or says "commit and push" / "yes commit"
-- "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + `create-mr-description` + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
+- "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→org kai template, GitHub→personal `create-mr-description` bullets; override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (org). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - use `create-mr-description` skill for MR/PR descriptions
 - never add Claude Code attribution or Co-Authored-By
