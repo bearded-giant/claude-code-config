@@ -6,7 +6,7 @@ argument-hint: "<name> [--branch=X] [--base=Y] [--builds-on=Z] [--paired]"
 Delegates to the deterministic feature CLI. Do NOT scaffold by hand.
 
 ```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py new <name> [flags] --cwd "$(pwd)"
+python3 ~/dev/giant-tooling/workspace/scripts/feature.py --cwd "$(pwd)" new <name> [flags]
 ```
 
 Pass through from `$ARGUMENTS`: first token → `<name>`; `--branch= --base= --builds-on= --paired / --no-paired --skip-checkout` as-is; pending-stub reason → `--discovery="..."`.
