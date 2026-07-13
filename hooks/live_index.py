@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PostToolUse hook for Claude Code: index workspace + memory *.md writes into live.db.
+PostToolUse hook for Claude Code: index workspace + memory file writes into live.db.
 
 Hook: PostToolUse (matcher: Write, Edit, MultiEdit)
 
@@ -180,7 +180,9 @@ def main():
     file_path = tool_input.get("file_path") or ""
     if not file_path:
         return
-    if not file_path.endswith(".md"):
+    # any non-hidden text file counts (matches backfill semantics) — md-only
+    # gate silently dropped csv/json outputs written into feature dirs
+    if os.path.basename(file_path).startswith("."):
         return
     is_giantmem = bool(GIANTMEM_RE.search(file_path))
     is_memory = bool(MEMORY_RE.search(file_path))
