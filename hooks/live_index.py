@@ -180,13 +180,18 @@ def main():
     file_path = tool_input.get("file_path") or ""
     if not file_path:
         return
-    # any non-hidden text file counts (matches backfill semantics) — md-only
-    # gate silently dropped csv/json outputs written into feature dirs
-    if os.path.basename(file_path).startswith("."):
-        return
     is_giantmem = bool(GIANTMEM_RE.search(file_path))
     is_memory = bool(MEMORY_RE.search(file_path))
     if not (is_giantmem or is_memory):
+        return
+    # any non-hidden text file counts (matches backfill semantics) — md-only
+    # gate silently dropped csv/json outputs written into feature dirs.
+    # dot-segments after .giantmem (.mdlive/...) are tool mirrors, not docs.
+    if is_giantmem and any(
+        seg.startswith(".") for seg in file_path.split("/.giantmem/")[-1].split("/")
+    ):
+        return
+    if is_memory and os.path.basename(file_path).startswith("."):
         return
     if not os.path.isabs(file_path):
         file_path = os.path.abspath(file_path)
