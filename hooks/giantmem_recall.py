@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: cross-project recall from giantmem (FTS5).
+"""UserPromptSubmit hook: cross-project recall from giantmem.
 
-Replaces the dead RLabs :8765 memory_inject. Sanitizes the prompt into a
-keyword OR-query, runs `giantmem find --live` (uses giantmemd if running),
-filters for signal, and prepends the top hits. Best-effort: any failure
-prints nothing so the prompt is never blocked.
+Two signals, run concurrently and merged:
+  - FTS5 bm25 over document bodies (`giantmem find --live`) — always works, no
+    embedder needed. The lexical floor: exact identifiers, tokens, phrases.
+  - Semantic hybrid (`giantmem artifact search`) — conceptual recall via the
+    daemon's bge embedder. Only real vector hits (vector_score > 0) are kept, so
+    a cold daemon degrades cleanly to FTS-only.
+
+Best-effort: any failure prints nothing so the prompt is never blocked.
 
 Quality filters: drop MEMORY.md pointer indexes, drop history session-summary
-noise (unless GIANTMEM_RECALL_INCLUDE_HISTORY=1), and require each hit to share
->= MIN_OVERLAP distinct keywords with the prompt.
+noise (unless GIANTMEM_RECALL_INCLUDE_HISTORY=1), and require each FTS hit to
+share >= MIN_OVERLAP distinct keywords with the prompt.
 
 Tunables: GIANTMEM_RECALL_LIMIT, GIANTMEM_RECALL_SINCE,
-GIANTMEM_RECALL_MIN_OVERLAP, GIANTMEM_RECALL_INCLUDE_HISTORY.
+GIANTMEM_RECALL_MIN_OVERLAP, GIANTMEM_RECALL_INCLUDE_HISTORY,
+GIANTMEM_RECALL_SEMANTIC (0 to disable), GIANTMEM_RECALL_SEMANTIC_MAX.
 """
 
 import json
@@ -20,11 +25,14 @@ import re
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 LIMIT = int(os.getenv("GIANTMEM_RECALL_LIMIT", "4"))
 SINCE = os.getenv("GIANTMEM_RECALL_SINCE", "180d")
 MIN_OVERLAP = int(os.getenv("GIANTMEM_RECALL_MIN_OVERLAP", "2"))
 INCLUDE_HISTORY = os.getenv("GIANTMEM_RECALL_INCLUDE_HISTORY") == "1"
+SEMANTIC = os.getenv("GIANTMEM_RECALL_SEMANTIC", "1") != "0"
+SEMANTIC_MAX = int(os.getenv("GIANTMEM_RECALL_SEMANTIC_MAX", str(max(1, LIMIT // 2))))
 MIN_PROMPT_CHARS = 16
 MAX_TERMS = 10
 
@@ -99,6 +107,165 @@ def keywords_from(prompt):
     return out
 
 
+def run_giantmem(giantmem, argv, timeout):
+    try:
+        result = subprocess.run(
+            [giantmem, *argv],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    try:
+        return json.loads(result.stdout) if result.stdout.strip() else None
+    except json.JSONDecodeError:
+        return None
+
+
+def fts_hits(giantmem, keywords):
+    """Existing FTS path: OR-query, keyword-overlap filtered. Returns hit dicts."""
+    query = " OR ".join(keywords)
+    hits = run_giantmem(
+        giantmem,
+        [
+            "find",
+            query,
+            "--live",
+            "--json",
+            "--full",
+            "--limit",
+            str(LIMIT * 4),
+            "--since",
+            SINCE,
+        ],
+        timeout=5,
+    )
+    if not isinstance(hits, list):
+        return []
+    required = min(MIN_OVERLAP, len(keywords))
+    out = []
+    for hit in hits:
+        path = hit.get("filepath") or hit.get("filename") or ""
+        name = os.path.basename(path)
+        if name in EXCLUDE_NAMES:
+            continue
+        dtype = hit.get("dir_type") or hit.get("source_type") or ""
+        if dtype in EXCLUDE_DIR_TYPES:
+            continue
+        snippet = clean_snippet(
+            hit.get("snippet") or hit.get("content") or hit.get("text") or ""
+        )
+        if sum(1 for k in keywords if k in snippet.lower()) < required:
+            continue
+        project = (hit.get("project") or "").strip("/") or "?"
+        loc = f"{project}/{dtype}" if dtype else project
+        out.append(
+            {
+                "key": path or name,
+                "loc": loc,
+                "name": name,
+                "snippet": snippet,
+                "tag": "fts",
+            }
+        )
+    return out
+
+
+def semantic_hits(giantmem, prompt):
+    """Hybrid semantic search over the artifacts projection. Keeps only real
+    vector matches (vector_score > 0) so a cold daemon yields nothing here."""
+    data = run_giantmem(
+        giantmem,
+        [
+            "artifact",
+            "search",
+            prompt,
+            "--repo",
+            "all",
+            "--json",
+            "--limit",
+            str(SEMANTIC_MAX * 3),
+        ],
+        timeout=6,
+    )
+    if not isinstance(data, dict):
+        return []
+    out = []
+    for r in data.get("results", []):
+        if float(r.get("vector_score") or 0) <= 0:
+            continue
+        a = r.get("artifact") or {}
+        atype = a.get("type") or ""
+        if not INCLUDE_HISTORY and atype == "history":
+            continue
+        rel, worktree = a.get("path") or "", a.get("worktree") or ""
+        name = os.path.basename(rel) or a.get("id", "")
+        if name in EXCLUDE_NAMES:
+            continue
+        repo = a.get("repo") or "?"
+        loc = f"{repo}/{atype}" if atype else repo
+        snippet = artifact_snippet(worktree, rel) if worktree and rel else ""
+        out.append(
+            {
+                "key": a.get("id") or rel,
+                "loc": loc,
+                "name": name,
+                "snippet": snippet,
+                "tag": "sem",
+            }
+        )
+        if len(out) >= SEMANTIC_MAX:
+            break
+    return out
+
+
+def clean_snippet(s):
+    s = re.sub(r"</?([A-Za-z0-9_]+)>", r"\1", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def artifact_snippet(worktree, rel):
+    """Artifact paths are relative to the .giantmem/ dir under the worktree."""
+    for path in (os.path.join(worktree, ".giantmem", rel), os.path.join(worktree, rel)):
+        snip = body_snippet(path)
+        if snip:
+            return snip
+    return ""
+
+
+def body_snippet(path, maxlen=180):
+    """First prose past YAML frontmatter — semantic hits carry no FTS snippet."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read(4096)
+    except OSError:
+        return ""
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            text = text[end + 4 :]
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.DOTALL)
+    text = clean_snippet(text)
+    return text[:maxlen]
+
+
+def merge(semantic, fts):
+    """Semantic first (guaranteed slots), fill remainder with FTS, dedup by key."""
+    seen, lines = set(), []
+    for hit in [*semantic, *fts]:
+        key = hit["key"]
+        if key in seen:
+            continue
+        seen.add(key)
+        suffix = f": {hit['snippet']}" if hit["snippet"] else ""
+        lines.append(f"- [{hit['loc']}] {hit['name']} ({hit['tag']}){suffix}")
+        if len(lines) >= LIMIT:
+            break
+    return lines
+
+
 def main():
     raw = sys.stdin.read()
     try:
@@ -117,59 +284,14 @@ def main():
     keywords = keywords_from(prompt)
     if not keywords:
         return
-    query = " OR ".join(keywords)
 
-    try:
-        result = subprocess.run(
-            [
-                giantmem,
-                "find",
-                query,
-                "--live",
-                "--json",
-                "--full",
-                "--limit",
-                str(LIMIT * 4),
-                "--since",
-                SINCE,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError):
-        return
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fts_future = pool.submit(fts_hits, giantmem, keywords)
+        sem_future = pool.submit(semantic_hits, giantmem, prompt) if SEMANTIC else None
+        fts = fts_future.result()
+        semantic = sem_future.result() if sem_future else []
 
-    try:
-        hits = json.loads(result.stdout) if result.stdout.strip() else []
-    except json.JSONDecodeError:
-        return
-    if not isinstance(hits, list) or not hits:
-        return
-
-    required = min(MIN_OVERLAP, len(keywords))
-    lines = []
-    for hit in hits:
-        path = hit.get("filepath") or hit.get("filename") or ""
-        name = os.path.basename(path)
-        if name in EXCLUDE_NAMES:
-            continue
-        dtype = hit.get("dir_type") or hit.get("source_type") or ""
-        if dtype in EXCLUDE_DIR_TYPES:
-            continue
-        snippet = hit.get("snippet") or hit.get("content") or hit.get("text") or ""
-        snippet = re.sub(r"</?([A-Za-z0-9_]+)>", r"\1", snippet)
-        snippet = re.sub(r"\s+", " ", snippet).strip()
-        if sum(1 for k in keywords if k in snippet.lower()) < required:
-            continue
-        project = (hit.get("project") or "").strip("/") or "?"
-        loc = f"{project}/{dtype}" if dtype else project
-        suffix = f": {snippet[:180]}" if snippet else ""
-        lines.append(f"- [{loc}] {name}{suffix}")
-        if len(lines) >= LIMIT:
-            break
-
+    lines = merge(semantic, fts)
     if not lines:
         return
 
