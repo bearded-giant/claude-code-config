@@ -65,7 +65,6 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/create-mr-description` | Generate GitLab MR description |
 | `/server-logs <env> [N]` | Tail preprod/prestage server.log |
 
 ## Development

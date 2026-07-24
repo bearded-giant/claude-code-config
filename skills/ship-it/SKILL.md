@@ -1,6 +1,6 @@
 ---
 name: ship-it
-description: End-to-end ship chain — commit + push + write MR description + open MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→org kai template, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (org template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+description: End-to-end ship chain — commit + push + write MR description + open MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -43,14 +43,16 @@ Two formats exist. Pick ONE deterministically, generate it, write it to disk. Th
 **Format selection (first match wins):**
 
 1. Brief opt-in — invocation contains `brief`, `short`, or `--brief` → **personal bullet format**.
-2. Full opt-in — invocation contains `full`, `standard`, or `--full` → **org kai format**.
+2. Full opt-in — invocation contains `full`, `standard`, or `--full` → **verbose org kai format** (the full kai template, escape hatch for high-risk MRs).
 3. Default by MR-target remote host (the same remote Step 4 opens against — `git remote get-url origin`):
-   - `gitlab.rechargeapps.net` / any GitLab → **org kai format** (org repos default to the team template)
+   - `gitlab.rechargeapps.net` / any GitLab → **concise-kai format** (kai section headers, compressed density)
    - `github.com` → **personal bullet format** (your own repos default to your bullets)
 
-**Personal bullet format:** invoke the `create-mr-description` command. It writes the markdown per its own routing rules (active feature dir → `.giantmem/` → repo root) and prints the file path. Then apply caveman post-processing per the rules inside `create-mr-description.md`: tighten phrasing, drop filler, KEEP bullet structure (do NOT convert bullets to prose).
+**Personal bullet format:** generate the description per `bullet-format.md` (in this skill dir) — bullet style, 3–7 bullets, curl/section rules it specifies. Write it to `mr-description.md` at the routing below (active feature dir → `.giantmem/` → repo root) and print the path. Apply the caveman post-processing that file specifies: tighten phrasing, drop filler, KEEP bullet structure (do NOT convert bullets to prose).
 
-**Org kai format:** do NOT invoke `create-mr-description`. Generate the description using the team template — the exact structure from `kai:open-mr` Step 7 (source of truth, do not duplicate/paraphrase it here): `## Description`, `## Impacted Areas in Application`, `## Related Issues`, `## Post Deploy Monitoring`, `## How to QA`, `## Post Deploy Action`, `## Risk Assessment`. Write it to `mr-description.md` at the same routing (active feature dir → `.giantmem/` → repo root) and print the path. Do NOT caveman this format — it is the normative team template; keep it verbatim.
+**Concise-kai format (GitLab default):** generate the description per `concise-kai-format.md` (in this skill dir) — kai's exact section headers (`## Description`, `## Impacted Areas in Application`, `## Related Issues`, `## Post Deploy Monitoring`, `## How to QA`, `## Post Deploy Action`, `## Risk Assessment`; headers sourced from `kai:open-mr` Step 7, do not duplicate here) at the compressed density that file specifies: minimum signal per section, caveman prose, code identifiers preserved exactly. Write it to `mr-description.md` at the same routing and print the path.
+
+**Verbose org kai format (`--full`/`standard` only):** generate the description using the full team template — the exact structure AND paragraph-level density from `kai:open-mr` Step 7 (source of truth, do not duplicate/paraphrase it here). Write it to `mr-description.md` at the same routing and print the path. Do NOT caveman this format — it is the normative team template; keep it verbatim.
 
 Either branch ends with a description file on disk and its path printed.
 
@@ -99,5 +101,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  commit (caveman) → push -u → MR desc (GitLab→org kai / GitHub→bullets; `brief`|`full` overrides) → kai:open-mr (or gh pr create) → print desc + URL
+ship it  →  commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → print desc + URL
 ```

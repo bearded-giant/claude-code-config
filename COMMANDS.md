@@ -182,5 +182,4 @@ Peer record lives at `.giantmem/features/{active}/peers.md` (or `.giantmem/conte
 
 | Command | Purpose |
 |---------|---------|
-| `/create-mr-description` | Generate GitLab MR description |
 | `/server-logs <env> [N]` | Tail preprod/prestage server.log |
