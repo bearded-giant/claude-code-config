@@ -11,6 +11,7 @@ Manage feature lifecycle across sessions, branches, and workspaces.
 | `/pause-feature [name]` | Snapshot state, mark paused, stay on current branch. |
 | `/reopen-feature [name]` | Resume paused/complete feature, checkout its branch. |
 | `/complete-feature [name] [--no-merge] [--reason "..."]` | Mark done. Merges `features/{name}/specs/{domain}/spec.md` (delta-specs) → `.giantmem/specs/{domain}/spec.md` (source-of-truth). Writes per-feature + repo history. Reindexes. |
+| `/abandon-feature [name] [--reason "..."] [--no-archive]` | Framed but not building it. Marks `status: abandoned` + `lifecycle: deprecated`, appends `## Abandoned`, skips the delta-spec merge entirely, then chains `giantmem feature archive` (dir removed, `live_docs` rows stay searchable). |
 | `/feature-validate <name> [--fix]` | Lint structure + frontmatter; `--fix` auto-repairs. |
 | `/feature-next [name]` | Print next ready artifact from `artifacts.json` + DAG config. |
 | `/feature-report [name]` | QA report from delta-spec Requirements (falls back to legacy "Acceptance Criteria"). |

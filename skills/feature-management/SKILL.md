@@ -1,6 +1,6 @@
 ---
 name: feature-management
-description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces user-actionable follow-ups to park in the feature's doit list.
+description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /abandon-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces user-actionable follow-ups to park in the feature's doit list.
 ---
 
 Feature system for `.giantmem/features/`. Persistent capabilities that span sessions.
@@ -50,7 +50,7 @@ Every artifact written under `features/{name}/` carries a `lifecycle:` field in 
 
 ## Cache discipline — CRITICAL
 
-Every feature command (new/start/pause/complete/reopen) MUST update both:
+Every feature command (new/start/pause/complete/abandon/reopen) MUST update both:
 - `.giantmem/features/features.json`
 - `.giantmem/features/_index.md`
 
@@ -76,7 +76,10 @@ When adding beta flags or key config, add to Quick Reference section.
 | `/start-feature <name>` | promote pending → in_progress |
 | `/pause-feature` | mark current paused |
 | `/complete-feature` | mark complete, merge delta-specs to source-of-truth |
+| `/abandon-feature <name>` | framed but not building it: mark abandoned, NO spec merge, then archive (docs stay in live.db) |
 | `/reopen-feature <name>` | complete → in_progress |
+
+`complete` works from any status except `archived` — a `pending` feature can be closed out without walking it through `/start-feature`. Use `/abandon-feature` instead of `/complete-feature` when the work never happened: complete merges delta-specs into the source-spec (claiming behavior that does not exist), abandon does not.
 
 Adjacent CLI surface (not Claude commands — terminal):
 

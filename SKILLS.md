@@ -32,6 +32,7 @@
 | `/list-features` | Display feature registry |
 | `/feature-facts {name}` | Quick lookup of feature details |
 | `/complete-feature {name}` | Mark feature complete |
+| `/abandon-feature {name}` | Abandon feature (no spec merge) + archive |
 | `/feature-report {name}` | Generate QA validation report |
 
 ## Todos

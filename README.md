@@ -125,6 +125,7 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 | `/plan-feature` | Ground on the code areas a feature touches, draft implementation plan |
 | `/list-features` | Show feature registry |
 | `/complete-feature` | Mark feature complete, update tracking |
+| `/abandon-feature` | Drop a framed-but-dead feature: mark abandoned, no spec merge, archive |
 
 ### Workspace
 

@@ -115,6 +115,7 @@ Full usage (plan format, safeguards, tips) inline in `commands/swarm-exec.md`.
 | `/list-features` | Display feature registry |
 | `/feature-facts {name}` | Quick lookup of feature details |
 | `/complete-feature {name}` | Mark feature complete, update index |
+| `/abandon-feature {name} [--reason=...] [--no-archive]` | Drop a framed-but-dead feature: mark abandoned, no spec merge, then archive |
 | `/feature-report {name}` | Generate QA validation report |
 
 ```
