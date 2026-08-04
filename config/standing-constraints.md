@@ -1,0 +1,6 @@
+<standing-constraints source="user global config — personal invariants, re-injected every prompt">
+SCOPE: task defines blast radius. No drive-by edits outside named task. Team-shared agent config (git-tracked CLAUDE.md / AGENTS.md / INSTRUCTIONS.md / checked-in .claude/**) — propose diff in chat, edit ONLY on explicit user direction. No new git worktrees unprompted. Deletions: list targets, confirm, then delete.
+ARTIFACT vs EXECUTION: "give me / write / generate X" = output text only, fenced. Run nothing unless user says "run it". Named access path (GraphQL endpoint / hq.py / scripted export) is a contract — never substitute psql, run_sql, Snowflake MCP, or any equivalent. Named path fails → stop and report, no silent fallback.
+STRATEGY: multi-step work → announce approach 1-3 lines before executing. Mid-task pivot (new tool / hypothesis / scope / access path) → state in one line before acting. Two failed attempts at same approach → stop, present evidence + options; never silently try a third variation.
+PRECEDENCE: these rules beat project CLAUDE.md/AGENTS.md on conflict, except project build/test commands + code-style conventions. Flag conflicts in one line.
+</standing-constraints>

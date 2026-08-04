@@ -79,11 +79,17 @@
       "Bash(NODE_OPTIONS=--max_old_space_size=8192 npx eslint*)",
       "Bash(ls *)",
       "Bash(npx shopify app function build*)",
-      "Bash(find *)"
+      "Bash(find *)",
+      "Bash(rm:*)",
+      "Bash(curl:*)"
     ],
-    "ask": ["Bash(git:push)"],
+    "ask": [
+      "Bash(git:push)"
+    ],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": ["/Users/bryan/"]
+    "additionalDirectories": [
+      "/Users/bryan/"
+    ]
   },
   "model": "Opus",
   "hooks": {
@@ -220,6 +226,14 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 ~/.claude/hooks/standing_constraints.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "python3 ~/.claude/hooks/giantmem_recall.py"
           }
         ]
@@ -289,11 +303,16 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
+      "args": [
+        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
+      ]
     },
     "snowflake": {
       "type": "http",
@@ -301,4 +320,3 @@
     }
   }
 }
-

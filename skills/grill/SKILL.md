@@ -46,13 +46,26 @@ grill/
 
 ### Confidence (0.00-1.00)
 
-Subjective certainty the finding is real AND the proposed fix is correct. Examples:
+Certainty the finding is real AND the proposed fix is correct. Examples:
 - 0.95+ : verified via reading both call site and definition, behavior unambiguous
 - 0.85-0.94 : strong inference from diff + immediate context
 - 0.70-0.84 : plausible but depends on assumed caller behavior / runtime state
 - < 0.70 : guess — surface only if sev ≥ 4
 
 Default threshold for auto-fix: **0.85**. Tune after observing runs.
+
+**Evidence gate**: conf ≥ 0.85 requires named evidence — files read (caller + definition), command output, type trace, or repro. No evidence → conf capped at 0.70 (below auto-fix). Evidence recorded per finding in run.md.
+
+## Verification pass (refute before score)
+
+For every candidate finding sev ≥ 3, BEFORE assigning final confidence: attempt to REFUTE it.
+
+- Read the caller AND the definition, not just the diff hunk
+- Trace the data path / types the finding depends on
+- Runnable cheaply (pure function, small script)? Run the repro
+- Finding assumes runtime state? Name the assumption in evidence; conf ≤ 0.84 unless state confirmed
+
+Finding survives refutation → score with evidence. Refuted → drop (note in run.md `refuted:` list, one line each — reader sees what was considered). Same standard as claim-verification in `kai:review-adversarial`, applied pre-MR.
 
 ## Dual-axis decision matrix
 
@@ -147,8 +160,13 @@ Sev-5 items do NOT block the loop — they're flagged in `final.md` and executio
 | Security | injection (SQL/shell/template), authn/authz holes, secrets in logs, PII |
 | Performance | N+1, missing indexes, hot loops, unbounded growth, leaks |
 | Data | migration safety, backfill order, rollback path, replica lag |
+| Generated output | script emits data (TSV/CSV/JSON/SQL/mutations) → inspect the OUTPUT, not just the code. Column shift from unescaped delimiters, NaN/null emission, empty delete/rollback lists, truncate-before-read (open-for-write before content read), doubled braces in templated SQL, wrong constant values, null in required fields |
 | Errors | swallowed exceptions, broad except, missing retry/timeout |
 | Operability | new env vars w/o defaults, missing flag gates, missing observability |
+
+### Generated-output rule
+
+Diff touches a script that emits data artifacts (converters, generators, mutation builders, exporters): reviewing the code is NOT sufficient — these bugs produce valid-looking output. Run the script against a sample/fixture input (its own `--dry-run` / sample mode if present) and inspect output shape: column count + order, null/NaN density, list lengths (empty delete list = sev-5 candidate), required-field presence. No sample input available → `flag-user` with what's needed to verify. Never score a generated-output finding above 0.84 without having looked at actual output.
 
 ## Steps
 
@@ -164,13 +182,14 @@ Sev-5 items do NOT block the loop — they're flagged in `final.md` and executio
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
    a. `git diff <base>...HEAD`
-   b. Review each change as skeptical staff engineer
-   c. For each finding: assign category, severity, confidence, file:line, problem, fix
-   d. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
-   e. If `max_fixes_per_turn` set: keep first N `auto-fix` items, demote rest to `deferred`
-   f. Write `0N-run.md` (template below)
-   g. If NOT dry-run: apply all `auto-fix` items via Edit. Re-run `py-check` / `ts-check` if relevant files touched.
-   h. If any auto-fix applied AND N < `loops` AND not dry-run: increment N, goto 7a.
+   b. Review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output).
+   c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
+   d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix
+   e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
+   f. If `max_fixes_per_turn` set: keep first N `auto-fix` items, demote rest to `deferred`
+   g. Write `0N-run.md` (template below)
+   h. If NOT dry-run: apply all `auto-fix` items via Edit. Re-run `py-check` / `ts-check` if relevant files touched. Run tests covering the edited files (scoped, not full suite) — fix broke a test → revert that fix, demote finding to `flag-user`.
+   i. If any auto-fix applied AND N < `loops` AND not dry-run: increment N, goto 7a.
 8. **Write `final.md`** (template below).
 9. **Report to user**: one-line rating + file path to `final.md`. Nothing else.
 
@@ -202,6 +221,7 @@ Rating: SHIP IT | NEEDS WORK | BLOCK
 ### 1. [sev:4 conf:0.92] src/auth/jwt.py:88 — token expiry uses `<` not `<=`
 - category: logic
 - disposition: auto-fix
+- evidence: read jwt.py:80-95 + caller session.py:41; expiry compared exclusive, boundary second rejected
 - fix: change `<` to `<=` on L88
 
 ### 2. [sev:5 conf:0.98] src/db/migrate.py:42 — no rollback path
@@ -214,6 +234,10 @@ Rating: SHIP IT | NEEDS WORK | BLOCK
 - disposition: skip (conf<0.85)
 - fix: cap at 1000 or paginate
 
+## Refuted (considered, disproven)
+
+- src/api/orders.py:97 — suspected N+1; refuted: query batched via dataloader (orders.py:60)
+
 ## Loop turn decision
 
 - auto-fixed: 1
@@ -221,6 +245,7 @@ Rating: SHIP IT | NEEDS WORK | BLOCK
 - flagged-user: 0
 - skipped low-conf: 1
 - report-only: 0
+- refuted: 1
 - continue to run 02: yes
 ```
 
@@ -315,6 +340,8 @@ State refusal reason terse, write a stub `NN-run.md` with `status: refused` + re
 ## Hard rules
 
 - NEVER `git add`, `git commit`, `git push`, or `git stash`. Edit files only.
+- Auto-fix edits ONLY files already in the diff, plus new test files. Fix requires touching an untouched file → `flag-user`.
+- NEVER score conf ≥ 0.85 without recorded evidence.
 - NEVER auto-fix sev-5 — always flag-human.
 - NEVER auto-fix sev 3-4 below `T_main` (default 0.85).
 - NEVER auto-fix sev-2 below `T_sev2` (default 0.95).

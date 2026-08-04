@@ -150,6 +150,14 @@ Skips the check when `stop_hook_active` is true (already continuing from a prior
 
 Blocks writes to protected directories: `archive/`, `plugins/marketplaces/`, `plugins/cache/`, `node_modules/`. Returns a block decision with a reason explaining the path is read-only. Prevents swarm workers and main sessions from accidentally modifying third-party or archived code.
 
+Also ask-gates team-shared agent config: git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` and anything under a checked-in `.claude/` in repos outside the personal roots (`~/dev/claude-code-config`, `~/dotfiles`, `~/.claude`). Returns `permissionDecision: ask` so the edit surfaces a confirmation prompt instead of landing silently. Untracked files (e.g. `.claude/settings.local.json`, `CLAUDE.local.md`) stay freely editable.
+
+## standing_constraints.py
+
+**Hook:** `UserPromptSubmit`
+
+Prints `config/standing-constraints.md` verbatim every prompt — re-asserts scope / artifact-vs-execution / precedence invariants late in context so they survive conflicts with project-level instructions. Edit the md file to change the injected rules (keep in sync with the matching CLAUDE.md sections). Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing.
+
 ## giantmem_recall.py
 
 UserPromptSubmit hook. Sanitizes the prompt into a keyword OR-query, runs `giantmem find --live --json` (FTS5 over workspace docs across all worktrees), and prepends the top hits — cross-project recall. Best-effort: prints nothing on miss/timeout so the prompt is never blocked. Tunable via `GIANTMEM_RECALL_LIMIT` / `GIANTMEM_RECALL_SINCE`. Replaced the dead RLabs `:8765` hooks (`memory_inject`, `memory_session_start`, `memory_curate`).
@@ -161,7 +169,7 @@ All hooks are configured in `settings.json`. Here's the full map:
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
 | SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `doit_session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
-| UserPromptSubmit | `giantmem_recall.py`, `clear_attention.py` | Yes (top FTS5 hits per prompt) |
+| UserPromptSubmit | `standing_constraints.py`, `giantmem_recall.py`, `clear_attention.py` | Yes (standing constraints + top FTS5 hits per prompt) |
 | PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
 | SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |

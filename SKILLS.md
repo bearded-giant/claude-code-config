@@ -61,6 +61,7 @@
 | Skill | Purpose |
 |-------|---------|
 | `/categorize-search {csv}` | Categorize `gl search code` results |
+| `/trace-fanout` | Parallel multi-repo root-cause trace — read-only agents per repo/data-source, evidence-ranked hypothesis table |
 
 ## Git & CI
 

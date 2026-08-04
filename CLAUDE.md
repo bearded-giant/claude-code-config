@@ -2,6 +2,10 @@
 
 Global behavior for `~/.claude` (stowed from `~/dev/claude-code-config`). Repo internals, hook pipeline, key commands → see `README.md`.
 
+## Precedence
+
+Rules in this file are personal invariants. When a project CLAUDE.md / AGENTS.md / INSTRUCTIONS.md conflicts with a rule here, THIS file wins — follow it and flag the conflict in chat in one line. Exception: project build/test/lint commands and code-style conventions — project wins there. Critical subset re-injected every prompt by `hooks/standing_constraints.py` from `config/standing-constraints.md` — keep both in sync when editing scope/execution rules here.
+
 ## General Guidelines
 
 Decision rule for action-vs-exploration:
@@ -14,9 +18,33 @@ Decision rule for action-vs-exploration:
 
 Across all rows: never propose edits to a file you have not read in this session.
 
+### Strategy visibility
+
+User reviews strategy, not tool-call streams. Make the path inspectable early and cheap to intercept:
+
+- Multi-step or investigative work: announce approach in 1-3 lines BEFORE executing — path chosen, access paths/tools, expected blast radius.
+- Mid-task pivot (new tool, new hypothesis, widening scope, switching access path): state the pivot in ONE line before acting on it. A silent pivot reads as drift.
+- Two failed attempts at the same approach → STOP. Present evidence + ranked options. Never silently try a third variation of the same idea.
+
 ### Gitignored files are editable
 
 `.gitignore` controls what git *tracks*, not what you may *edit*. A gitignored file — or any file inside an ignored directory — is editable exactly like a tracked file. There is no instruction anywhere that bars editing ignored files; do not invent one. Read, edit, create, and delete them under the same gates as everything else (read-before-edit, confirm before destructive/outward-facing). Never stop, skip, or ask permission *solely because* a path is gitignored — that is not a reason to halt.
+
+## Scope of Changes (blast radius)
+
+The task defines the blast radius. Nothing outside it gets touched.
+
+- No drive-by edits: refactors, comment cleanup, config tweaks, doc fixes outside the named task — mention them, don't do them.
+- Team-shared agent config — git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` / checked-in `.claude/**` in any repo other than `claude-code-config` / `dotfiles` — NEVER edit as a side effect of another task. Propose the diff in chat; edit only when the user explicitly directed that exact change. `guard_protected_paths.py` PreToolUse hook gates this mechanically (ask-prompt).
+- Never create a git worktree unless asked. Work in the current worktree; run artifacts go under the current repo's `.giantmem/`.
+- Deletions: list targets, wait for confirm, then delete.
+
+## Artifact vs Execution
+
+"Give me / write / generate X" = output the text, fenced. Do NOT run it, wrap it in a shell command, or execute it against any system unless the user says "run it".
+
+- Queries: raw SQL/GraphQL text in a fenced block. No psql/run_sql wrappers, no MCP execution, unless asked.
+- A named access path is a contract: user says GraphQL endpoint / `hq.py` / scripted export → use exactly that. Never substitute an equivalent (psql, run_sql, Snowflake MCP, direct REST). Named path fails → stop and report; no silent fallback.
 
 ## Code is truth — docs and comments are not
 
@@ -182,6 +210,11 @@ System uses GNU stow. NEVER edit files in `~/.config` or other home locations di
 - Published docs (READMEs, guides shipped to other devs/users): casual, informal — senior dev to colleague. No corporate phrasing, no stiff structure.
 - Formal only when user explicitly asks
 
+### Writing for humans (MR/PR bodies, Jira, team docs)
+
+- Only domain vocabulary that exists in the codebase or the team's tickets. Never invent jargon or leak skill-internal terminology into MR/PR descriptions, Jira comments, or docs other people read.
+- MR/PR body content: what changed, why, how verified, risk. No new nouns.
+
 ### Format
 
 - NEVER use emojis in code, scripts, docs (any context)
@@ -289,6 +322,8 @@ Diagnostics (type errors, missing imports) are NOT in this LSP tool. Run the `py
 
 - CLI flags: check existing arg parsing pattern (argparse, getopts) and follow exactly
 - Show usage example after implementing
+- Complex quoting (nested-quote curls, JSON payloads, heredoc-in-heredoc): write to a scratchpad script file and execute the file. Inline quoting monsters trip the permission parser and waste turns.
+- Deletion: `rm` is allowlisted — use it directly (after confirm-first rule for non-scratch targets). Do not fall back to `shutil.rmtree` workarounds.
 
 ## API URL Conventions
 

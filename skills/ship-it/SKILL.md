@@ -16,6 +16,12 @@ This skill exists because the chain was previously a one-line rule in CLAUDE.md 
    - `git status --porcelain` non-empty → there are local changes to commit
    - `git log @{u}..HEAD` non-empty (or no upstream) → there are unpushed commits
    - Both empty AND upstream exists AND remote MR already open → STOP, report "branch already shipped, MR: <url>"
+3. **Grill gate** (skip if invocation contains `--no-grill`):
+   - Check `git diff --stat <base>...HEAD`. Gate triggers when ANY: ≥300 changed lines, ≥10 files, or diff touches migrations / data-emitting scripts (converters, generators, mutation builders, exporters) / prod-batch tooling.
+   - Triggered → look for grill `final.md` for this branch (feature grill dir per `grill` skill routing) newer than HEAD commit.
+   - Found + rating SHIP IT → proceed, note `grill: SHIP IT (runs N)` in chat.
+   - Found + rating BLOCK/NEEDS WORK → STOP, report rating + final.md path. User decides.
+   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Small/simple diffs never trigger — no gate friction on routine ships.
 
 ## Chain (execute in order, no breaks)
 
@@ -56,7 +62,7 @@ Two formats exist. Pick ONE deterministically, generate it, write it to disk. Th
 
 Either branch ends with a description file on disk and its path printed.
 
-Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — this is the only acceptable interruption in the chain. Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
+Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — this and the grill gate are the only acceptable interruptions in the chain. Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
 
 ### Step 4 — Open MR
 
@@ -101,5 +107,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → print desc + URL
 ```
