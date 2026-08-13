@@ -100,6 +100,16 @@ def api_get(cookies, path):
         return json.loads(resp.read())
 
 
+def api_get_retry(cookies, path, attempts=3):
+    for i in range(attempts):
+        try:
+            return api_get(cookies, path)
+        except Exception:
+            if i == attempts - 1:
+                raise
+            time.sleep(1.5 * (i + 1))
+
+
 LABEL_OVERRIDES = {
     "recharge, inc": "rc-inc",
     "recharge, team": "rc-team",
@@ -138,6 +148,21 @@ def parse_usage(raw):
             "used_pct": min(round(util), 100),
             "resets_at": window.get("resets_at"),
         }
+    # model-scoped weekly caps (Fable etc.) only appear in limits[]; the
+    # top-level seven_day_opus/seven_day_sonnet keys stay null
+    scoped = {}
+    for lim in raw.get("limits") or []:
+        if lim.get("kind") != "weekly_scoped":
+            continue
+        model = ((lim.get("scope") or {}).get("model") or {}).get("display_name")
+        if not model or lim.get("percent") is None:
+            continue
+        scoped[model] = {
+            "used_pct": min(round(lim["percent"]), 100),
+            "resets_at": lim.get("resets_at"),
+        }
+    if scoped:
+        result["models"] = scoped
     # spend cap (Enterprise): float utilization, monthly_limit in currency units
     eu = raw.get("extra_usage")
     if isinstance(eu, dict) and eu.get("is_enabled") and eu.get("monthly_limit"):
@@ -201,25 +226,32 @@ def main():
             sys.exit(1)
 
         # fetch org list and filter to chat-capable business orgs (drop personal)
-        all_orgs = api_get(cookies, "/api/organizations")
+        all_orgs = api_get_retry(cookies, "/api/organizations")
         chat_orgs = [
             o for o in all_orgs
             if "chat" in o.get("capabilities", []) and not is_personal(o)
         ]
+
+        prev = {o.get("label"): o for o in (cached or {}).get("orgs", [])}
 
         orgs = []
         for org in chat_orgs:
             org_id = org.get("uuid", "")
             if not org_id:
                 continue
+            label = org_label(org)
             try:
-                raw = api_get(cookies, f"/api/organizations/{org_id}/usage")
+                raw = api_get_retry(cookies, f"/api/organizations/{org_id}/usage")
             except Exception:
+                # cloudflare 403s at random; stale numbers beat an org silently
+                # vanishing from cache and blanking the statusline
+                if label in prev:
+                    orgs.append(prev[label])
                 continue
             usage = parse_usage(raw)
             orgs.append({
                 "id": org_id,
-                "label": org_label(org),
+                "label": label,
                 **usage,
             })
 
@@ -233,10 +265,13 @@ def main():
 
         os.makedirs(CACHE_DIR, exist_ok=True)
         tmp = CACHE_FILE + ".tmp"
-        with open(tmp, "w") as f:
+        # cache holds the claude.ai sessionKey — keep it owner-only
+        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, "w") as f:
             json.dump(cache, f, indent=2)
             f.flush()
             os.fsync(f.fileno())
+        os.chmod(tmp, 0o600)
         os.rename(tmp, CACHE_FILE)
     except Exception:
         pass

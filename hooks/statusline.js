@@ -44,6 +44,25 @@ function loadConfig() {
 
 // --- helpers ---
 
+function visLen(s) {
+  return s.replace(/\x1b\[[0-9;]*m/g, '').length;
+}
+
+function termWidth() {
+  // COLUMNS is inherited at claude launch and goes stale on resize; tmux knows live width
+  const pane = process.env.TMUX_PANE;
+  if (pane) {
+    try {
+      const w = parseInt(execSync(`tmux display-message -p -t '${pane}' '#{pane_width}'`, {
+        timeout: 120, encoding: 'utf8',
+      }).trim(), 10);
+      if (w > 0) return w;
+    } catch (e) {}
+  }
+  const env = parseInt(process.env.COLUMNS, 10);
+  return env > 0 ? env : 120;
+}
+
 function colorForPct(pct) {
   if (pct < 50) return GREEN;
   if (pct < 70) return YELLOW;
@@ -246,10 +265,11 @@ function nextMonthResetEpoch() {
   return next / 1000;
 }
 
-function usageGauges() {
+function usageGauges(compact) {
+  const countdown = compact ? () => '' : fmtCountdown;
   try {
     const cacheFile = path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json');
-    if (!fs.existsSync(cacheFile)) return '';
+    if (!fs.existsSync(cacheFile)) return [];
 
     let cache;
     try {
@@ -257,7 +277,7 @@ function usageGauges() {
     } catch (e) {
       // corrupt cache — drop it so next tick refetches clean
       try { fs.unlinkSync(cacheFile); } catch (e2) {}
-      return '';
+      return [];
     }
     const now = Date.now() / 1000;
 
@@ -277,38 +297,43 @@ function usageGauges() {
     } catch (e) {}
 
     const orgs = (cache.orgs || [])
-      .filter(o => o.five_hour || o.seven_day || o.spend_cap)
+      .filter(o => o.five_hour || o.seven_day || o.spend_cap || o.models)
       .filter(o => !visibleFilter || visibleFilter.includes(o.label));
-    if (!orgs.length) return '';
+    if (!orgs.length) return [];
 
-    let result = '';
+    const out = [];
     for (const org of orgs) {
       const parts = [];
 
       const fh = org.five_hour;
       if (fh && fh.used_pct != null) {
         const p = Math.min(100, Math.max(0, fh.used_pct));
-        parts.push(`${colorForPct(p)}5h ${pie(p)} ${p}%${fmtCountdown(fh.resets_at, now)}${RST}`);
+        parts.push(`${colorForPct(p)}5h ${pie(p)} ${p}%${countdown(fh.resets_at, now)}${RST}`);
       }
       const sd = org.seven_day;
       if (sd && sd.used_pct != null) {
         const p = Math.min(100, Math.max(0, sd.used_pct));
-        parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${fmtCountdown(sd.resets_at, now)}${RST}`);
+        parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${countdown(sd.resets_at, now)}${RST}`);
+      }
+      for (const [name, m] of Object.entries(org.models || {})) {
+        if (m.used_pct == null) continue;
+        const p = Math.min(100, Math.max(0, m.used_pct));
+        parts.push(`${colorForPct(p)}${name.toLowerCase()} ${pie(p)} ${p}%${countdown(m.resets_at, now)}${RST}`);
       }
       const sc = org.spend_cap;
       if (sc && sc.limit) {
         const p = Math.min(100, Math.max(0, sc.used_pct || 0));
         const pctStr = p < 10 ? p.toFixed(1) : String(Math.round(p));
         const resetAt = sc.resets_at || nextMonthResetEpoch();
-        parts.push(`${colorForPct(p)}cap ${pie(p)} ${pctStr}%${fmtCountdown(resetAt, now)}${RST}`);
+        parts.push(`${colorForPct(p)}cap ${pie(p)} ${pctStr}%${countdown(resetAt, now)}${RST}`);
       }
 
       if (!parts.length) continue;
       const label = orgs.length > 1 ? `${DIM}${org.label}${RST} ` : '';
-      result += ` \u2502 ${label}${parts.join(' ')}`;
+      out.push(`${label}${parts.join(' ')}`);
     }
-    return result;
-  } catch (e) { return ''; }
+    return out;
+  } catch (e) { return []; }
 }
 
 // --- transcript parsing (incremental) ---
@@ -548,7 +573,6 @@ process.stdin.on('end', () => {
     }
 
     const ctx = contextGauge(data);
-    const usage = usageGauges();
 
     const model = modelLabel(data);
     const effort = effortLabel(data);
@@ -561,11 +585,38 @@ process.stdin.on('end', () => {
     const acct = accountBadge();
     const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
 
-    const line1 = `${acctPart}${modelPart}${DIM}${displayPath}${RST}${branchPart} \u2502${ctx}${usage}`;
+    // usage is the segment worth protecting, so it degrades last: full -> no
+    // countdowns -> basename-only path -> spilled onto line 2
+    const width = termWidth() - 1;
+    const build = (p, u, bare) => `${bare ? '' : acctPart + modelPart}${DIM}${p}${RST}${branchPart} \u2502${ctx}` +
+      u.map(s => ` \u2502 ${s}`).join('');
+    const shortPath = pathParts[pathParts.length - 1] || displayPath;
 
-    // minimal: one line only
+    let usage = usageGauges(false);
+    let line1 = build(displayPath, usage);
+    let spilled = [];
+    if (visLen(line1) > width) {
+      usage = usageGauges(true);
+      line1 = build(displayPath, usage);
+    }
+    if (visLen(line1) > width) {
+      line1 = build(shortPath, usage);
+    }
+    if (visLen(line1) > width && usage.length) {
+      spilled = usage;
+      usage = [];
+      line1 = build(shortPath, usage);
+    }
+    if (visLen(line1) > width) {
+      line1 = build(shortPath, usage, true);
+    }
+
+    // minimal: one line only \u2014 keep usage on it, nothing else can carry it
     if (cfg.style === 'minimal' || !cfg.line2) {
-      process.stdout.write(line1);
+      const only = spilled.length ? spilled : usage;
+      let solo = spilled.length ? build(shortPath, only) : line1;
+      if (visLen(solo) > width) solo = build(shortPath, only, true);
+      process.stdout.write(solo);
       return;
     }
 
@@ -626,6 +677,14 @@ process.stdin.on('end', () => {
     } else {
       try { line2 = fs.readFileSync(line2Cache, 'utf8'); } catch (e) {}
     }
+
+    // usage rides at the head of line 2 when line 1 couldn't hold it; the
+    // activity stats are shed from the cheapest end to make room
+    const usageStr = spilled.join(sep);
+    let keep = line2 ? line2.split(sep) : [];
+    const room = width - (usageStr ? visLen(usageStr) + visLen(sep) : 0);
+    while (keep.length && visLen(keep.join(sep)) > room) keep.shift();
+    line2 = [usageStr, keep.join(sep)].filter(Boolean).join(sep);
 
     if (line2) {
       process.stdout.write(`${line1}\n${line2}`);
