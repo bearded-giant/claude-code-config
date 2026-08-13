@@ -6,5 +6,6 @@
   "thinking": false,
   "messages": false,
   "lines": true,
-  "duration": true
+  "duration": true,
+  "gmdocs": false
 }

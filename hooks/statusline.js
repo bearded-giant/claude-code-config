@@ -34,6 +34,7 @@ function loadConfig() {
     messages: true,
     lines: true,
     duration: true,
+    gmdocs: false,
   };
   try {
     const cfgPath = path.join(__dirname, 'statusline-config.json');
@@ -663,7 +664,7 @@ process.stdin.on('end', () => {
     if (gm) {
       const segs = [];
       if (gm.active_feature) segs.push(`${ORANGE}feat:${gm.active_feature}${RST}`);
-      if (gm.live_docs_today) segs.push(`${DIM}gm:${RST}${GREEN}${gm.live_docs_today}${RST}${DIM}/d${RST}`);
+      if (cfg.gmdocs && gm.live_docs_today) segs.push(`${DIM}gm:${RST}${GREEN}${gm.live_docs_today}${RST}${DIM}/d${RST}`);
       if (segs.length) parts.push(segs.join(`${DIM} ${RST}`));
     }
 
