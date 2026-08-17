@@ -223,7 +223,8 @@ case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
 - Worktree = parent dir ends `-wt` → prepend it (`{parent}-{leaf}`). Else `{leaf}`.
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
-- Session start: the `doit_session_prime` hook prints this session's derived list name + whether it exists. Re-derive on cwd / worktree / feature change.
+- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change.
+- Pending items are the feature's open work. Land one this session → `start_todo` on pickup, `complete_todo` + DONE record when it lands. Never leave a landed item open.
 - `daily` stays the manual cross-repo priority sweep — qualified lists never auto-dump into it.
 
 ### Bucket → doit priority

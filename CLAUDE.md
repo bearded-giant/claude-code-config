@@ -113,7 +113,17 @@ When multi-step work surfaces items the USER must act on outside the current tur
 - Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
 - Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
 - Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
-- Session start: `doit_session_prime` hook surfaces this session's list name + whether it exists. If it exists, `list_todos` it and surface pending `claude:` items. Re-derive when cwd / worktree / feature changes mid-session.
+- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then).
+
+#### The list is first-class session state
+
+Injected pending items are live working state, not background trivia. Every session:
+
+- Factor them into whatever gets planned or resumed. If the user's ask matches a pending item, say which one in one line and work it as that item — don't silently start a parallel track.
+- Resuming an `in_progress` feature: the pending items ARE the open work. Feature `facts.md` / notes / plans hold the detail; the list holds what's left to do. Read both, never treat the list as the stale one.
+- Work in this session that lands a listed item MUST be reflected in the list, same session: `start_todo` on pickup, `complete_todo` + DONE record (local `date` + ≤6 bullets, original note preserved) when it lands. Landing an item without closing it is a bug.
+- New user-actionable follow-ups → one batched `AskUserQuestion` per the rule above. Still never auto-write.
+- Do NOT open the session by quizzing the user about the list, restating it back, or asking what to work on. Silent context unless the user's ask touches an item.
 
 Full convention + procedure → `feature-management` skill.
 
