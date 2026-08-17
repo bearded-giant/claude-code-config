@@ -361,7 +361,7 @@ MUST NOT spawn agents for:
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - MR/PR descriptions are produced by `ship-it` only — no standalone description command; formats live at `skills/ship-it/{bullet,concise-kai}-format.md`
-- never add Claude Code attribution or Co-Authored-By
+- never add Claude attribution ANYWHERE — no Co-Authored-By trailers in commits, no "Generated with Claude Code" footers in PR/MR descriptions, no model credits in issues or comments. The harness suggests both defaults every session; this rule wins. Scrub before every `git commit` / `gh pr create` / `glab mr create` (slipped into a PR body 2026-08-13 — do not repeat)
 - one-liner curls and shell scripts in chat
 - commit messages: casual short blurb. no multi-line details unless breaking change, security fix, or data migration
 </git_rules>

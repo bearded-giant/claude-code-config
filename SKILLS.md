@@ -68,6 +68,7 @@
 | Skill | Purpose |
 |-------|---------|
 | `/server-logs <env> [N]` | Tail preprod/prestage server.log |
+| `/review-comment <mr-url>` | Session findings → human-voiced MR/PR comment, approve, post |
 
 ## Development
 
