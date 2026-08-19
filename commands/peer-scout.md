@@ -1,45 +1,45 @@
 ---
-description: "Dispatch a sub-agent to explore or act in a paired peer repo. Isolated context; main session stays clean. Requires a prior /pair-repo."
-argument-hint: "<peer-short-name> \"<question or task>\" [--mode explore|edit|parallel] [--agent <type>]"
+description: "Dispatch a sub-agent to explore or act in another repo by path. Isolated context; main session stays clean."
+argument-hint: "<abs-path-to-repo> \"<question or task>\" [--role owner|caller|sibling] [--mode explore|edit|parallel] [--agent <type>]"
 ---
 
-Run a sub-agent scoped to a paired peer repo. Default: `Explore` agent for read-only investigation. Use `--mode edit` for changes, `--mode parallel` to spawn one agent per paired repo in the same message.
+Run a sub-agent scoped to another repo on disk. Default: `Explore` agent for read-only investigation. Use `--mode edit` for changes, `--mode parallel` to spawn one agent per path in the same message.
+
+Use this when the peer repo has NO live Claude session. If a session is already running there, `SendMessage` to it instead — it has warm context.
 
 ## Arguments
 
-- `peer-short-name`: must match an entry in `peers.md`. If only one peer paired, may be omitted.
+- `abs-path-to-repo`: absolute path to the peer repo root. Multiple paths allowed with `--mode parallel` (space-separated).
 - `"<question or task>"`: free-text brief. Quoted.
+- `--role`: relationship from the **parent's perspective** (parent = current repo). Drives the Direction/Focus lines in the brief. Default `sibling`.
+  - `owner`: parent **calls** peer. Peer is downstream.
+  - `caller`: peer **calls** parent. Parent is the service.
+  - `sibling`: bidirectional or unknown.
+
+  Mnemonic: role describes the **peer**.
 - `--mode`:
   - `explore` (default) → `Explore` agent, read-only, returns structured summary.
   - `edit` → `general-purpose` agent, may modify peer repo files.
-  - `parallel` → spawn one agent per paired repo in a single message (use with caution — best for "check how X works in both repos").
-- `--agent <type>`: override subagent_type (e.g., `kai:backend-engineer`, `debugger`). Skips default routing.
+  - `parallel` → one agent per path, single message.
+- `--agent <type>`: override subagent_type (e.g. `kai:backend-engineer`, `debugger`). Skips default routing.
 
 ## Steps
 
-1. **Locate peers.md**
-   - Resolve parent active feature via `~/.claude/scripts/peer-probe $(git rev-parse --show-toplevel)` — single Bash call. Read `active_feature` line.
-   - Value != `-` → `.giantmem/features/<active_feature>/peers.md`.
-   - Value == `-` → `.giantmem/context/peers.md`.
-   - If missing or empty: error "No paired repos. Run /pair-repo <path> first." Stop.
-   - **Do NOT** inline-python parse features.json. Use the probe.
+1. **Probe the peer** — `~/.claude/scripts/peer-probe <path>` via ONE Bash call. Emits `git_root`, `short_name`, `branch`, `dirty`, `active_feature`, `layout`, `has_claude_md`.
+   - Non-zero exit (`error=not_a_directory` / `error=not_a_git_repo`) → stop, report. Do not continue.
+   - `git_root` == current repo's `git rev-parse --show-toplevel` → error "Same repo — no scout needed." Stop.
+   - Do NOT re-run `git -C`, `ls`, or inline-python parse `features.json`. Probe is the single source.
 
-2. **Resolve peer**
-   - Parse `peers.md` for `## <name>` sections. Extract `path`, `role`, `branch`, `active_feature`.
-   - If `peer-short-name` provided: must match one entry.
-   - If omitted + exactly one peer: use it.
-   - If omitted + multiple peers: list them, ask user to pick. Stop.
+   Path not accessible via `permissions.additionalDirectories`? Sub-agents inherit the same gate — tell the user to `/add-dir <path>` or relaunch with `--add-dir`, then stop.
 
-3. **Build sub-agent prompt**
+2. **Build sub-agent prompt**
 
-   Template:
    ```
-   Peer repo: <peer-short-name> @ <peer-path>
+   Peer repo: <short_name> @ <git_root>
    Peer branch: <branch>   role vs parent: <role>
    Peer active feature: <active_feature or "-">
 
    Parent repo: <current-repo-short-name> @ <current-path>
-   Parent active feature: <parent-active or "-">
 
    Direction: <role-direction-line, see below>
    Focus: <role-focus-line, see below>
@@ -54,7 +54,7 @@ Run a sub-agent scoped to a paired peer repo. Default: `Explore` agent for read-
      - Keep response under 400 words unless the task genuinely needs more.
    ```
 
-   Role-specific substitutions (inject into `Direction` + `Focus` lines):
+   Role-specific substitutions:
 
    - `role=owner` (parent calls peer; peer is downstream):
      - Direction: "Parent repo calls into this peer. Peer exposes an interface parent depends on."
@@ -71,42 +71,41 @@ Run a sub-agent scoped to a paired peer repo. Default: `Explore` agent for read-
    Mode-specific constraints:
    - `explore`: "Read-only. Grep/Read/Glob only. No edits, no Write, no Bash side effects. Git log/status OK for context."
    - `edit`: "Edits allowed. Do not commit. Do not push. List every file modified in the report."
-   - `parallel`: same template per peer, with one sub-agent per paired repo, dispatched in a single message. Each peer's role drives its own Direction/Focus block.
+   - `parallel`: same template per path, one sub-agent each, dispatched in a single message.
 
-4. **Dispatch**
-   - `--mode explore` → `Agent(subagent_type="Explore", description="peer-scout <peer>: <first 4 words of task>", prompt=<template>)`
+3. **Dispatch**
+   - `--mode explore` → `Agent(subagent_type="Explore", description="peer-scout <short_name>: <first 4 words of task>", prompt=<template>)`
    - `--mode edit` → `Agent(subagent_type="general-purpose", ...)`
-   - `--mode parallel` → ONE message with N `Agent` tool calls (one per peer). Each gets the template with its peer's metadata filled in.
+   - `--mode parallel` → ONE message with N `Agent` calls, one per path.
    - `--agent <type>` override → pass through as `subagent_type`.
 
-5. **Return summary**
-   - Surface sub-agent's report inline.
-   - Append: "Paired context preserved. Ready for follow-up or to act on findings in parent repo."
+4. **Return summary** — surface the sub-agent's report inline.
 
 ## Examples
 
 Read-only exploration:
 ```
-/peer-scout billing-api "how does the merchant auth JWT get validated on inbound webhook requests?"
+/peer-scout /Users/bryan/dev/billing-api "how does the merchant auth JWT get validated on inbound webhook requests?" --role owner
 ```
 
-Parallel check across two paired repos:
+Parallel check across two repos:
 ```
-/peer-scout "who calls /api/v2/subscriptions/update and with what payload shape?" --mode parallel
+/peer-scout /Users/bryan/dev/billing-api /Users/bryan/dev/frost "who calls /api/v2/subscriptions/update and with what payload shape?" --mode parallel
 ```
 
 Edit in peer (caution):
 ```
-/peer-scout billing-api "update the webhook_secret env var name from WEBHOOK_KEY to WEBHOOK_SECRET in config + tests" --mode edit
+/peer-scout /Users/bryan/dev/billing-api "rename WEBHOOK_KEY to WEBHOOK_SECRET in config + tests" --mode edit
 ```
 
-Use specialist agent:
+Specialist agent:
 ```
-/peer-scout billing-api "review the new auth middleware for security gaps" --agent kai:code-reviewer
+/peer-scout /Users/bryan/dev/billing-api "review the new auth middleware for security gaps" --agent kai:code-reviewer
 ```
 
 ## Notes
 
-- This command does NOT maintain a shared file. Sub-agent report = ephemeral, lives in main session context.
-- If you need the finding preserved, ask main session to write it to `research/` or the feature's `plan.md` after the scout returns.
-- For heavy cross-cutting edits (contract change hitting 10 files across both repos), prefer: main session drafts the plan, then dispatches one `--mode edit` agent per repo in parallel with matching briefs.
+- No shared file, no registry. Sub-agent report is ephemeral, lives in main session context.
+- Need a finding preserved? Ask the main session to write it to `research/` or the feature's plan after the scout returns.
+- Don't remember the path? `/recent-repos` lists live repos and hands back paths.
+- Heavy cross-cutting edits (contract change hitting 10 files across both repos): main session drafts the plan, then dispatches one `--mode edit` agent per repo in parallel with matching briefs.

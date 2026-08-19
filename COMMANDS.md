@@ -137,23 +137,22 @@ Full usage (plan format, safeguards, tips) inline in `commands/swarm-exec.md`.
 
 ---
 
-## Cross-Repo Pairing
+## Cross-Repo
 
-Single-session pattern. Main thread owns plan, sub-agents do deep dives in peer repo. Replaces deprecated `/sync-feature`.
+Peer repo has a live Claude session → `SendMessage` to it. No session → dispatch a sub-agent by path.
 
 | Command | Purpose |
 |---------|---------|
-| `/pair-repo {abs-path} [--role owner\|caller\|sibling]` | Attach peer repo, capture metadata, prime session |
-| `/pair-repo --unpair {name}` | Remove peer from record |
-| `/peer-scout {name} "<brief>" [--mode explore\|edit\|parallel] [--agent {type}]` | Dispatch sub-agent into paired repo |
+| `/peer-scout {abs-path} "<brief>" [--role owner\|caller\|sibling] [--mode explore\|edit\|parallel] [--agent {type}]` | Sub-agent dive into another repo |
+| `/recent-repos` | Pick a recently-active repo, make it accessible |
+| `/recent-docs` | Load a recent .giantmem doc from another repo |
 
 ```
-/pair-repo /Users/bryan/dev/billing-api --role caller
-/peer-scout billing-api "how does webhook auth validate JWTs?"
-/peer-scout "find all callers of /api/v2/subs/update" --mode parallel
+/peer-scout /Users/bryan/dev/billing-api "how does webhook auth validate JWTs?" --role owner
+/peer-scout /Users/bryan/dev/billing-api /Users/bryan/dev/frost "find all callers of /api/v2/subs/update" --mode parallel
 ```
 
-Peer record lives at `.giantmem/features/{active}/peers.md` (or `.giantmem/context/peers.md` if no active feature).
+Peer path must be in `permissions.additionalDirectories` (or `/add-dir`) for sub-agents to reach it.
 
 ---
 

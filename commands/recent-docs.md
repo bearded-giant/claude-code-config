@@ -1,9 +1,9 @@
 ---
-description: "Pick a recently-modified .giantmem doc from another repo, load it into context, and auto-pair its repo. Optional dir_type filter."
-argument-hint: "[dir_type] [--n <int>] [--since <7d|2h>] [--no-pair]"
+description: "Pick a recently-modified .giantmem doc from another repo, load it into context, and make its repo reachable. Optional dir_type filter."
+argument-hint: "[dir_type] [--n <int>] [--since <7d|2h>] [--no-add-dir]"
 ---
 
-Surface recently touched `.giantmem/*.md` docs across all live workspaces, let user pick one, then load the doc + auto-pair the repo it came from.
+Surface recently touched `.giantmem/*.md` docs across all live workspaces, let user pick one, then load the doc + make its repo reachable for sub-agents.
 
 Use case: you were just working in another worktree's research/plans/feature spec, want to pick up here without copying paths between tmux panes.
 
@@ -12,7 +12,7 @@ Use case: you were just working in another worktree's research/plans/feature spe
 - `dir_type` (optional positional): scope to one or more dir types (CSV). Common: `research`, `plans`, `features`, `reviews`, `context`. Default: all.
 - `--n <int>`: limit results (default 10).
 - `--since <dur>`: recency window (e.g. `7d`, `2h`). Default: no limit.
-- `--no-pair`: load the doc but skip the auto-pair step.
+- `--no-add-dir`: load the doc but skip making the repo reachable.
 
 ## Steps
 
@@ -41,25 +41,21 @@ Use case: you were just working in another worktree's research/plans/feature spe
       - Take `worktree_path` from the chosen JSON row — that IS the repo root.
       - Sanity check: `<worktree_path>/.giantmem` exists.
 
-   c. **Auto-pair** (skip if `--no-pair`):
-      - Run the `/pair-repo` flow on `<worktree_path>`. Inline (don't actually invoke the slash command — execute its logic):
-        1. `~/.claude/scripts/peer-probe <worktree_path>` (single Bash call). On error, stop with the error message.
-        2. Compare `git_root` to current repo's `git rev-parse --show-toplevel`. If equal, skip pairing (same repo) and tell user.
-        3. Check `permissions.additionalDirectories` in `~/.claude/settings.json` and `~/.claude/settings.local.json`. If peer path (or parent) already listed, skip add-dir. Else: ask user to pick (1) write to `settings.local.json`, (2) run built-in `/add-dir` now, or (3) skip (read-only via `Read` tool only).
-        4. Persist peer record: determine current repo's active feature via `~/.claude/scripts/peer-probe $(git rev-parse --show-toplevel)`. Append entry to `.giantmem/features/<active>/peers.md` (or `.giantmem/context/peers.md` if no active feature). Match by path; overwrite in place if dup. Use `role: sibling` (default).
-        5. Print the standard pair-repo coordination brief.
+   c. **Make the repo reachable** (skip if `--no-add-dir`):
+      - `~/.claude/scripts/peer-probe <worktree_path>` (single Bash call). On error, stop with the error message.
+      - Compare `git_root` to current repo's `git rev-parse --show-toplevel`. If equal, skip (same repo) and tell user.
+      - Check `permissions.additionalDirectories` in `~/.claude/settings.json` and `~/.claude/settings.local.json`. Already listed (path or a parent) → done. Else ask user to pick: (1) write to `settings.local.json`, (2) run built-in `/add-dir` now, or (3) skip (read-only via `Read` tool only).
 
 4. **Output summary**
 
    ```
    Loaded doc: <project>/<rel-path>
-   Peer paired: <project> @ <worktree_path>  (role: sibling)
-   peers.md: <path>
+   Repo: <project> @ <worktree_path>  (branch: <branch>, dirty: <yes|no>)
 
-   Doc contents are in context. /peer-scout <project> "<question>" for sub-agent dives.
+   Doc contents are in context. /peer-scout <worktree_path> "<question>" for sub-agent dives.
    ```
 
-   If `--no-pair` was used: omit the pairing lines, just confirm the doc load.
+   If `--no-add-dir` was used: omit the repo line, just confirm the doc load.
 
 ## Notes
 

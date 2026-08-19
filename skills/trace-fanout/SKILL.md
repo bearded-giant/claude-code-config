@@ -20,7 +20,7 @@ Single repo, known file → `debugger` agent instead.
 
 Need: symptom (exact error/behavior), candidate repos, candidate runtime sources (logs, redis, DB, k8s). Missing pieces → wizard-style, ONE numbered question at a time.
 
-Repos not checked out locally → `local-cerebro` covers frost/customcheckout/dapr services without checkout. Checked-out peers → `/pair-repo` conventions.
+Repos not checked out locally → `local-cerebro` covers frost/customcheckout/dapr services without checkout. Checked-out peers → `/peer-scout <abs-path>` for a scoped sub-agent dive.
 
 ### 2. Auth preflight (BEFORE any dispatch)
 

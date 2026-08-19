@@ -1,5 +1,5 @@
 #!/bin/bash
-# peer-probe - capture peer repo metadata in one shot for /pair-repo.
+# peer-probe - capture peer repo metadata in one shot for /peer-scout.
 # outputs key=value lines (one per). handles features.json as list-of-dicts
 # or dict-keyed-by-name. tolerates missing files. zero python dependency.
 #
