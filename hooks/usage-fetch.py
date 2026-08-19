@@ -326,6 +326,9 @@ def cmd_list():
             bits.append(f"5h:{fh}%")
         if sd is not None:
             bits.append(f"7d:{sd}%")
+        for name, m in (org.get("models") or {}).items():
+            if m.get("used_pct") is not None:
+                bits.append(f"{name.lower()}:{m['used_pct']}%")
         if sc:
             bits.append(f"cap:{sc.get('used_pct',0)}%")
         print(f"  [{marker}] {label:<14}  {'  '.join(bits) or '-'}")
