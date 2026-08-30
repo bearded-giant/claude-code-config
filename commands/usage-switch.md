@@ -1,9 +1,11 @@
 ---
-description: "Toggle Claude usage statusline between rc-team and rc-inc accounts."
+description: "Rotate which account's usage the statusline displays (rc-team → rc-inc → skio). Display only — does not switch accounts."
 argument-hint: ""
 ---
 
-Flip statusline session indicators between Recharge Team (`rc-team`) and Recharge Inc (`rc-inc`).
+Rotate statusline usage display through `rc-team` → `rc-inc` → `skio`.
+
+Display-only: this flips the `visible` filter in `~/.cache/claude-usage/config.json`, which controls which org's numbers the statusline renders. It does NOT change which account Claude Code bills usage to — run `/login` for that. Typical flow: `/login` into the account, then this command to point the statusline at it.
 
 ## Steps
 
@@ -13,7 +15,7 @@ Flip statusline session indicators between Recharge Team (`rc-team`) and Recharg
    python3 ~/.claude/hooks/usage-fetch.py --switch
    ```
 
-2. Echo command output to user (e.g. `switched to: rc-inc`).
+2. Echo command output to user (e.g. `switched to: skio`).
 3. Statusline updates on next tick (≤30s cache).
 
 ## Related

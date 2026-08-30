@@ -128,6 +128,9 @@ def org_label(org):
     key = name.lower().rstrip(".")
     if key in LABEL_OVERRIDES:
         return LABEL_OVERRIDES[key]
+    # exact org name unknown until first fetch; pin the label so it matches SWITCH_TARGETS
+    if "skio" in key:
+        return "skio"
     if "'s Organization" in name:
         name = name.split("@")[0] if "@" in name else name.split("'s")[0]
     return name.lower()[:12]
@@ -369,17 +372,15 @@ def cmd_show_all():
     print("showing all orgs")
 
 
-SWITCH_TARGETS = ["rc-team", "rc-inc"]
+SWITCH_TARGETS = ["rc-team", "rc-inc", "skio"]
 
 
 def cmd_switch():
     cfg = load_config()
     visible = cfg.get("visible") or []
     current = next((l for l in SWITCH_TARGETS if l in visible), None)
-    if current == "rc-team":
-        nxt = "rc-inc"
-    else:
-        nxt = "rc-team"
+    idx = SWITCH_TARGETS.index(current) if current else -1
+    nxt = SWITCH_TARGETS[(idx + 1) % len(SWITCH_TARGETS)]
     cfg["visible"] = [nxt]
     save_config(cfg)
     print(f"switched to: {nxt}")

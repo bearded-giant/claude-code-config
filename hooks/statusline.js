@@ -15,6 +15,7 @@ const YELLOW = '\x1b[33m';
 const CYAN = '\x1b[36m';
 const RED = '\x1b[31m';
 const MAGENTA = '\x1b[35m';
+const PURPLE = '\x1b[38;5;135m';
 const ORANGE = '\x1b[38;5;208m';
 const BLINK_RED = '\x1b[5;31m';
 
@@ -156,10 +157,12 @@ function accountBadge() {
     const oa = j.oauthAccount || {};
     const type = (oa.organizationType || '').toLowerCase();
     const name = (oa.organizationName || '').toLowerCase();
+    // skio -> S (team-type too, so check name before the team branch)
     // team_tier / claude_team / name contains "team" -> T
     // enterprise / contains "inc" -> E
     const isTeam = type.includes('team') || name.includes('team');
     const isEnt = type.includes('enterprise') || name.includes('inc');
+    if (name.includes('skio')) return `${PURPLE}[S]${RST}`;
     if (isTeam) return `${GREEN}[T]${RST}`;
     if (isEnt) return `${BLINK_RED}[E]${RST}`;
     if (type) return `${YELLOW}[${type[0].toUpperCase()}]${RST}`;
