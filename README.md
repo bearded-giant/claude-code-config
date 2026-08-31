@@ -105,13 +105,13 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 
 | Command | Purpose |
 |---------|---------|
-| `/swarm <task>` | Parallel multi-model analysis with Haiku workers |
+| `/swarm <task>` | Aspect-parallel analysis via `workflows/swarm-analyze.js`, per-agent artifacts on disk (`--no-artifacts` to skip) |
 
 ### Execution (read-write)
 
 | Command | Purpose |
 |---------|---------|
-| `/swarm-exec <plan>` | Parallel execution with validation (never commits) |
+| `/swarm-exec <plan>` | Parallel execution via `workflows/swarm-exec.js`: plan -> implementers -> validator + tests (never commits) |
 
 ### Features
 
