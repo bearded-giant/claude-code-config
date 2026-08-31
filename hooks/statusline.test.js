@@ -1,9 +1,73 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { visLen, clampAnsi, pie, fmtCountdown, fmtDuration } = require('./statusline.js');
+const {
+  visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
+  fitLine1, fitSolo, packLine2,
+} = require('./statusline.js');
 
 const RST = '\x1b[0m';
 const GREEN = '\x1b[32m';
+
+const seg = (over = {}) => ({
+  acctPart: '[T] ',
+  modelPart: 'fable ',
+  branchPart: ' | main',
+  ctx: ' 72%',
+  displayPath: '.../dev/claude-code-config',
+  shortPath: 'claude-code-config',
+  usage: ['5h 39% ~2h30m', '7d 5% ~6d17h'],
+  usageCompact: ['5h 39%', '7d 5%'],
+  ...over,
+});
+
+test('fitLine1 tier 1: everything fits, nothing spilled', () => {
+  const fit = fitLine1(200, seg());
+  assert.equal(fit.spilled.length, 0);
+  assert.ok(fit.line1.includes('~2h30m'));
+  assert.ok(fit.line1.includes('.../dev/'));
+});
+
+test('fitLine1 tier 2: drops countdowns before path', () => {
+  const s = seg();
+  const full = visLen(fitLine1(500, s).line1);
+  const fit = fitLine1(full - 2, s);
+  assert.ok(!fit.line1.includes('~2h30m'));
+  assert.ok(fit.line1.includes('5h 39%'));
+  assert.equal(fit.spilled.length, 0);
+});
+
+test('fitLine1 spills usage to line2 when path shortening is not enough', () => {
+  const fit = fitLine1(38, seg());
+  assert.equal(fit.spilled.length, 2);
+  assert.ok(!fit.line1.includes('5h'));
+  assert.ok(visLen(fit.line1) <= 38);
+});
+
+test('fitLine1 always returns a line within width', () => {
+  for (const w of [10, 20, 40, 80, 200]) {
+    assert.ok(visLen(fitLine1(w, seg()).line1) <= w, `width ${w}`);
+  }
+});
+
+test('fitSolo keeps spilled usage on the single line', () => {
+  const s = seg();
+  const fit = fitLine1(38, s);
+  const solo = fitSolo(60, s, fit);
+  assert.ok(solo.includes('5h'));
+  assert.ok(visLen(solo) <= 60);
+});
+
+test('packLine2 puts usage first and sheds oldest parts', () => {
+  const sep = ' | ';
+  const out = packLine2(30, ['5h 39%'], ['aaaaaaaaaa', 'bbbbbbbbbb', 'cccccccccc'], sep);
+  assert.ok(out.startsWith('5h 39%'));
+  assert.ok(!out.includes('aaaaaaaaaa'));
+  assert.ok(visLen(out) <= 30);
+});
+
+test('packLine2 empty in, empty out', () => {
+  assert.equal(packLine2(80, [], [], ' | '), '');
+});
 
 test('visLen ignores SGR escapes', () => {
   assert.equal(visLen(`${GREEN}abc${RST}`), 3);

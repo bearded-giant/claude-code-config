@@ -150,7 +150,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "date +%s > /tmp/claude-compact-ts"
+            "command": "python3 -c 'import json,sys,time; d=json.load(sys.stdin); sid=d.get(\"session_id\") or \"global\"; open(\"/tmp/claude-compact-ts-\"+sid, \"w\").write(str(int(time.time())))'"
           },
           {
             "type": "command",

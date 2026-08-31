@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // ansi
 const RST = '\x1b[0m';
@@ -76,7 +76,7 @@ function termWidth() {
   const pane = process.env.TMUX_PANE;
   if (pane) {
     try {
-      const w = parseInt(execSync(`tmux display-message -p -t '${pane}' '#{pane_width}'`, {
+      const w = parseInt(execFileSync('tmux', ['display-message', '-p', '-t', pane, '#{pane_width}'], {
         timeout: 120, encoding: 'utf8',
       }).trim(), 10);
       if (w > 0) return w;
@@ -194,21 +194,35 @@ function spawnUsageFetch() {
 
 // --- account badge ---
 
-function accountBadge() {
+const BADGE_COLORS = {
+  green: GREEN, red: RED, blinkRed: BLINK_RED, yellow: YELLOW,
+  purple: PURPLE, magenta: MAGENTA, cyan: CYAN, orange: ORANGE, dim: DIM,
+};
+
+// order matters: first match wins. override via statusline-config.json
+// "badges": [{"match": "skio", "label": "S", "color": "purple"}, ...] —
+// match is a regex tested against "name type" lowercased
+const DEFAULT_BADGES = [
+  { match: 'skio', label: 'S', color: 'purple' },
+  { match: 'team', label: 'T', color: 'green' },
+  { match: 'enterprise|\\binc\\b', label: 'E', color: 'blinkRed' },
+];
+
+function accountBadge(cfg) {
   try {
     const raw = fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8');
     const j = JSON.parse(raw);
     const oa = j.oauthAccount || {};
     const type = (oa.organizationType || '').toLowerCase();
     const name = (oa.organizationName || '').toLowerCase();
-    // skio -> S (team-type too, so check name before the team branch)
-    // team_tier / claude_team / name contains "team" -> T
-    // enterprise / contains "inc" -> E
-    const isTeam = type.includes('team') || name.includes('team');
-    const isEnt = type.includes('enterprise') || name.includes('inc');
-    if (name.includes('skio')) return `${PURPLE}[S]${RST}`;
-    if (isTeam) return `${GREEN}[T]${RST}`;
-    if (isEnt) return `${BLINK_RED}[E]${RST}`;
+    const haystack = `${name} ${type}`;
+    for (const b of (cfg && cfg.badges) || DEFAULT_BADGES) {
+      try {
+        if (new RegExp(b.match).test(haystack)) {
+          return `${BADGE_COLORS[b.color] || YELLOW}[${b.label}]${RST}`;
+        }
+      } catch (e) {}
+    }
     if (type) return `${YELLOW}[${type[0].toUpperCase()}]${RST}`;
     return '';
   } catch (e) { return ''; }
@@ -252,8 +266,8 @@ function getGitInfo(dir) {
     if (!gitDir) return info;
 
     try {
-      const status = execSync(`git -C "${gitDir}" --no-optional-locks status --porcelain -b 2>/dev/null`, {
-        timeout: 150, encoding: 'utf8',
+      const status = execFileSync('git', ['-C', gitDir, '--no-optional-locks', 'status', '--porcelain', '-b'], {
+        timeout: 150, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
       });
       const lines = status.split('\n');
       const header = lines[0] || '';
@@ -278,12 +292,16 @@ function contextGauge(data) {
   }
   if (remaining == null) return '';
 
+  // per-session marker (PreCompact hook in settings.json writes it); another
+  // session's compact must not flash this session's badge
   let recentCompact = false;
-  try {
-    const ts = fs.readFileSync('/tmp/claude-compact-ts', 'utf8').trim();
-    const elapsed = Math.floor(Date.now() / 1000) - parseInt(ts, 10);
-    if (elapsed >= 0 && elapsed < 30) recentCompact = true;
-  } catch (e) {}
+  if (data.session_id) {
+    try {
+      const ts = fs.readFileSync(`/tmp/claude-compact-ts-${data.session_id}`, 'utf8').trim();
+      const elapsed = Math.floor(Date.now() / 1000) - parseInt(ts, 10);
+      if (elapsed >= 0 && elapsed < 30) recentCompact = true;
+    } catch (e) {}
+  }
 
   const compactAt = 15;
   const pct = Math.round(remaining);
@@ -497,7 +515,11 @@ function parseTranscript(transcriptPath, sessionId) {
         }
       }
     } else if (entry.type === 'user') {
-      state.messageCount++;
+      // count human messages, not the user-role carriers of tool_results
+      const isHuman = typeof msg.content === 'string' ||
+        (Array.isArray(msg.content) && msg.content.some(b => b.type === 'text'));
+      if (isHuman) state.messageCount++;
+      if (!Array.isArray(msg.content)) continue;
       for (const block of msg.content) {
         if (block.type === 'tool_result' && block.tool_use_id) {
           const tool = state.tools.find(t => t.id === block.tool_use_id);
@@ -615,6 +637,56 @@ function giantmemStatus(dir) {
   return cached;
 }
 
+// --- line fitting (pure: width + prebuilt segments in, strings out) ---
+
+function buildLine1(seg, p, u, bare) {
+  return `${bare ? '' : seg.acctPart + seg.modelPart}${DIM}${p}${RST}${seg.branchPart}${seg.ctx ? ` │${seg.ctx}` : ''}` +
+    u.map(s => ` │ ${s}`).join('');
+}
+
+// usage is the segment worth protecting, so it degrades last: full -> no
+// countdowns -> basename-only path -> spilled onto line 2 -> bare
+function fitLine1(width, seg) {
+  let usage = seg.usage;
+  let line1 = buildLine1(seg, seg.displayPath, usage);
+  let spilled = [];
+  if (visLen(line1) > width) {
+    usage = seg.usageCompact;
+    line1 = buildLine1(seg, seg.displayPath, usage);
+  }
+  if (visLen(line1) > width) {
+    line1 = buildLine1(seg, seg.shortPath, usage);
+  }
+  if (visLen(line1) > width && usage.length) {
+    spilled = usage;
+    usage = [];
+    line1 = buildLine1(seg, seg.shortPath, usage);
+  }
+  if (visLen(line1) > width) {
+    line1 = buildLine1(seg, seg.shortPath, usage, true);
+  }
+  return { line1: clampAnsi(line1, width), usage, spilled };
+}
+
+// minimal / no-line2: one line only, usage stays on it
+function fitSolo(width, seg, fit) {
+  const only = fit.spilled.length ? fit.spilled : fit.usage;
+  let solo = fit.spilled.length ? buildLine1(seg, seg.shortPath, only) : fit.line1;
+  if (visLen(solo) > width) solo = buildLine1(seg, seg.shortPath, only, true);
+  return clampAnsi(solo, width);
+}
+
+// spilled usage rides at the head of line 2; activity stats shed from the
+// cheapest end to make room
+function packLine2(width, spilled, parts, sep) {
+  const usageStr = spilled.join(sep);
+  const keep = parts.slice();
+  const room = width - (usageStr ? visLen(usageStr) + visLen(sep) : 0);
+  while (keep.length && visLen(keep.join(sep)) > room) keep.shift();
+  const line2 = [usageStr, keep.join(sep)].filter(Boolean).join(sep);
+  return line2 ? clampAnsi(line2, width) : '';
+}
+
 // --- main ---
 
 let input = '';
@@ -652,41 +724,24 @@ const renderTick = () => {
       modelPart = `${inner} ${DIM}\u2502${RST} `;
     }
 
-    const acct = accountBadge();
+    const acct = accountBadge(cfg);
     const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
 
-    // usage is the segment worth protecting, so it degrades last: full -> no
-    // countdowns -> basename-only path -> spilled onto line 2
     const width = termWidth() - 1;
-    const build = (p, u, bare) => `${bare ? '' : acctPart + modelPart}${DIM}${p}${RST}${branchPart}${ctx ? ` \u2502${ctx}` : ''}` +
-      u.map(s => ` \u2502 ${s}`).join('');
-    const shortPath = pathParts[pathParts.length - 1] || displayPath;
-
-    let usage = usageGauges(false);
-    let line1 = build(displayPath, usage);
-    let spilled = [];
-    if (visLen(line1) > width) {
-      usage = usageGauges(true);
-      line1 = build(displayPath, usage);
-    }
-    if (visLen(line1) > width) {
-      line1 = build(shortPath, usage);
-    }
-    if (visLen(line1) > width && usage.length) {
-      spilled = usage;
-      usage = [];
-      line1 = build(shortPath, usage);
-    }
-    if (visLen(line1) > width) {
-      line1 = build(shortPath, usage, true);
-    }
+    const seg = {
+      acctPart, modelPart, branchPart, ctx,
+      displayPath,
+      shortPath: pathParts[pathParts.length - 1] || displayPath,
+      usage: usageGauges(false),
+      usageCompact: usageGauges(true),
+    };
+    const fit = fitLine1(width, seg);
+    let line1 = fit.line1;
+    const spilled = fit.spilled;
 
     // minimal: one line only \u2014 keep usage on it, nothing else can carry it
     if (cfg.style === 'minimal' || !cfg.line2) {
-      const only = spilled.length ? spilled : usage;
-      let solo = spilled.length ? build(shortPath, only) : line1;
-      if (visLen(solo) > width) solo = build(shortPath, only, true);
-      process.stdout.write(clampAnsi(solo, width));
+      process.stdout.write(fitSolo(width, seg, fit));
       return;
     }
 
@@ -751,17 +806,10 @@ const renderTick = () => {
       }
     }
 
-    // usage rides at the head of line 2 when line 1 couldn't hold it; the
-    // activity stats are shed from the cheapest end to make room
-    const usageStr = spilled.join(sep);
-    let keep = line2 ? line2.split(sep) : [];
-    const room = width - (usageStr ? visLen(usageStr) + visLen(sep) : 0);
-    while (keep.length && visLen(keep.join(sep)) > room) keep.shift();
-    line2 = [usageStr, keep.join(sep)].filter(Boolean).join(sep);
+    line2 = packLine2(width, spilled, line2 ? line2.split(sep) : [], sep);
 
-    line1 = clampAnsi(line1, width);
     if (line2) {
-      process.stdout.write(`${line1}\n${clampAnsi(line2, width)}`);
+      process.stdout.write(`${line1}\n${line2}`);
     } else {
       process.stdout.write(line1);
     }
@@ -782,4 +830,7 @@ if (require.main === module) {
   process.stdin.on('end', renderTick);
 }
 
-module.exports = { visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort };
+module.exports = {
+  visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
+  buildLine1, fitLine1, fitSolo, packLine2,
+};
