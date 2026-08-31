@@ -4,23 +4,20 @@ Find past work across workspaces and Claude session transcripts. **Different cor
 
 ## Workspace sessions (current project)
 
-```bash
-/ws-history                 # last 10 sessions
-/ws-history 20              # last 20
-/ws-history abc12345        # details by 8-char id
-/ws-history --search foo    # keyword over prompts + files + commands + discoveries
-```
+`/ws-history` command removed 2026-08-30 (unused). Same data, direct reads:
 
-Reads `.giantmem/history/sessions.md` + `.giantmem/history/sessions/*.md`.
+```bash
+grep -n foo .giantmem/history/sessions.md       # keyword over session index
+ls .giantmem/history/sessions/                  # per-session details
+giantmem session resume <id>                    # resume by id
+```
 
 ## Global sessions (all projects, JSONL transcripts)
 
-```bash
-/session-search --list                          # all recent
-/session-search --list --project my-project
-/session-search --list --limit 30
+`/session-search` command removed 2026-08-30 — the `css` script (`scripts/session-search`) is the tool:
 
-css -q cookie                                   # last 30d, alias for /session-search
+```bash
+css -q cookie                                   # last 30d
 css -q cookie --days 7
 css -q cookie --project agent-chat
 css -q "preprod session" --all                  # all time
@@ -57,9 +54,9 @@ csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 |---|---|
 | Where I discussed X | `css -q "X"` |
 | Drill into a match | `csr -f "$(css -q X --paths \| head -1)" -q "Y"` |
-| Files I created for feature Y | `/ws-history --search Y` |
+| Files I created for feature Y | `grep -n Y .giantmem/history/sessions.md` |
 | Find Opus prose | `grep -r "topic" ~/dev/project/.giantmem/` |
-| Recent project work | `/ws-history` |
+| Recent project work | `tail .giantmem/history/sessions.md` |
 | Resume session | `cd <dir> && claude --resume <uuid>` |
 
 ## Data locations
@@ -76,7 +73,7 @@ csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 
 - Session files = prompts + files touched + commands + discoveries.
 - JSONL = full conversation including Claude thinking.
-- `/session-search` for Claude's explanations. `/ws-history --search` for what files were touched.
+- `css` for Claude's explanations. `.giantmem/history/` for what files were touched.
 - Session IDs are 8-char hex; use full UUID for `claude --resume`.
 
 ## See also

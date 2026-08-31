@@ -99,24 +99,19 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 
 | Command | Purpose |
 |---------|---------|
-| `/session-search` | Search/list Claude JSONL sessions across projects (use `--list` for listing) |
-| `/ws-history` | Show recent workspace sessions or `--search <q>` to grep |
-| `/server-logs <env> [N]` | Grab N lines of preprod/prestage server logs |
+| `scripts/session-search` (`css` alias) | Search/list Claude JSONL sessions across projects |
 
 ### Analysis (read-only)
 
 | Command | Purpose |
 |---------|---------|
 | `/swarm <task>` | Parallel multi-model analysis with Haiku workers |
-| `/arch-discover` | Map architecture before refactoring |
-| `/arch-brainstorm` | Two-phase architecture decisions |
 
 ### Execution (read-write)
 
 | Command | Purpose |
 |---------|---------|
 | `/swarm-exec <plan>` | Parallel execution with validation (never commits) |
-| `/scope` | Phased scope documents for migrations |
 
 ### Features
 
@@ -133,7 +128,6 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 | Command | Purpose |
 |---------|---------|
 | `/ws-init` | Initialize `.giantmem/` workspace |
-| `/ws-archive` | Archive workspace to `~/giantmem_archive/` |
 
 ## Archive Search
 

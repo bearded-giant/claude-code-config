@@ -74,13 +74,12 @@ When upstream drift breaks a patch:
    ```
 5. Rerun the script. Should report `+ applied`.
 
-## Wrapper command
+## Update flow
 
-`/kai-update` in `commands/kai-update.md` chains kai's own `update-kai` skill with this script. Use it instead of bare `git pull` when you want a single command.
+Run kai's own `update-kai` skill (or `git pull` in `~/dev/ai/kai`), then this script to reapply local patches. `/kai-update` wrapper command removed 2026-08-30 (unused).
 
 ## Files
 
 - Script: `scripts/apply-kai-patches.sh`
 - Patches: `kai-patches/*.patch` (see `kai-patches/README.md` for patch authoring workflow)
-- Command: `commands/kai-update.md`
 - Hooks: `~/dev/ai/kai/.git/hooks/post-merge` (+ symlinks)
