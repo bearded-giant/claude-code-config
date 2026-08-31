@@ -12,7 +12,7 @@ Pulls Claude.ai usage data (5h/7d rate limits) from the browser and displays it 
 ## Statusline output
 
 ```
-Opus │ ~/dev/project │ main │ ███░░░░░░░ 57% │ max 5h ░░░░░ 0% │ recharge 5h ██░░░ 30% ~1h46m 7d ░░░░░ 5% ~6d4h
+Opus │ ~/dev/project │ main │ ◑ 57% │ max 5h ○ 0% │ recharge 5h ◔ 30% ~1h46m 7d ◔ 5% ~6d4h
 ```
 
 Org labels are auto-derived: `claude_max` capability becomes "max", team orgs use the org name.
@@ -33,7 +33,7 @@ python3 hooks/usage-fetch.py --show-all          # reset filter
 | File | Purpose |
 |------|---------|
 | `hooks/usage-fetch.py` | Cookie extraction, API fetch, cache write, toggle CLI |
-| `hooks/statusline.js` | Reads cache, renders bars, spawns refresh when stale |
+| `hooks/statusline.js` | Reads cache, renders pie gauges, spawns refresh when stale |
 | `~/.cache/claude-usage/cache.json` | Cached usage data (60s TTL) + cookies (10min TTL) |
 | `~/.cache/claude-usage/config.json` | Visibility filter (which orgs to show) |
 | `~/.cache/claude-usage/.lock` | Prevents concurrent fetches |

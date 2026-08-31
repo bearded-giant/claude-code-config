@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// statusline with configurable style (compact/bar/minimal)
+// statusline with configurable style (compact/minimal)
 // config: ~/.claude/hooks/statusline-config.json
 
 const fs = require('fs');
@@ -27,7 +27,7 @@ const MAX_TOOLS = 50;
 
 function loadConfig() {
   const defaults = {
-    style: 'compact',  // compact (pie) | bar | minimal
+    style: 'compact',  // compact (pie) | minimal
     line2: true,
     tools: 'last',     // last (1 active tool) | feed (last 3) | false
     agents: true,
@@ -48,6 +48,27 @@ function loadConfig() {
 
 function visLen(s) {
   return s.replace(/\x1b\[[0-9;]*m/g, '').length;
+}
+
+// hard-truncate to max visible chars, ANSI-aware; last resort after the fit
+// ladder so a miscount or unsheddable segment can never wrap the pane
+function clampAnsi(s, max) {
+  if (visLen(s) <= max) return s;
+  let out = '';
+  let vis = 0;
+  let i = 0;
+  while (i < s.length && vis < max) {
+    const m = /^\x1b\[[0-9;]*m/.exec(s.slice(i));
+    if (m) {
+      out += m[0];
+      i += m[0].length;
+      continue;
+    }
+    out += s[i];
+    vis++;
+    i++;
+  }
+  return out + RST;
 }
 
 function termWidth() {
@@ -104,7 +125,7 @@ function fmtCountdown(resets_at, now) {
   const resetTime = typeof resets_at === 'string'
     ? new Date(resets_at).getTime() / 1000 : resets_at;
   const secs = Math.max(0, resetTime - now);
-  if (secs <= 0) return '';
+  if (!isFinite(secs) || secs <= 0) return '';
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   if (h >= 24) return ` ~${Math.floor(h / 24)}d${h % 24}h`;
@@ -146,6 +167,29 @@ function effortLabel(data) {
   else if (e === 'medium') color = YELLOW;
   else if (e === 'low' || e === 'minimal') color = GREEN;
   return `${color}${e}${RST}`;
+}
+
+// --- usage fetch spawn (once per tick, 15s backoff across ticks) ---
+
+let usageFetchSpawned = false;
+
+function spawnUsageFetch() {
+  if (usageFetchSpawned) return;
+  usageFetchSpawned = true;
+  try {
+    const marker = path.join(STATE_DIR, 'usage-fetch-spawned');
+    try {
+      if (Date.now() - fs.statSync(marker).mtimeMs < 15000) return;
+    } catch (e) {}
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    fs.writeFileSync(marker, '');
+    const { spawn } = require('child_process');
+    const child = spawn('python3', [path.join(__dirname, 'usage-fetch.py')], {
+      detached: true, stdio: 'ignore',
+    });
+    child.on('error', () => {});
+    child.unref();
+  } catch (e) {}
 }
 
 // --- account badge ---
@@ -273,24 +317,24 @@ function usageGauges(compact) {
   const countdown = compact ? () => '' : fmtCountdown;
   try {
     const cacheFile = path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json');
-    if (!fs.existsSync(cacheFile)) return [];
+    if (!fs.existsSync(cacheFile)) {
+      spawnUsageFetch();
+      return [];
+    }
 
     let cache;
     try {
       cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
     } catch (e) {
-      // corrupt cache — drop it so next tick refetches clean
-      try { fs.unlinkSync(cacheFile); } catch (e2) {}
+      // don't unlink: usage-fetch.py replaces the file atomically, and a
+      // parse failure here can be a read racing that rename
+      spawnUsageFetch();
       return [];
     }
     const now = Date.now() / 1000;
 
     if (!cache.expires_at || cache.expires_at < now) {
-      const { spawn } = require('child_process');
-      const child = spawn('python3', [path.join(__dirname, 'usage-fetch.py')], {
-        detached: true, stdio: 'ignore',
-      });
-      child.unref();
+      spawnUsageFetch();
     }
 
     let visibleFilter = null;
@@ -353,7 +397,10 @@ function loadState(sessionId) {
 function saveState(sessionId, state) {
   try {
     fs.mkdirSync(STATE_DIR, { recursive: true });
-    fs.writeFileSync(path.join(STATE_DIR, `${sessionId}.json`), JSON.stringify(state));
+    const file = path.join(STATE_DIR, `${sessionId}.json`);
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(state));
+    fs.renameSync(tmp, file);
   } catch (e) {}
 }
 
@@ -387,6 +434,10 @@ function parseTranscript(transcriptPath, sessionId) {
 
   let size;
   try { size = fs.statSync(transcriptPath).size; } catch (e) { return state; }
+  if (size < state.offset) {
+    // transcript rewritten or truncated for this session id — reparse clean
+    Object.assign(state, { offset: 0, tools: [], agents: [], thinkingCount: 0, messageCount: 0, skills: [] });
+  }
   if (size <= state.offset) return state;
 
   let buf;
@@ -397,10 +448,17 @@ function parseTranscript(transcriptPath, sessionId) {
     fs.closeSync(fd);
   } catch (e) { return state; }
 
+  // only consume newline-terminated lines; a partially-flushed trailing line
+  // stays unread so the next tick re-reads it complete
+  const text = buf.toString('utf8');
+  const lastNl = text.lastIndexOf('\n');
+  if (lastNl === -1) return state;
+  const complete = text.slice(0, lastNl);
+
   const toolIds = new Set(state.tools.map(t => t.id));
   const agentIds = new Set(state.agents.map(a => a.id));
 
-  for (const line of buf.toString('utf8').split('\n')) {
+  for (const line of complete.split('\n')) {
     if (!line.trim()) continue;
     let entry;
     try { entry = JSON.parse(line); } catch (e) { continue; }
@@ -464,8 +522,14 @@ function parseTranscript(transcriptPath, sessionId) {
   if (state.tools.length > MAX_TOOLS) {
     state.tools = state.tools.slice(-MAX_TOOLS);
   }
+  if (state.agents.length > MAX_TOOLS) {
+    state.agents = state.agents.slice(-MAX_TOOLS);
+  }
+  if (state.skills.length > MAX_TOOLS) {
+    state.skills = state.skills.slice(-MAX_TOOLS);
+  }
 
-  state.offset = size;
+  state.offset += Buffer.byteLength(text.slice(0, lastNl + 1), 'utf8');
   saveState(sessionId, state);
   return state;
 }
@@ -514,45 +578,47 @@ function fmtAgents(agents) {
 // --- giantmem status (cached) ---
 
 function giantmemStatus(dir) {
-  const cachePath = path.join(STATE_DIR, 'giantmem-status.json');
+  // per-dir cache: concurrent sessions in different repos must not clobber
+  // each other's status or trigger cross-repo refresh loops
+  const dirKey = require('crypto').createHash('md5').update(dir).digest('hex').slice(0, 8);
+  const cachePath = path.join(STATE_DIR, `giantmem-status-${dirKey}.json`);
   const ttlMs = 30 * 1000;
+  let cached = null;
   try {
-    const st = fs.statSync(cachePath);
-    if (Date.now() - st.mtimeMs < ttlMs) {
-      const cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-      if (cached.__dir === dir) return cached;
-    }
+    cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+    if (Date.now() - fs.statSync(cachePath).mtimeMs < ttlMs) return cached;
   } catch (e) { /* miss */ }
   try {
     fs.mkdirSync(STATE_DIR, { recursive: true });
   } catch (e) {}
   // fire detached: child writes the cache file itself, parent exits immediately.
   // wrap in nohup + sh so the child survives parent exit on macos.
+  // in-flight marker keeps ticks from stacking refreshes while one runs.
   try {
-    const bin = path.join(os.homedir(), '.local/bin/giantmem');
-    const escDir = dir.replace(/'/g, "'\\''");
-    const escCache = cachePath.replace(/'/g, "'\\''");
-    const cmd = `(${bin} status --root '${escDir}' --stale-days 30 --write-cache '${escCache}' </dev/null >/dev/null 2>&1 & disown) 2>/dev/null`;
-    const child = require('child_process').spawn('/bin/bash', ['-c', cmd], {
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.unref();
+    const marker = `${cachePath}.refreshing`;
+    let inFlight = false;
+    try { inFlight = Date.now() - fs.statSync(marker).mtimeMs < 15000; } catch (e) {}
+    if (!inFlight) {
+      fs.writeFileSync(marker, '');
+      const bin = path.join(os.homedir(), '.local/bin/giantmem');
+      const escDir = dir.replace(/'/g, "'\\''");
+      const escCache = cachePath.replace(/'/g, "'\\''");
+      const cmd = `(${bin} status --root '${escDir}' --stale-days 30 --write-cache '${escCache}' </dev/null >/dev/null 2>&1 & disown) 2>/dev/null`;
+      const child = require('child_process').spawn('/bin/bash', ['-c', cmd], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    }
   } catch (e) {}
-  // return last cached (may be from a different dir; statusline tolerates that)
-  try {
-    return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-  } catch (e) {
-    return null;
-  }
+  // stale same-dir data beats a blank segment while the refresh lands
+  return cached;
 }
 
 // --- main ---
 
 let input = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => input += chunk);
-process.stdin.on('end', () => {
+const renderTick = () => {
   try {
     const data = JSON.parse(input);
     const cfg = loadConfig();
@@ -592,7 +658,7 @@ process.stdin.on('end', () => {
     // usage is the segment worth protecting, so it degrades last: full -> no
     // countdowns -> basename-only path -> spilled onto line 2
     const width = termWidth() - 1;
-    const build = (p, u, bare) => `${bare ? '' : acctPart + modelPart}${DIM}${p}${RST}${branchPart} \u2502${ctx}` +
+    const build = (p, u, bare) => `${bare ? '' : acctPart + modelPart}${DIM}${p}${RST}${branchPart}${ctx ? ` \u2502${ctx}` : ''}` +
       u.map(s => ` \u2502 ${s}`).join('');
     const shortPath = pathParts[pathParts.length - 1] || displayPath;
 
@@ -620,7 +686,7 @@ process.stdin.on('end', () => {
       const only = spilled.length ? spilled : usage;
       let solo = spilled.length ? build(shortPath, only) : line1;
       if (visLen(solo) > width) solo = build(shortPath, only, true);
-      process.stdout.write(solo);
+      process.stdout.write(clampAnsi(solo, width));
       return;
     }
 
@@ -674,12 +740,15 @@ process.stdin.on('end', () => {
     const sep = ` ${DIM}\u2502${RST} `;
     let line2 = parts.join(sep);
 
-    // persist line 2 so it survives ticks with missing data
-    const line2Cache = path.join(STATE_DIR, 'line2-cache.txt');
-    if (line2) {
-      try { fs.mkdirSync(STATE_DIR, { recursive: true }); fs.writeFileSync(line2Cache, line2); } catch (e) {}
-    } else {
-      try { line2 = fs.readFileSync(line2Cache, 'utf8'); } catch (e) {}
+    // persist line 2 so it survives ticks with missing data; keyed by session
+    // so concurrent sessions never render each other's stats
+    if (data.session_id) {
+      const line2Cache = path.join(STATE_DIR, `line2-cache-${data.session_id}.txt`);
+      if (line2) {
+        try { fs.mkdirSync(STATE_DIR, { recursive: true }); fs.writeFileSync(line2Cache, line2); } catch (e) {}
+      } else {
+        try { line2 = fs.readFileSync(line2Cache, 'utf8'); } catch (e) {}
+      }
     }
 
     // usage rides at the head of line 2 when line 1 couldn't hold it; the
@@ -690,12 +759,27 @@ process.stdin.on('end', () => {
     while (keep.length && visLen(keep.join(sep)) > room) keep.shift();
     line2 = [usageStr, keep.join(sep)].filter(Boolean).join(sep);
 
+    line1 = clampAnsi(line1, width);
     if (line2) {
-      process.stdout.write(`${line1}\n${line2}`);
+      process.stdout.write(`${line1}\n${clampAnsi(line2, width)}`);
     } else {
       process.stdout.write(line1);
     }
   } catch (e) {
-    // silent fail
+    // silent fail; STATUSLINE_DEBUG=1 leaves a breadcrumb
+    if (process.env.STATUSLINE_DEBUG) {
+      try {
+        fs.mkdirSync(STATE_DIR, { recursive: true });
+        fs.writeFileSync(path.join(STATE_DIR, 'error.txt'), String((e && e.stack) || e));
+      } catch (e2) {}
+    }
   }
-});
+};
+
+if (require.main === module) {
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', chunk => input += chunk);
+  process.stdin.on('end', renderTick);
+}
+
+module.exports = { visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort };
