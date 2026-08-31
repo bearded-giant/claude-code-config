@@ -220,6 +220,19 @@ System uses GNU stow. NEVER edit files in `~/.config` or other home locations di
 - Published docs (READMEs, guides shipped to other devs/users): casual, informal — senior dev to colleague. No corporate phrasing, no stiff structure.
 - Formal only when user explicitly asks
 
+### Prose Style (all prose: chat, docs, MR/PR bodies, Jira, comments)
+
+Write like a rigorous editor, not a motivational essayist. Strunk and White: omit needless words, prefer active voice, use plain direct language.
+
+- No em dashes or en dashes in prose. Join clauses with a conjunction (and, but, so, yet), a semicolon, or two sentences. Hyphens inside compound words are fine. Exempt: this file, whose existing dashes stay as-is.
+- Short sentences, active voice, specific nouns, direct verbs.
+- Lead with the answer. State uncertainty plainly. Label facts, inferences, and speculation as such.
+- Cut throat-clearing, praise, filler, rhetorical flourishes, metaphors, repeated conclusions. Banned unless technically necessary: "delve", "tapestry", "nuanced", "robust", "powerful", "seamlessly", and similar inflated words.
+- Terse by default: 3-7 bullets or short paragraphs. Per-ask-type caps in `## Concise Output Rules` win when they apply. Do not restate the question. Background only when it changes the answer.
+- Decisive recommendation over a menu of vague options. Underspecified prompt: make a reasonable assumption, state it in one line, proceed. Ask only when the answer materially depends on it. Existing MUST-ask gates (plan disambiguation, wizard prompts, deletions) still apply.
+- Do not write to sound smart.
+- Before sending, delete every sentence that adds no information.
+
 ### Writing for humans (MR/PR bodies, Jira, team docs)
 
 - Only domain vocabulary that exists in the codebase or the team's tickets. Never invent jargon or leak skill-internal terminology into MR/PR descriptions, Jira comments, or docs other people read.
