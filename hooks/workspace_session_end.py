@@ -41,16 +41,30 @@ from datetime import datetime
 from typing import List, Tuple, Dict, Set, Optional
 from collections import defaultdict
 
-# discovery categories to look for (non-capturing groups for findall)
+# a keyword anywhere in a sentence matched ordinary prose, so these anchor to the
+# start of a line or list item and the line must read as a finished sentence
 DISCOVERY_PATTERNS = [
-    (r'\b(?:discovered|found|learned|realized|noticed)\b.{10,100}', 'finding'),
-    (r'\b(?:pattern|architecture|structure)\b.{10,100}', 'architecture'),
-    (r'\b(?:gotcha|caveat|watch out|careful|note that|important)\b.{10,100}', 'gotcha'),
-    (r'\b(?:convention|standard|style|naming)\b.{10,100}', 'convention'),
-    (r'\b(?:dependency|requires|depends on|imports?)\b.{10,100}', 'dependency'),
-    (r'\b(?:config|configuration|setting|environment)\b.{10,100}', 'config'),
-    (r'\b(?:entry\s*point|main|bootstrap|init)\b.{10,100}', 'entry'),
+    (r'(?:discovered|found|learned|realized|noticed)\b', 'finding'),
+    (r'(?:pattern|architecture|structure)\b', 'architecture'),
+    (r'(?:gotcha|caveat|watch out|careful|note that|important)\b', 'gotcha'),
+    (r'(?:convention|standard|style|naming)\b', 'convention'),
+    (r'(?:dependency|requires|depends on|imports?)\b', 'dependency'),
+    (r'(?:config|configuration|setting|environment)\b', 'config'),
+    (r'(?:entry\s*point|main|bootstrap|init)\b', 'entry'),
 ]
+
+LIST_PREFIX_RE = re.compile(r'^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s+)*')
+
+
+def is_sentence(text: str) -> bool:
+    """Reject mid-sentence captures: chat prose sliced at a keyword boundary."""
+    if len(text) < 20 or text[0].islower():
+        return False
+    if '|' in text or '```' in text:
+        return False
+    if text.count('"') % 2 or text.count('`') % 2 or text.count('(') != text.count(')'):
+        return False
+    return text.rstrip().endswith(('.', '!', '?', ':'))
 
 # topic extraction keywords
 TOPIC_KEYWORDS = {
@@ -309,25 +323,18 @@ def extract_discoveries(content: str) -> List[Tuple[str, str]]:
     discoveries = []
     seen = set()
 
-    for pattern, category in DISCOVERY_PATTERNS:
-        matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
-        for match in matches:
-            if isinstance(match, tuple):
-                match = ' '.join(match)
+    for raw in content.splitlines():
+        line = LIST_PREFIX_RE.sub('', raw.strip(), count=1).strip()
+        if not is_sentence(line) or line in seen:
+            continue
 
-            finding = match.strip()
-            if len(finding) < 20 or finding in seen:
+        for pattern, category in DISCOVERY_PATTERNS:
+            if not re.match(pattern, line, re.IGNORECASE):
                 continue
-
-            # markdown table rows and fences are formatting, not findings
-            if '|' in finding or '```' in finding:
-                continue
-
-            if len(finding) > 200:
-                finding = finding[:200] + '...'
-
-            seen.add(finding)
+            finding = line if len(line) <= 200 else line[:200] + '...'
+            seen.add(line)
             discoveries.append((category, finding))
+            break
 
     return discoveries[:10]
 
@@ -341,13 +348,15 @@ def extract_plans(content: str) -> List[str]:
     matches = re.findall(list_pattern, content, re.MULTILINE | re.DOTALL)
 
     for match in matches:
-        step = match.strip()
-        if len(step) > 15 and step not in seen:
+        step = ' '.join(match.split())
+        if len(step) > 15 and step not in seen and is_sentence(step):
             seen.add(step)
             plans.append(step)
 
-    todo_pattern = r'\b(?:TODO|NEXT|STEP)\s*[:\-]?\s*(.+?)(?=\n|$)'
-    matches = re.findall(todo_pattern, content, re.IGNORECASE)
+    # case-sensitive: lowercase "next" and "step" are ordinary words, and with
+    # IGNORECASE they captured the rest of any sentence containing them
+    todo_pattern = r'^\s*(?:TODO|NEXT|STEP)\s*[:\-]\s*(.+?)\s*$'
+    matches = re.findall(todo_pattern, content, re.MULTILINE)
 
     for match in matches:
         step = match.strip()
