@@ -122,16 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/debug_stop_check.py",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/notify_attention.py",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check notify_attention",
             "timeout": 10
           }
         ]
@@ -155,17 +146,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/live_index.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/caveman_artifact_nudge.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/code_comment_nudge.py",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge",
             "timeout": 10
           }
         ]

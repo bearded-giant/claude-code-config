@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Run several hook modules in one process, so an event pays one process spawn
-instead of N. Spawn cost is ~300ms here; the hooks themselves are ~50ms.
+instead of N. Spawn cost dominates hook time here; the scripts are ~50ms.
 
-Only for events whose hooks emit plain text (stdout is concatenated). A hook
-that emits hookSpecificOutput / decision JSON must stay its own entry: two
-control objects cannot be merged into one stdout.
+Output modes:
+  no --event   plain-text hooks, stdout concatenated
+  --event NAME hooks that emit hookSpecificOutput JSON; every additionalContext
+               is merged into one object, since two JSON objects on one stdout
+               is not parseable
+
+A control object (decision / permissionDecision / continue) wins outright and is
+printed alone: a block reason is the whole payload or it is nothing.
 """
 
 import importlib.util
@@ -37,22 +42,61 @@ def run(name, raw):
     return buf.getvalue().strip()
 
 
+def classify(chunk):
+    """text | context (mergeable additionalContext) | control (wins alone)."""
+    try:
+        obj = json.loads(chunk)
+    except (json.JSONDecodeError, ValueError):
+        return "text", chunk
+    if not isinstance(obj, dict):
+        return "text", chunk
+    block = obj.get("hookSpecificOutput")
+    if isinstance(block, dict) and set(obj) == {"hookSpecificOutput"}:
+        context = block.get("additionalContext")
+        steering = set(block) - {"hookEventName", "additionalContext"}
+        if isinstance(context, str) and context.strip() and not steering:
+            return "context", context.strip()
+    return "control", obj
+
+
 def main():
+    argv = sys.argv[1:]
+    event = None
+    if argv[:1] == ["--event"]:
+        event, argv = argv[1], argv[2:]
+
     raw = sys.stdin.read()
-    out = []
-    for name in sys.argv[1:]:
+    texts, control = [], None
+    for name in argv:
         chunk = run(name, raw)
         if not chunk:
             continue
-        try:
-            json.loads(chunk)
-        except (json.JSONDecodeError, ValueError):
-            out.append(chunk)
+        kind, value = classify(chunk)
+        if kind == "control":
+            if control is None:
+                control = value
             continue
-        print(chunk)
+        texts.append(value)
+
+    if control is not None:
+        print(json.dumps(control))
         return
-    if out:
-        print("\n\n".join(out))
+    if not texts:
+        return
+    merged = "\n\n".join(texts)
+    if event:
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": merged,
+                    }
+                }
+            )
+        )
+        return
+    print(merged)
 
 
 if __name__ == "__main__":
