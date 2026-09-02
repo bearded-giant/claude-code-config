@@ -85,7 +85,7 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime memory_index_sweep",
-            "timeout": 10
+            "timeout": 20
           }
         ]
       }

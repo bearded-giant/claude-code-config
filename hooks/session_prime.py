@@ -28,7 +28,7 @@ def main() -> None:
             [binary, "prime", "--json", cwd],
             capture_output=True,
             text=True,
-            timeout=3,
+            timeout=8,
         )
     except subprocess.TimeoutExpired:
         return

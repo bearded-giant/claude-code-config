@@ -319,6 +319,10 @@ def extract_discoveries(content: str) -> List[Tuple[str, str]]:
             if len(finding) < 20 or finding in seen:
                 continue
 
+            # markdown table rows and fences are formatting, not findings
+            if '|' in finding or '```' in finding:
+                continue
+
             if len(finding) > 200:
                 finding = finding[:200] + '...'
 
@@ -513,10 +517,27 @@ def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) 
 
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
 
+    # a re-run over the same transcript must not re-append what is already there
+    recorded = set()
+    if discoveries_file.exists():
+        try:
+            for line in discoveries_file.read_text(errors='replace').splitlines():
+                hit = re.match(r'- \d{4}-\d\d-\d\d \d\d:\d\d: \[[^\]]+\] (.*)', line)
+                if hit:
+                    recorded.add(hit.group(1).strip())
+        except OSError:
+            pass
+
     lines = []
     for category, finding in discoveries:
         finding = finding.replace('\n', ' ').strip()
+        if finding in recorded:
+            continue
+        recorded.add(finding)
         lines.append(f"- {timestamp}: [{category}] {finding}")
+
+    if not lines:
+        return 0
 
     try:
         with open(discoveries_file, 'a') as f:
@@ -547,6 +568,9 @@ def save_plans(workspace_dir: Path, plans: List[str]) -> bool:
 
     try:
         if plans_file.exists():
+            steps = content.split('## Steps', 1)[-1].strip()
+            if steps and steps in plans_file.read_text(errors='replace'):
+                return True
             mtime = plans_file.stat().st_mtime
             age_hours = (datetime.now().timestamp() - mtime) / 3600
             if age_hours < 1:
