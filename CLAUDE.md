@@ -74,21 +74,10 @@ This applies to MR descriptions, proposals, kaizens, runbooks, ADRs, frontmatter
 
 Corollary — do not author the staleness you would later have to ignore. When editing or generating code, NEVER write comments / docstrings / module banners that describe *current* functional behavior, response shapes, return values, request/response flow, "today returns X" / "ships dark" / "once Y lands" framing, fallback chains, or any other claim that the code itself already states. The reader will read the code; your comment will rot the moment the code changes. See `## Code Comment Rules` for the only permitted comment shape (the *why* of a non-obvious choice, one line). If you find yourself describing *what* a function does in a docstring, delete the docstring.
 
-<context_management>
-Context auto-compacts as it approaches limits. Continue indefinitely. Do not stop early for token concerns. Be persistent, complete tasks fully.
-</context_management>
-
 <session_recovery>
-On session start or context refresh, IF files exist, read in order:
+Session-start hooks already inject WORKSPACE.md, the features index, the active plan, and recent discoveries — do not re-read those.
 
-1. `.giantmem/WORKSPACE.md`
-2. `.giantmem/features/features.json` — find active feature (status `in_progress`)
-3. Active feature's `plans/current.md` if exists, else `.giantmem/plans/current.md`
-4. Active feature's `{name}-notes.md` if it has body content past the seed (frontmatter + `<!-- living cheat sheet ... -->` comment alone counts as empty — skip). Surface relevant captured commands/identifiers in chat only when resumed work touches them; do not dump the whole file or surface the seed comment.
-5. `.giantmem/artifacts.json` (typed artifact index, built by `giantmem artifact reindex`) — gives proposal/delta-spec/tasks/design state per feature. Session-start hook already injects an `ACTIVE ARTIFACTS` block summarizing this; the file itself is the authority when the hook output is stale or absent.
-6. Active feature's `specs/{domain}/spec.md` (delta-specs) and `.giantmem/specs/{domain}/spec.md` (source-specs) for the domains the feature touches.
-
-Skip steps where the file is missing. If step 1's file is missing, do not check steps 2-6.
+Read on resume, IF they exist and the hook output is stale or absent: `.giantmem/artifacts.json` (typed index, `giantmem artifact reindex`), the active feature's `{name}-notes.md` when it has body content past the seed, and the delta-/source-specs (`features/{name}/specs/{domain}/spec.md`, `.giantmem/specs/{domain}/spec.md`) for domains the feature touches. Surface captured commands/identifiers only when resumed work touches them.
 </session_recovery>
 
 ## Feature & Workspace Output
@@ -104,90 +93,11 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
 - Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated discoveries / research land as `candidate` and get reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
 
-### Todos → doit (repo / feature list)
-
-When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE: offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
-
-- List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
-- Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
-- Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
-- Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
-- Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
-- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then).
-
-#### The list is first-class session state
-
-Injected pending items are live working state, not background trivia. Every session:
-
-- Factor them into whatever gets planned or resumed. If the user's ask matches a pending item, say which one in one line and work it as that item — don't silently start a parallel track.
-- Resuming an `in_progress` feature: the pending items ARE the open work. Feature `facts.md` / notes / plans hold the detail; the list holds what's left to do. Read both, never treat the list as the stale one.
-- Work in this session that lands a listed item MUST be reflected in the list, same session: `start_todo` on pickup, `complete_todo` + DONE record (local `date` + ≤6 bullets, original note preserved) when it lands. Landing an item without closing it is a bug.
-- New user-actionable follow-ups → one batched `AskUserQuestion` per the rule above. Still never auto-write.
-- Do NOT open the session by quizzing the user about the list, restating it back, or asking what to work on. Silent context unless the user's ask touches an item.
-
-Full convention + procedure → `feature-management` skill.
+Doit list convention, three-spec model, feature-dir routing → `feature-management` skill. Scope registry, lifecycle tiers, preload packs, artifact search, caveman-on-first-write → `workspace-rules` skill.
 
 ### Burn-down queue (`claude:` marker)
 
-Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, priority-first (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
-
-- Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
-- Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.
-- Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for human.
-- When the model proposes a feature-todo batch, items it can execute get the `claude:` prefix; user-only items don't.
-
-Full procedure → `burn` skill.
-
-## Scope + Lifecycle (cross-repo memory unit)
-
-Two new pieces let memory cross worktrees + age gracefully:
-
-| Concept | Lives at | Holds |
-|---|---|---|
-| **scope registry** | `~/.giantmem-global/scopes.yaml` | Named scopes (`personal`, `recharge-customcheckout`, ...) → list of repo names. Artifact membership = repo match OR explicit `scope:` frontmatter. Edit via `giantmem scope init|list|show|add-repo|sync`. |
-| **lifecycle** | per-artifact frontmatter `lifecycle:` | `durable` (default, never auto-prunes), `candidate` (review pending), `deprecated` (kept but excluded from default packs). Walk candidates via `/review-memory`. |
-| **retention tier** | derived from `type:` | Tier A (proposal/design/source-spec) never expires; Tier B (pattern/research/notes) 180d; Tier C (tasks/plan/review/facts/delta-spec) 90d. Surfaced by `giantmem artifact stale --days 0`. |
-| **preload packs** | `~/.claude/config/preload_packs.yaml` | Ordered layers driving session-start hook output. Layers can inline `static_files`, run `giantmem artifact list` with filters, and resolve `{active_scope}` / `{active_feature}` / `{repo}` / `{branch}` placeholders. |
-
-Filter by scope or lifecycle anywhere artifacts are listed:
-
-```bash
-giantmem artifact list --scope personal -t delta-spec
-giantmem artifact list --lifecycle candidate
-giantmem artifact stale --days 0           # tier policy, no fixed day cutoff
-giantmem access top --limit 10             # most-touched artifacts in last 30d
-giantmem access prune --older-than 180d    # trim access_log table
-```
-
-MCP `find_artifact` accepts `scope` + `lifecycle` args (same semantics). MCP `get_stats` returns counts by type/lifecycle/status/repo plus recent access metrics.
-
-## Three-Spec Model (per-feature → repo-truth)
-
-| Artifact | Lives at | Holds |
-|---|---|---|
-| `proposal` | `features/{name}/proposal.md` | intent + scope + approach (NOT behavior) |
-| `delta-spec` | `features/{name}/specs/{domain}/spec.md` | `## ADDED / MODIFIED / REMOVED Requirements` blocks. Each `### Requirement:` carries one or more `#### Scenario:` (GIVEN / WHEN / THEN, RFC 2119). |
-| `source-spec` | `.giantmem/specs/{domain}/spec.md` | accumulated behavior across all completed features. Written ONLY by `/complete-feature` merging delta-specs in. Never hand-edit mid-feature. |
-
-Legacy `features/{name}/spec.md` is a symlink → `proposal.md` (30-day muscle-memory back-compat from the `migrate_spec_to_proposal.py` rename).
-
-## Finding artifacts (cross-repo)
-
-Before grepping or scanning, use the typed index:
-
-| Need | Command |
-|---|---|
-| Current-repo, filter by type/status/feature/domain | `giantmem artifact list -t delta-spec -s ready` |
-| Cross-repo / cross-worktree | `giantmem artifact list --repo all -t proposal` |
-| Include archived snapshots | append `--include-archived` |
-| Interactive picker (fzf) | `gma` (default `--repo all`) |
-| One artifact full content | `giantmem artifact show <id>` |
-| Forgotten / stale | `giantmem artifact stale [--all-repos]` |
-| From inside Claude (no shell) | MCP tools `find_artifact`, `get_artifact`, `list_features_with_artifacts` |
-
-Rebuild the index after any feature command writes new files: `giantmem artifact reindex` (already wired into `/new-feature` and `/complete-feature`).
-
-Full search cheat sheet (typed + content + interactive + MCP): [`docs/gma-search.md`](docs/gma-search.md).
+Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for human. Full procedure → `burn` skill.
 
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
@@ -244,37 +154,6 @@ Write like a rigorous editor, not a motivational essayist. Strunk and White: omi
 - **Published docs** — READMEs and guides shipped to other devs/users: NO bullet lists. Use numbered lists, prose, or tables.
 - **Internal docs** — CLAUDE.md, agents/, skills/, commands/, `.giantmem/`, chat: bullets allowed per Concise Output Rules below.
 
-### Caveman compression on first write (HUMAN DOCS)
-
-Any human-readable doc I generate MUST be written in caveman style on the FIRST pass. Do NOT write verbose-first then compress. Do NOT wait for a PostToolUse hook to nudge. Add `<!-- caveman:compressed -->` directly after frontmatter so downstream hooks do not re-nudge.
-
-**Applies to (caveman from the start):**
-- Every `.md` under `.giantmem/**` — proposals, facts, notes, research, filebox, plans, reviews, mr-description, kaizens
-- Repo `docs/` runbooks, design docs, ADRs, post-mortems intended for the team (not the wider world)
-- Ad-hoc explainers I write at the user's request when they aren't being shipped externally
-
-**Style:**
-- Drop articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course), hedging
-- Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for")
-- Tables, boxes-and-arrows, diagrams preferred over prose for flow/architecture explanations
-- Code blocks, paths, commands, error text: preserve EXACTLY — never caveman these
-
-**Mermaid sidecar (`.mmd`):**
-- Whenever a `.md` doc contains a mermaid diagram, ALSO write a sibling `.mmd` file with just the mermaid source (no fences, no frontmatter). Same basename, same directory.
-- Example: `multi-tool-synthesis-explainer.md` (with ```` ```mermaid ```` block) ships alongside `multi-tool-synthesis-explainer.mmd` (raw flowchart source).
-- Why: Google Docs / Notion / Confluence don't render mermaid inline. User runs `mmdc -i file.mmd -o file.png` to produce an image for paste. Sidecar removes the manual extraction step.
-- If a doc has multiple diagrams, write `<basename>-1.mmd`, `<basename>-2.mmd`, etc., in source order.
-- Keep `.md` mermaid block AND `.mmd` file in sync — edits to one must update the other in the same write batch.
-
-**Does NOT apply (write normally — caveman would degrade these):**
-- Published `README.md` files and externally-shipped guides — keep casual senior-dev-to-colleague voice per `### Tone` above
-- Delta-specs (`features/{name}/specs/{domain}/spec.md`) and source-specs (`.giantmem/specs/{domain}/spec.md`) — RFC 2119 normative keywords (MUST / MUST NOT / SHOULD / MAY) and GIVEN/WHEN/THEN scenarios MUST stay exact. Caveman the surrounding prose only.
-- Code comments — already governed by `## Code Comment Rules`
-- Commit messages — governed by `caveman-commit` skill
-- LLM-system prompts (e.g. `MULTI_SYNTHESIS_PROMPT`, `ANALYTICS_SYNTHESIS_PROMPT`) — wording is tuned for model behavior, do not paraphrase
-
-Explicit caveman invocation (`/caveman <file>`, "caveman this MR/PR/doc") ALWAYS applies to the named target, overriding any exemption above except code syntax / specs / system-prompt wording.
-
 ### Wizard-Style Prompts
 
 When feature/skill needs multiple inputs (branch, base branch, etc.), MUST present as numbered menu, ONE question at a time. User selects 1/2/3. Never combine into a single free-text question.
@@ -327,14 +206,6 @@ Tests exempt — comments fine there.
 
 LSP tool enabled for Python (pyright), TypeScript, Rust, Lua. All ops take `filePath` + 1-based `line` + `character`, so locate the symbol with Grep/Read first, then call LSP for navigation.
 
-Use LSP for:
-- `goToDefinition` / `goToImplementation` — jump to source
-- `findReferences` — all usages across workspace
-- `workspaceSymbol` — find where a symbol is defined by name
-- `documentSymbol` — list symbols in a file (faster than reading whole file)
-- `hover` — type/signature without opening the file
-- `prepareCallHierarchy` → `incomingCalls` / `outgoingCalls` — call graph (prepare first, then in/out)
-
 Use Grep/Glob for text patterns LSP can't see: comments, strings, config values, log messages, regex matches across files.
 
 Before renaming a symbol or changing a function signature, MUST run `findReferences` to enumerate call sites.
@@ -380,7 +251,7 @@ MUST NOT spawn agents for:
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
-- commit + push without re-confirmation when user invokes `/commit`, `/commit-push-pr`, or says "commit and push" / "yes commit"
+- commit + push without re-confirmation when user says "commit and push" / "yes commit"
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - MR/PR descriptions are produced by `ship-it` only — no standalone description command; formats live at `skills/ship-it/{bullet,concise-kai}-format.md`
@@ -388,26 +259,6 @@ MUST NOT spawn agents for:
 - one-liner curls and shell scripts in chat
 - commit messages: casual short blurb. no multi-line details unless breaking change, security fix, or data migration
 </git_rules>
-
-## Discord Bot
-
-Bot config and access policy: `~/.claude/channels/discord/`. Inbound DMs don't surface yet — use `fetch_messages` on DM channel `1485390190523584542`, reply via `reply`. Full setup in discord plugin docs.
-
-### Acknowledge inbound channel messages immediately
-
-When a Discord channel message arrives (any `<channel source="discord" ...>` event), call the `react` MCP tool with 👀 on that `message_id` **before** doing anything else. This gives the sender instant visual confirmation that you received the request. Then proceed with the work and reply normally via `reply` when results are ready. Skip the react only for trivial responses where the reply lands in <2s anyway.
-
-### Slash commands from Discord channel messages
-
-Discord messages arrive as channel notifications (not as prompts), so `/<command>` text typed in Discord is NOT auto-dispatched by claude's slash command parser. When an inbound Discord channel message starts with `/<name>` followed by optional args, treat it as a request to run that slash command:
-
-1. Look up the command file. Search order:
-   - `~/.claude/commands/<name>.md`
-   - `~/.claude/plugins/**/commands/<name>.md`
-   - `~/.claude/skills/<name>/SKILL.md` (skill auto-fired by command name)
-2. Read the file. Execute its instructions in the current conversation, substituting args from the Discord message into the command's `$ARGUMENTS` / arg placeholders.
-3. Built-in commands (`/exit`, `/clear`, `/resume`, `/init`, `/login`) can't be triggered this way — they're hardcoded in the claude CLI, not file-backed. Reply via the `reply` tool explaining the limitation.
-4. If no command file matches, reply via the `reply` tool — don't silently ignore.
 
 ## Concise Output Rules
 

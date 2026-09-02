@@ -14,7 +14,6 @@
 | `/arch-discover` | Map existing system before refactoring |
 | `/arch-brainstorm` | Two-phase architecture decision support |
 | `/scope` | Create phased scope documents |
-| `/c4-diagrams` | Generate C4 architecture diagrams in Mermaid |
 
 ## Swarm
 
@@ -61,7 +60,6 @@
 | Skill | Purpose |
 |-------|---------|
 | `/categorize-search {csv}` | Categorize `gl search code` results |
-| `/trace-fanout` | Parallel multi-repo root-cause trace — read-only agents per repo/data-source, evidence-ranked hypothesis table |
 
 ## Git & CI
 
@@ -77,17 +75,3 @@
 | `/mcp-builder` | Build MCP servers in TypeScript or Python |
 | `/mdlive` | Preview markdown as live-reloading HTML in browser |
 | `/keybindings-help` | Customize keyboard shortcuts |
-
-## Plugins: commit-commands
-
-| Skill | Purpose |
-|-------|---------|
-| `/commit` | Create a git commit |
-| `/commit-push-pr` | Commit, push, and open a PR |
-| `/clean_gone` | Remove local branches deleted on remote |
-
-## Plugins: feature-dev
-
-| Skill | Purpose |
-|-------|---------|
-| `/feature-dev` | Guided feature development |

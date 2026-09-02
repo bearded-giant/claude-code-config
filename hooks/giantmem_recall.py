@@ -16,13 +16,15 @@ share >= MIN_OVERLAP distinct keywords with the prompt.
 
 Tunables: GIANTMEM_RECALL_LIMIT, GIANTMEM_RECALL_SINCE,
 GIANTMEM_RECALL_MIN_OVERLAP, GIANTMEM_RECALL_INCLUDE_HISTORY,
-GIANTMEM_RECALL_SEMANTIC (0 to disable), GIANTMEM_RECALL_SEMANTIC_MAX.
+GIANTMEM_RECALL_SEMANTIC (0 to disable), GIANTMEM_RECALL_SEMANTIC_MAX,
+GIANTMEM_RECALL_TIMEOUT (per-subprocess wall-clock cap, seconds).
 """
 
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +35,7 @@ MIN_OVERLAP = int(os.getenv("GIANTMEM_RECALL_MIN_OVERLAP", "2"))
 INCLUDE_HISTORY = os.getenv("GIANTMEM_RECALL_INCLUDE_HISTORY") == "1"
 SEMANTIC = os.getenv("GIANTMEM_RECALL_SEMANTIC", "1") != "0"
 SEMANTIC_MAX = int(os.getenv("GIANTMEM_RECALL_SEMANTIC_MAX", str(max(1, LIMIT // 2))))
+TIMEOUT = float(os.getenv("GIANTMEM_RECALL_TIMEOUT", "2"))
 MIN_PROMPT_CHARS = 16
 MAX_TERMS = 10
 
@@ -107,19 +110,30 @@ def keywords_from(prompt):
     return out
 
 
-def run_giantmem(giantmem, argv, timeout):
+def run_giantmem(giantmem, argv, timeout=TIMEOUT):
     try:
-        result = subprocess.run(
+        with subprocess.Popen(
             [giantmem, *argv],
-            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError):
+            start_new_session=True,
+        ) as proc:
+            try:
+                out = proc.communicate(timeout=timeout)[0]
+            except subprocess.TimeoutExpired:
+                # killing the child alone can leave the wait blocked on a
+                # grandchild holding the stdout pipe, so take out the group
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass
+                return None
+    except OSError:
         return None
     try:
-        return json.loads(result.stdout) if result.stdout.strip() else None
+        return json.loads(out) if out.strip() else None
     except json.JSONDecodeError:
         return None
 
@@ -140,10 +154,8 @@ def fts_hits(giantmem, keywords):
             "--since",
             SINCE,
         ],
-        timeout=5,
     )
-    if not isinstance(hits, list):
-        return []
+    hits = hits if isinstance(hits, list) else []
     required = min(MIN_OVERLAP, len(keywords))
     out = []
     for hit in hits:
@@ -188,7 +200,6 @@ def semantic_hits(giantmem, prompt):
             "--limit",
             str(SEMANTIC_MAX * 3),
         ],
-        timeout=6,
     )
     if not isinstance(data, dict):
         return []

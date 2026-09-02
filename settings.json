@@ -34,10 +34,6 @@
       "Bash(npx prettier:*)",
       "Bash(npx tsc:*)",
       "Bash(npx biome:*)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm typecheck:*)",
-      "Bash(pnpm type-check:*)",
-      "Bash(pnpm format:*)",
       "Bash(cargo clippy:*)",
       "Bash(cargo fmt:*)",
       "Bash(cargo check:*)",
@@ -61,35 +57,20 @@
       "Skill(kai:*)",
       "Skill(kai-review:*)",
       "Bash(cd *)",
-      "Bash(git status*)",
-      "Bash(git log*)",
-      "Bash(git diff*)",
-      "Bash(git show*)",
-      "Bash(git blame*)",
-      "Bash(pnpm lint-changes*)",
-      "Bash(pnpm build*)",
-      "Bash(pnpm test:unit*)",
-      "Bash(pnpm generate-no-watch*)",
-      "Bash(pnpm --dir apps/cli run skio generateTranslations*)",
-      "Bash(pnpm --filter @frost/cli build*)",
-      "Bash(pnpm --filter @frost/cli analyze*)",
-      "Bash(pnpm --filter cli build*)",
-      "Bash(pnpm --filter cli analyze*)",
+      "Bash(git *)",
+      "Bash(pnpm *)",
       "Bash(tsc --build*)",
       "Bash(NODE_OPTIONS=--max_old_space_size=8192 npx eslint*)",
       "Bash(ls *)",
       "Bash(npx shopify app function build*)",
       "Bash(find *)",
       "Bash(rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(gh *)"
     ],
-    "ask": [
-      "Bash(git:push)"
-    ],
+    "ask": [],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      "/Users/bryan/"
-    ]
+    "additionalDirectories": ["/Users/bryan/"]
   },
   "model": "Opus",
   "hooks": {
@@ -98,49 +79,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.local/bin/giantmem daemon start >/dev/null 2>&1 || true"
+            "command": "~/.local/bin/giantmem daemon start >/dev/null 2>&1 || true",
+            "timeout": 10
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/sync_settings.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/workspace_session_hook.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/ensure_personal_claude.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/session_prime.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/doit_session_prime.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/memory_index_sweep.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/discord_bun_orphan_sweep.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/discord_patch_apply.py"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"/Users/bryan/.nvm/versions/node/v24.11.1/bin/node\" \"/Users/bryan/.claude/hooks/caveman-activate.js\"",
-            "timeout": 5,
-            "statusMessage": "Loading caveman mode..."
+            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime memory_index_sweep",
+            "timeout": 10
           }
         ]
       }
@@ -150,11 +95,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c 'import json,sys,time; d=json.load(sys.stdin); sid=d.get(\"session_id\") or \"global\"; open(\"/tmp/claude-compact-ts-\"+sid, \"w\").write(str(int(time.time())))'"
+            "command": "python3 -c 'import json,sys,time; d=json.load(sys.stdin); sid=d.get(\"session_id\") or \"global\"; open(\"/tmp/claude-compact-ts-\"+sid, \"w\").write(str(int(time.time())))'",
+            "timeout": 20
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/precompact_capture.py"
+            "command": "python3 ~/.claude/hooks/precompact_capture.py",
+            "timeout": 20
           }
         ]
       }
@@ -164,15 +111,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/workspace_session_end.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/session_end_ingest.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/discord_bun_reaper.py"
+            "command": "python3 ~/.claude/hooks/dispatch.py workspace_session_end session_end_ingest",
+            "timeout": 30
           }
         ]
       }
@@ -182,7 +122,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/debug_stop_check.py"
+            "command": "python3 ~/.claude/hooks/debug_stop_check.py",
+            "timeout": 10
           }
         ]
       },
@@ -190,7 +131,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/notify_attention.py"
+            "command": "python3 ~/.claude/hooks/notify_attention.py",
+            "timeout": 10
           }
         ]
       }
@@ -201,7 +143,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/guard_protected_paths.py"
+            "command": "python3 ~/.claude/hooks/guard_protected_paths.py",
+            "timeout": 20
           }
         ]
       }
@@ -212,15 +155,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/live_index.py"
+            "command": "python3 ~/.claude/hooks/live_index.py",
+            "timeout": 10
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/caveman_artifact_nudge.py"
+            "command": "python3 ~/.claude/hooks/caveman_artifact_nudge.py",
+            "timeout": 10
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/code_comment_nudge.py"
+            "command": "python3 ~/.claude/hooks/code_comment_nudge.py",
+            "timeout": 10
           }
         ]
       }
@@ -230,33 +176,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/standing_constraints.py"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/giantmem_recall.py"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"/Users/bryan/.nvm/versions/node/v24.11.1/bin/node\" \"/Users/bryan/.claude/hooks/caveman-mode-tracker.js\"",
-            "timeout": 5,
-            "statusMessage": "Tracking caveman mode..."
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/clear_attention.py"
+            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall clear_attention",
+            "timeout": 10
           }
         ]
       }
@@ -268,17 +189,25 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
-    "subtask": true,
-    "commit-commands@claude-code-plugins": true,
-    "feature-dev@claude-code-plugins": true,
+    "commit-commands@claude-code-plugins": false,
+    "feature-dev@claude-code-plugins": false,
     "rust-analyzer-lsp@claude-plugins-official": false,
     "typescript-lsp@claude-plugins-official": true,
     "lua-lsp@claude-plugins-official": true,
-    "discord@claude-plugins-official": true,
+    "discord@claude-plugins-official": false,
     "caveman@caveman": true,
     "kai-review@kai": true,
     "kai@kai": true,
-    "slack@claude-plugins-official": true
+    "slack@claude-plugins-official": true,
+    "bigquery@skio": false,
+    "debug-features@skio": false,
+    "dev-workflow@skio": false,
+    "fargate-jobs@skio": false,
+    "hasura-schema@skio": false,
+    "linear-triage@skio": false,
+    "opensearch-logs@skio": false,
+    "subscriptions@skio": false,
+    "clangd-lsp@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "caveman": {
@@ -307,16 +236,11 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": [
-        "mcp",
-        "serve"
-      ]
+      "args": ["mcp", "serve"]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
-      ]
+      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
     },
     "snowflake": {
       "type": "http",

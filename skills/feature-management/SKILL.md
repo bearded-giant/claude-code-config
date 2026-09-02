@@ -284,3 +284,24 @@ Read in order if files exist:
 4. Active feature's `{name}-notes.md` if non-empty — living cheat sheet, surface relevant commands when resuming related work
 
 If step 1's file is missing, skip steps 2-4.
+
+## Todos → doit (repo / feature list)
+
+When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE: offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+
+- List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
+- Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
+- Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
+- Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
+- Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
+- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then).
+
+## Three-Spec Model (per-feature → repo-truth)
+
+| Artifact | Lives at | Holds |
+|---|---|---|
+| `proposal` | `features/{name}/proposal.md` | intent + scope + approach (NOT behavior) |
+| `delta-spec` | `features/{name}/specs/{domain}/spec.md` | `## ADDED / MODIFIED / REMOVED Requirements` blocks. Each `### Requirement:` carries one or more `#### Scenario:` (GIVEN / WHEN / THEN, RFC 2119). |
+| `source-spec` | `.giantmem/specs/{domain}/spec.md` | accumulated behavior across all completed features. Written ONLY by `/complete-feature` merging delta-specs in. Never hand-edit mid-feature. |
+
+Legacy `features/{name}/spec.md` is a symlink → `proposal.md` (30-day muscle-memory back-compat from the `migrate_spec_to_proposal.py` rename).

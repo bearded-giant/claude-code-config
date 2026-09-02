@@ -137,25 +137,6 @@ Full usage (plan format, safeguards, tips) inline in `commands/swarm-exec.md`.
 
 ---
 
-## Cross-Repo
-
-Peer repo has a live Claude session → `SendMessage` to it. No session → dispatch a sub-agent by path.
-
-| Command | Purpose |
-|---------|---------|
-| `/peer-scout {abs-path} "<brief>" [--role owner\|caller\|sibling] [--mode explore\|edit\|parallel] [--agent {type}]` | Sub-agent dive into another repo |
-| `/recent-repos` | Pick a recently-active repo, make it accessible |
-| `/recent-docs` | Load a recent .giantmem doc from another repo |
-
-```
-/peer-scout /Users/bryan/dev/billing-api "how does webhook auth validate JWTs?" --role owner
-/peer-scout /Users/bryan/dev/billing-api /Users/bryan/dev/frost "find all callers of /api/v2/subs/update" --mode parallel
-```
-
-Peer path must be in `permissions.additionalDirectories` (or `/add-dir`) for sub-agents to reach it.
-
----
-
 ## Code Quality
 
 | Command | Purpose |

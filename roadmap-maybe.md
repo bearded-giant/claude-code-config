@@ -28,6 +28,6 @@ I considered these and intentionally skipped them. Documenting the reasoning so 
 
 **Auto-sync PostToolUse hook for preprod:** The conversational "sync to preprod" mode in CLAUDE.md works fine. Making it a hook means it's always-on or needs state management (env var, flag file). The current approach is simpler and I can turn it on/off with a sentence.
 
-**More skills:** My 4 skills (c4-diagrams, mcp-builder, mdlive, splunk) cover templated output generation. Skills are for repeatable output shapes with reference material. If I find myself giving the same 3-paragraph prompt to generate something repeatedly, that's when a new skill earns its place.
+**More skills:** My remaining skills (mcp-builder, mdlive) cover templated output generation. Skills are for repeatable output shapes with reference material. If I find myself giving the same 3-paragraph prompt to generate something repeatedly, that's when a new skill earns its place.
 
 **Dependency/import analyzer agent:** Nice in theory for Python projects, but the pyright-lsp plugin already catches import errors. A full import graph tool is something I'd use once per project, not per session. I'll just use `/swarm analyze` for that.
