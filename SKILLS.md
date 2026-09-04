@@ -47,6 +47,7 @@
 | `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
+| `/notion-publish [path \| --feature X \| --dirty \| --dry-run]` | Push .giantmem/ docs to the private Notion DB `Claude Artifacts`; asks before every push, upserts by frontmatter `notion:` |
 
 ## Code Quality
 

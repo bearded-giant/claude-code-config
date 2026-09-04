@@ -20,3 +20,5 @@ Prints JSON (`merge` line shows merge result or why skipped).
 After it runs, only if warranted (the CLI leaves these to you):
 1. Clean up facts.md (final commands, key files, drop placeholders).
 2. Mark `## Acceptance Criteria` items `[x]`; if some are unmet and there were no delta-specs, flag to the user.
+
+Always, last: `python3 ~/.claude/scripts/md_to_notion.py --scan .giantmem/features/{feature}`. Rows with `publishable: true` → ONE AskUserQuestion (multiSelect) "publish to Notion?" listing them, dirty ones preselected in the description. On yes → `notion-publish` skill with the chosen paths. No publishable rows → say nothing. Never push without the ask.

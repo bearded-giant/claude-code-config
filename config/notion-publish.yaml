@@ -1,0 +1,25 @@
+# notion-publish: where docs go and which .giantmem/ artifacts qualify.
+# Read by hooks/notion_publish_nudge.py and skills/notion-publish.
+root_page_id: 3d14ce24-69aa-81e2-8240-cece47b73ed1
+database_id: a366b900006d4b97b5cdc65c673b02f4
+data_source_id: 27442c8e-9b87-4e3d-8679-3887ef97b3d8
+
+# frontmatter `type:` (or path-classified type) that prompts for publish.
+# not listed = silent skip. frontmatter `publish: true` on one file wins.
+types:
+  - research
+  - pattern
+  - notes
+  - design
+  - proposal
+  - review
+  - file
+
+# regex on the .giantmem-relative path. match = never prompt, never publish.
+exclude:
+  - '\.original\.md$'
+  - '^context/discoveries\.md$'
+  - '^context/tree\.md$'
+  - '^notes\.md$'
+  - '^features/[^/]+/[^/]+-notes\.md$'
+  - '^features/[^/]+/spec_history\.md$'

@@ -73,8 +73,13 @@ scope: {scope_id}            # optional; overrides repo→scope membership
 domain: {name}               # optional
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
+publish: true | false        # optional; overrides the notion-publish type allowlist
+notion: {page url}           # written by notion-publish after first push; presence = upsert
+notion_synced: {iso ts}      # written by notion-publish; do not hand-edit
 ---
 ```
+
+Notion publish: docs of type research / pattern / notes / design / proposal / review / file get an end-of-task ask (hook `notion_publish_nudge.py`); the `notion-publish` skill pushes on yes. Allowlist and excludes live in `config/notion-publish.yaml`.
 
 JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 
@@ -240,7 +245,7 @@ Any human-readable doc I generate MUST be written in caveman style on the FIRST 
 **Mermaid sidecar (`.mmd`):**
 - Whenever a `.md` doc contains a mermaid diagram, ALSO write a sibling `.mmd` file with just the mermaid source (no fences, no frontmatter). Same basename, same directory.
 - Example: `multi-tool-synthesis-explainer.md` (with ```` ```mermaid ```` block) ships alongside `multi-tool-synthesis-explainer.mmd` (raw flowchart source).
-- Why: Google Docs / Notion / Confluence don't render mermaid inline. User runs `mmdc -i file.mmd -o file.png` to produce an image for paste. Sidecar removes the manual extraction step.
+- Why: Google Docs / Confluence don't render mermaid inline. User runs `mmdc -i file.mmd -o file.png` to produce an image for paste. Sidecar removes the manual extraction step. Notion renders mermaid fences natively; `notion-publish` passes them through untouched.
 - If a doc has multiple diagrams, write `<basename>-1.mmd`, `<basename>-2.mmd`, etc., in source order.
 - Keep `.md` mermaid block AND `.mmd` file in sync — edits to one must update the other in the same write batch.
 
