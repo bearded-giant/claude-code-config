@@ -210,7 +210,7 @@ List name carries repo (+ worktree) so it stays legible across 4-6 parallel sess
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 leaf=$(basename "$root"); par=$(basename "$(dirname "$root")")
 case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
-# active in_progress feature → "$base-$feature", else "$base"
+# active in_progress feature → "$base-$feature", else "$base" (several in_progress → the one whose branch == HEAD)
 ```
 
 | cwd | active feature | list name |
@@ -223,7 +223,7 @@ case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
 - Worktree = parent dir ends `-wt` → prepend it (`{parent}-{leaf}`). Else `{leaf}`.
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
-- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change.
+- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default follows the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this derivation.
 - Pending items are the feature's open work. Land one this session → `start_todo` on pickup, `complete_todo` + DONE record when it lands. Never leave a landed item open.
 - `daily` stays the manual cross-repo priority sweep — qualified lists never auto-dump into it.
 
@@ -294,7 +294,7 @@ When multi-step work surfaces items the USER must act on outside the current tur
 - Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
 - Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
 - Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
-- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then).
+- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then). ALWAYS pass `list=` explicitly on every doit call — the MCP's active-list default is the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this name.
 
 ## Three-Spec Model (per-feature → repo-truth)
 

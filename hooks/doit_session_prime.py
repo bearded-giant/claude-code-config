@@ -23,6 +23,21 @@ def git_root(cwd: str) -> str:
     return cwd
 
 
+def current_branch(root: str):
+    try:
+        out = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
 def active_feature(root: str):
     path = os.path.join(root, ".giantmem", "features", "features.json")
     try:
@@ -32,10 +47,19 @@ def active_feature(root: str):
         return None
     if not isinstance(data, dict):
         return None
-    for name, meta in data.items():
-        if isinstance(meta, dict) and meta.get("status") == "in_progress":
+    active = [
+        (name, meta)
+        for name, meta in data.items()
+        if isinstance(meta, dict) and meta.get("status") == "in_progress"
+    ]
+    if not active:
+        return None
+    # several features can be in_progress at once; the one on this branch wins
+    branch = current_branch(root)
+    for name, meta in active:
+        if branch and meta.get("branch") == branch:
             return name
-    return None
+    return active[0][0]
 
 
 def load_pending(path: str):
@@ -103,11 +127,14 @@ def main() -> None:
         "<system-reminder>",
         "doit session list (repo-qualified, worktree-aware):",
         f"  list: {name}   {feat_note}",
+        f'  pass list="{name}" on EVERY doit call — the MCP default (active '
+        "list) follows the tmux link / DOIT_ACTIVE_LIST env, not this derivation",
     ]
 
     if not exists:
         lines += [
-            "  exists: no — create on first todo for this repo/feature",
+            f'  exists: no — create_list name="{name}" on first todo for this '
+            "repo/feature",
             "Assign model work: prefix a doit todo `claude:`. Drain it: /burn.",
             "</system-reminder>",
         ]

@@ -221,7 +221,8 @@
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"]
+      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"],
+      "env": { "DOIT_ACTIVE_LIST": "" }
     },
     "snowflake": {
       "type": "http",
