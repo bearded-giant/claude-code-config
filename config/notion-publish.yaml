@@ -1,8 +1,10 @@
 # notion-publish: where docs go and which .giantmem/ artifacts qualify.
 # Read by hooks/notion_publish_nudge.py and skills/notion-publish.
-root_page_id: 3d14ce24-69aa-81e2-8240-cece47b73ed1
-database_id: a366b900006d4b97b5cdc65c673b02f4
-data_source_id: 27442c8e-9b87-4e3d-8679-3887ef97b3d8
+# Personal workspace (Bearded Giant) through the local notion-multi-mcp server.
+account: personal
+root_page_id: 3d76a246-2659-8019-93bb-de726c6fa524
+database_id: 4b92eeb5-9261-4a09-b2b5-935f13d5848c
+data_source_id: 10c87a11-334e-41b3-821d-b39a23b16730
 
 # frontmatter `type:` (or path-classified type) that prompts for publish.
 # not listed = silent skip. frontmatter `publish: true` on one file wins.

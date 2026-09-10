@@ -19,7 +19,6 @@ DIRTY_GRACE_S = 120
 FM_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n?", re.S)
 COMMENT_LINE_RE = re.compile(r"^\s*<!--.*?-->\s*$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
-TABLE_SEP_RE = re.compile(r"^\s*\|?(\s*:?-{3,}:?\s*\|)*\s*:?-{3,}:?\s*\|?\s*$")
 LIST_INDENT_RE = re.compile(r"^((?:  )+)(?=[-*+] |\d+\. )")
 CODE_SPAN_RE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 QUOTE_RE = re.compile(r"^(\s*(?:>\s?)+)")
@@ -167,48 +166,10 @@ def escape_prose(s):
     return "".join(out).replace(BR_TOKEN, "<br>")
 
 
-def split_row(line):
-    line = line.strip()
-    if line.startswith("|"):
-        line = line[1:]
-    if line.endswith("|") and not line.endswith("\\|"):
-        line = line[:-1]
-    spans = []
-
-    def stash(m):
-        spans.append(m.group(0))
-        return f"\x00{len(spans) - 1}\x00"
-
-    line = CODE_SPAN_RE.sub(stash, line)
-    cells = re.split(r"(?<!\\)\|", line)
-    return [
-        re.sub(r"\x00(\d+)\x00", lambda m: spans[int(m.group(1))], c).strip()
-        for c in cells
-    ]
-
-
-def table_xml(rows):
-    width = max(len(r) for r in rows)
-    out = ['<table header-row="true">']
-    for r in rows:
-        r = r + [""] * (width - len(r))
-        out.append("\t<tr>")
-        out.extend(f"\t\t<td>{escape_prose(c)}</td>" for c in r)
-        out.append("\t</tr>")
-    out.append("</table>")
-    return out
-
-
 def convert_body(body):
-    out, table = [], []
+    out = []
     title = None
     in_fence, fence = False, ""
-
-    def flush_table():
-        nonlocal table
-        if table:
-            out.extend(table_xml(table))
-            table = []
 
     for line in body.splitlines():
         if in_fence:
@@ -218,15 +179,13 @@ def convert_body(body):
             continue
         m = FENCE_RE.match(line)
         if m:
-            flush_table()
             in_fence, fence = True, m.group(1)
             out.append(line)
             continue
+        # pipe tables pass through untouched; the server parses GFM tables itself
         if line.lstrip().startswith("|"):
-            if not TABLE_SEP_RE.match(line):
-                table.append(split_row(line))
+            out.append(line)
             continue
-        flush_table()
         if COMMENT_LINE_RE.match(line):
             continue
         if title is None and line.startswith("# "):
@@ -240,7 +199,6 @@ def convert_body(body):
             out.append(m.group(1) + escape_prose(line[m.end() :]))
             continue
         out.append(escape_prose(line))
-    flush_table()
     return title, "\n".join(out).strip() + "\n"
 
 
@@ -270,8 +228,8 @@ def properties(
         "Type": kind,
         "Source": rel,
         "Git SHA": git(d, "rev-parse", "--short", "HEAD"),
-        "date:Synced:start": now,
-        "date:Synced:is_datetime": 1,
+        # bare iso string: create_pages has no date:X:start split keys, update accepts both
+        "Synced": now,
     }
     for key, prop in (
         ("feature", "Feature"),
@@ -366,12 +324,8 @@ def selftest():
         "a \\< b and x -\\> y, see \\[\\[wiki\\]\\] and \\~one\\~ ~~two~~ `a < b`.<br>"
         in content
     )
-    assert '<table header-row="true">' in content and "<td>`x\\|y`</td>" in content
-    assert "<td>`a|b`</td>" in content and "<td></td>" not in content
-    assert (
-        "<td>```` ```mermaid ```` fence</td>" in content and "<td>`<t>`</td>" in content
-    )
-    assert "|---|" not in content
+    assert "| Col A | Col B |\n|---|---|\n| `x\\|y` | 1 |\n| `a|b` | 2 |" in content
+    assert "| ```` ```mermaid ```` fence | `<t>` |" in content
     assert "if a < b: pass  # {raw}" in content
     assert "\n\t- nested" in content
     assert "> quoted \\> text" in content
