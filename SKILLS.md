@@ -47,7 +47,7 @@
 | `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
-| `/notion-publish [path \| --feature X \| --dirty \| --dry-run]` | Push .giantmem/ docs to the private Notion DB `Claude Artifacts`; asks before every push, upserts by frontmatter `notion:` |
+| `/notion-publish [path \| --feature X \| --dirty \| --dry-run]` | Push .giantmem/ docs into the personal Notion page tree `Claude Artifacts / repo / worktree / feature`; policy in `config/notion-publish.yaml` (auto on write vs on request), never asks; upserts by frontmatter `notion:` |
 
 ## Code Quality
 
@@ -74,5 +74,5 @@
 | Skill | Purpose |
 |-------|---------|
 | `/mcp-builder` | Build MCP servers in TypeScript or Python |
-| `/mdlive` | Preview markdown as live-reloading HTML in browser |
+| `/mdlive` | Preview markdown as live-reloading HTML in browser; on request only, never auto-fires |
 | `/keybindings-help` | Customize keyboard shortcuts |

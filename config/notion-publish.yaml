@@ -2,13 +2,24 @@
 # Read by hooks/notion_publish_nudge.py and skills/notion-publish.
 # Personal workspace (Bearded Giant) through the local notion-multi-mcp server.
 account: personal
+# tree root page `Claude Artifacts`; pages nest repo > worktree > feature > doc
 root_page_id: 3d76a246-2659-8019-93bb-de726c6fa524
-database_id: 4b92eeb5-9261-4a09-b2b5-935f13d5848c
-data_source_id: 10c87a11-334e-41b3-821d-b39a23b16730
 
-# frontmatter `type:` (or path-classified type) that prompts for publish.
-# not listed = silent skip. frontmatter `publish: true` on one file wins.
-types:
+# frontmatter `kind:` or `type:` that publishes on write, no ask.
+# frontmatter `publish: true` on any file does the same.
+auto:
+  - quickstart
+  - cheatsheet
+  - overview
+  - arch
+  - runbook
+  - guide
+  - explainer
+  - report
+
+# frontmatter `type:` (or path-classified type) that publishes only when the user asks.
+# not listed anywhere = silent skip. frontmatter `publish: false` on one file wins.
+on_request:
   - research
   - pattern
   - notes
@@ -17,7 +28,7 @@ types:
   - review
   - file
 
-# regex on the .giantmem-relative path. match = never prompt, never publish.
+# regex on the .giantmem-relative path. match = never publish.
 exclude:
   - '\.original\.md$'
   - '^context/discoveries\.md$'

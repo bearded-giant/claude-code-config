@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 
 CONFIG = Path(
@@ -24,11 +25,12 @@ CODE_SPAN_RE = re.compile(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)")
 QUOTE_RE = re.compile(r"^(\s*(?:>\s?)+)")
 BR_RE = re.compile(r"<br\s*/?>")
 BR_TOKEN = "\x00BR\x00"
-PAGE_ID_RE = re.compile(r"([0-9a-f]{32})")
+# anchored: slug letters like the e in "backbone" are hex, so an unanchored match shifts the id
+PAGE_ID_RE = re.compile(r"([0-9a-f]{32})$")
 
 
 def load_config(path=CONFIG):
-    cfg: dict = {"types": [], "exclude": []}
+    cfg: dict = {"auto": [], "on_request": [], "exclude": []}
     key = None
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.split("#", 1)[0].rstrip()
@@ -108,16 +110,20 @@ def classify_type(rel):
     return "file"
 
 
-def gate(path, cfg, fm=None):
+def gate(path, cfg, fm=None, ident=None):
     rel = giantmem_rel(path)
     if rel is None:
-        return False, "outside .giantmem", "", ""
+        return False, "outside .giantmem", "", "", ""
     if not rel.endswith(".md"):
-        return False, "not markdown", rel, ""
+        return False, "not markdown", rel, "", ""
     if any(seg.startswith(".") for seg in rel.split("/")):
-        return False, "dot dir", rel, ""
+        return False, "dot dir", rel, "", ""
     if rel.rsplit("/", 1)[-1] in ("_index.md", "_history.md"):
-        return False, "machine index", rel, ""
+        return False, "machine index", rel, "", ""
+    if ident is None:
+        ident = identity(str(Path(path).resolve().parent))
+    if not ident:
+        return False, "not in git", rel, "", ""
     if fm is None:
         fm, _ = parse_frontmatter(
             Path(path).read_text(encoding="utf-8", errors="replace")
@@ -125,17 +131,20 @@ def gate(path, cfg, fm=None):
     kind = fm.get("type") or classify_type(rel)
     publish = fm.get("publish", "").lower()
     if publish in ("false", "no"):
-        return False, "publish: false", rel, kind
+        return False, "publish: false", rel, kind, ""
     if fm.get("lifecycle") == "deprecated":
-        return False, "lifecycle: deprecated", rel, kind
+        return False, "lifecycle: deprecated", rel, kind, ""
     for rx in cfg.get("exclude", []):
         if re.search(rx, rel):
-            return False, f"exclude {rx}", rel, kind
+            return False, f"exclude {rx}", rel, kind, ""
     if publish in ("true", "yes"):
-        return True, "publish: true", rel, kind
-    if kind in cfg.get("types", []):
-        return True, f"type {kind}", rel, kind
-    return False, f"type {kind} not in types", rel, kind
+        return True, "publish: true", rel, kind, "auto"
+    doc_kind = fm.get("kind", "")
+    if doc_kind in cfg.get("auto", []) or kind in cfg.get("auto", []):
+        return True, f"auto {doc_kind or kind}", rel, kind, "auto"
+    if kind in cfg.get("on_request", []):
+        return True, f"on_request {kind}", rel, kind, "on_request"
+    return False, f"type {kind} not in auto or on_request", rel, kind, ""
 
 
 def is_dirty(path, fm):
@@ -216,52 +225,79 @@ def git(cwd, *args):
         return ""
 
 
-def properties(
-    path, fm, rel, kind, title, now
-):  # pylint: disable=too-many-positional-arguments
-    d = Path(path).resolve().parent
-    repo = fm.get("repo") or git(d, "rev-parse", "--show-toplevel").rsplit("/", 1)[-1]
-    props = {
-        "Name": title,
-        "Repo": repo,
-        "Branch": fm.get("branch") or git(d, "branch", "--show-current"),
-        "Type": kind,
-        "Source": rel,
-        "Git SHA": git(d, "rev-parse", "--short", "HEAD"),
-        # bare iso string: create_pages has no date:X:start split keys, update accepts both
-        "Synced": now,
+def repo_from_origin(url):
+    url = re.sub(r"\.git$", "", url.strip().rstrip("/"))
+    return url.rsplit("/", 1)[-1].rsplit(":", 1)[-1]
+
+
+@lru_cache(maxsize=None)
+def identity(d):
+    top = git(d, "rev-parse", "--show-toplevel")
+    if not top:
+        return None
+    origin = git(d, "remote", "get-url", "origin")
+    common = git(d, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    gitdir = git(d, "rev-parse", "--path-format=absolute", "--git-dir")
+    if origin:
+        repo = repo_from_origin(origin)
+    elif common:
+        repo = Path(common).parent.name
+    else:
+        repo = Path(top).name
+    return {
+        "repo": repo,
+        # linked worktree: its git-dir sits under the common dir, never equals it
+        "worktree": Path(top).name if gitdir and common and gitdir != common else "",
+        "sha": git(d, "rev-parse", "--short", "HEAD"),
     }
-    for key, prop in (
-        ("feature", "Feature"),
-        ("status", "Status"),
-        ("lifecycle", "Lifecycle"),
-    ):
-        if fm.get(key):
-            props[prop] = fm[key]
-    if "Feature" not in props and rel.startswith("features/"):
-        props["Feature"] = rel.split("/")[1]
-    return props
+
+
+def feature_of(rel):
+    parts = rel.split("/")
+    return parts[1] if len(parts) >= 3 and parts[0] == "features" else ""
+
+
+def parent_path(ident, rel):
+    return "/".join(p for p in (ident["repo"], ident["worktree"], feature_of(rel)) if p)
+
+
+def source_ref(ident, rel):
+    wt = f"@{ident['worktree']}" if ident["worktree"] else ""
+    return f"{ident['repo']}{wt}/{rel}"
+
+
+def footer(ident, rel, now):
+    return (
+        f"\n> [!NOTE]\n> giantmem: {source_ref(ident, rel)}"
+        f" \u00b7 synced {now} \u00b7 sha {ident['sha']}\n"
+    )
 
 
 def convert(path, cfg, now):
     text = Path(path).read_text(encoding="utf-8", errors="replace")
     fm, body = parse_frontmatter(text)
-    ok, reason, rel, kind = gate(path, cfg, fm)
+    ident = identity(str(Path(path).resolve().parent))
+    ok, reason, rel, kind, cls = gate(path, cfg, fm, ident)
     title, content = convert_body(body)
     title = title or Path(path).stem
+    if ident and rel:
+        content += footer(ident, rel, now)
     url = fm.get("notion", "")
-    m = PAGE_ID_RE.search(url.replace("-", ""))
+    m = PAGE_ID_RE.search(url.split("?", 1)[0].rstrip("/").replace("-", ""))
     return {
         "path": str(Path(path).resolve()),
         "source": rel,
         "type": kind,
+        "class": cls,
         "publishable": ok,
         "reason": reason,
         "dirty": is_dirty(path, fm),
         "notion": url,
         "page_id": m.group(1) if m else "",
         "title": title,
-        "properties": properties(path, fm, rel, kind, title, now),
+        "repo": ident["repo"] if ident else "",
+        "worktree": ident["worktree"] if ident else "",
+        "parent_path": parent_path(ident, rel) if ident and rel else "",
         "content": content,
     }
 
@@ -290,16 +326,19 @@ def scan(root, cfg):
             continue
         seen.add(real)
         fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-        ok, reason, rel, kind = gate(p, cfg, fm)
+        ident = identity(str(real.parent))
+        ok, reason, rel, kind, cls = gate(p, cfg, fm, ident)
         rows.append(
             {
                 "path": str(p),
                 "source": rel,
                 "type": kind,
+                "class": cls,
                 "publishable": ok,
                 "reason": reason,
                 "dirty": is_dirty(p, fm),
                 "notion": fm.get("notion", ""),
+                "parent_path": parent_path(ident, rel) if ident and rel else "",
             }
         )
     return rows
@@ -333,12 +372,51 @@ def selftest():
     assert classify_type("features/f/specs/d/spec.md") == "delta-spec"
     assert classify_type("context/x.md") == "pattern"
     assert classify_type("features/f/quickstart.md") == "file"
-    cfg = {"types": ["research"], "exclude": [r"\.original\.md$"]}
-    assert gate("/w/.giantmem/research/a.md", cfg, {"type": "research"})[0]
-    assert not gate("/w/.giantmem/research/a.original.md", cfg, {"type": "research"})[0]
-    assert not gate("/w/.giantmem/plans/a.md", cfg, {})[0]
-    assert gate("/w/.giantmem/plans/a.md", cfg, {"publish": "true"})[0]
-    assert not gate("/w/.giantmem/features/_index.md", cfg, {"publish": "true"})[0]
+    cfg = {
+        "auto": ["quickstart"],
+        "on_request": ["research"],
+        "exclude": [r"\.original\.md$"],
+    }
+    wt = {"repo": "r", "worktree": "w", "sha": "abc1234"}
+    plain = {"repo": "r", "worktree": "", "sha": "abc1234"}
+
+    def g(rel, fm, ident=plain):  # pylint: disable=dangerous-default-value
+        return gate(f"/x/.giantmem/{rel}", cfg, fm, ident)
+
+    assert g("research/a.md", {"type": "research"})[4] == "on_request"
+    assert not g("research/a.original.md", {"type": "research"})[0]
+    assert not g("plans/a.md", {})[0]
+    assert g("plans/a.md", {"publish": "true"})[4] == "auto"
+    assert g("features/f/quickstart.md", {"kind": "quickstart"})[4] == "auto"
+    assert not g(
+        "features/f/quickstart.md", {"kind": "quickstart", "publish": "false"}
+    )[0]
+    assert not g("features/_index.md", {"publish": "true"})[0]
+    assert g("research/a.md", {"type": "research"}, None)[1] == "not in git"
+    assert (
+        repo_from_origin("git@gitlab.example.net:eng/customcheckout.git")
+        == "customcheckout"
+    )
+    assert (
+        repo_from_origin("https://github.com/acme/notion-multi-mcp.git")
+        == "notion-multi-mcp"
+    )
+    assert repo_from_origin("git@github.com:solo.git") == "solo"
+    assert parent_path(wt, "features/f/research/x.md") == "r/w/f"
+    assert parent_path(plain, "context/x.md") == "r"
+    assert parent_path(wt, "research/x.md") == "r/w"
+    assert source_ref(wt, "features/f/x.md") == "r@w/features/f/x.md"
+    assert "giantmem: r/context/x.md \u00b7 synced T \u00b7 sha abc1234" in footer(
+        plain, "context/x.md", "T"
+    )
+    assert identity("/") is None
+    for url in (
+        "https://app.notion.com/p/Memory-architecture-giantmem-backbone-3d76a2462659816ea2f9df3713a3c47c",
+        "https://app.notion.com/p/Proposal-Local-Email-Send-3d76a24626598173810bf2efd30be5d4?pvs=4",
+        "https://www.notion.so/3d76a246-2659-816e-a2f9-df3713a3c47c",
+    ):
+        m = PAGE_ID_RE.search(url.split("?", 1)[0].rstrip("/").replace("-", ""))
+        assert m and m.group(1).startswith("3d76a2462659"), url
     print("selftest ok")
 
 

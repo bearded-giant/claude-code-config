@@ -73,13 +73,25 @@ scope: {scope_id}            # optional; overrides repo→scope membership
 domain: {name}               # optional
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-publish: true | false        # optional; overrides the notion-publish type allowlist
+publish: true | false        # optional; true = deliverable, publishes on write; false = never
+kind: {quickstart | cheatsheet | overview | arch | runbook | guide | explainer | report}  # optional; any `auto` kind publishes on write
 notion: {page url}           # written by notion-publish after first push; presence = upsert
 notion_synced: {iso ts}      # written by notion-publish; do not hand-edit
 ---
 ```
 
-Notion publish: docs of type research / pattern / notes / design / proposal / review / file get an end-of-task ask (hook `notion_publish_nudge.py`); the `notion-publish` skill pushes on yes. Allowlist and excludes live in `config/notion-publish.yaml`.
+Notion publish: policy, not questions. Local file is canonical for every class; Notion is a mirror in the page tree `Claude Artifacts / repo / worktree? / feature? / doc`. Never ask whether to publish.
+
+| Class | Types or kinds | Notion |
+|---|---|---|
+| state | tasks, plan, facts, notes, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
+| model memory | pattern, discoveries | opt-in `publish: true` |
+| working prose | proposal, design, research, review | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
+| deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
+
+User asks for a deliverable kind → write it at the normal routed path with `publish: true` (or `kind:`), let the hook fire. Notion-side edits do not flow back; republish overwrites the page; the user backports by hand.
+
+Preview: mdlive only when the user asks (preview / render / open). After writing a `.md`, return its path.
 
 JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 

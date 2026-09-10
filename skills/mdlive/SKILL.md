@@ -1,13 +1,10 @@
 ---
 name: mdlive
 description: >-
-  Preview markdown with mdlive in a live-reloading browser. Auto-fires
-  after writing any .md to .giantmem/ that is >40 lines OR contains a
-  Mermaid diagram OR contains 2+ tables OR is likely to iterate with
-  the user (plans, designs, kaizen docs, reports). Also triggers when
-  user says "preview", "render", "show me in browser", "open this".
-  Skip for short conversational replies, single snippets, or markdown
-  that fits in the terminal.
+  Preview markdown with mdlive in a live-reloading browser. Fires ONLY
+  when the user asks: "preview", "render", "show me in browser", "open
+  this", or /mdlive. Never auto-fires on size, tables, diagrams, or doc
+  type; after writing a .md the model returns the file path instead.
 ---
 
 # mdlive
@@ -17,18 +14,9 @@ using `mdlive`.
 
 ## When to use
 
-Trigger if ANY of:
-- file is >40 lines
-- file contains a Mermaid diagram
-- file contains 2+ tables
-- file is a plan, design, kaizen doc, or report (likely to iterate with user)
-- user says "preview", "render", "show me in browser", "open this"
+Only on explicit ask: "preview", "render", "show me in browser", "open this", `/mdlive [path]`.
 
-Do NOT trigger for:
-- short conversational replies
-- single code snippets
-- markdown that fits in the terminal
-- chat-only output (not written to disk)
+Never on your own. Size, table count, diagrams, doc type do not trigger it. Default after writing a `.md`: return the path.
 
 ## Workflow
 
