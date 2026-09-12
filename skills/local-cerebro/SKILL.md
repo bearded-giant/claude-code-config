@@ -4,7 +4,7 @@ description: Ask the local cerebro raw CLI code-level questions about repos inde
 ---
 <!-- caveman:compressed -->
 
-Local cerebro = read-only Claude over its own indexed repos (`~/dev/ai/rc-cerebro/projects/`). This session delegates a code-level question, gets the answer on stdout, stays uncluttered. One-shot: no daemon, stateless per call.
+Local cerebro = read-only Claude over its own indexed repos (`~/dev/ai/cerebro/projects/`). This session delegates a code-level question, gets the answer on stdout, stays uncluttered. One-shot: no daemon, stateless per call.
 
 ## Call (always via the script)
 
@@ -13,7 +13,7 @@ Local cerebro = read-only Claude over its own indexed repos (`~/dev/ai/rc-cerebr
 ```
 - model defaults to `opus`. stdout = answer only (ends `*References*`). stderr = warnings/status.
 - script preflights first. if cerebro not ready it prints a status report to stderr and exits 3 — do NOT hand-roll the `uv run` call, let the script gate it.
-- `CEREBRO_DIR` env overrides the cerebro location (default `~/dev/ai/rc-cerebro`).
+- `CEREBRO_DIR` env overrides the cerebro location (default `~/dev/ai/cerebro`).
 
 ## Status / not-running check
 
@@ -42,5 +42,5 @@ Reports: cerebro dir found, `uv` present, `.env` present, `ANTHROPIC_API_KEY` se
 - platform billing needs `ANTHROPIC_API_KEY` exported in this session's shell; else it bills the logged-in claude subscription (script warns).
 
 ## Pointers
-- cerebro setup / add-a-repo / add-localhost-mcp: `~/dev/ai/rc-cerebro/projects/LOCAL_SETUP.md`.
+- cerebro setup / add-a-repo / add-localhost-mcp: `~/dev/ai/cerebro/projects/LOCAL_SETUP.md`.
 - one-shot impl: `broker/cli.py` `ask_once()` + `--ask`/`--model`.

@@ -8,7 +8,7 @@
 # 2 build-rejected / 3 not ready.
 set -uo pipefail
 
-CEREBRO_DIR="${CEREBRO_DIR:-$HOME/dev/ai/rc-cerebro}"
+CEREBRO_DIR="${CEREBRO_DIR:-$HOME/dev/ai/cerebro}"
 DEFAULT_MODEL="opus"
 
 err() { printf '%s\n' "$*" >&2; }

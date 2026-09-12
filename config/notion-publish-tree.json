@@ -7,5 +7,13 @@
   "customcheckout": "3d76a246-2659-81ac-84c0-fbc4c222e197",
   "customcheckout/local-dev-runner": "3d76a246-2659-81c2-b8db-ebbaae502b4d",
   "customcheckout/local-dev-runner/local-email-send": "3d76a246-2659-8152-bdef-f2a997897d95",
-  "customcheckout/local-dev-runner/platform-plan-implementation": "3d76a246-2659-816e-a627-ccf8c89f30ef"
+  "customcheckout/local-dev-runner/platform-plan-implementation": "3d76a246-2659-816e-a627-ccf8c89f30ef",
+  "recharge-merchant-mcp": "3d86a246-2659-81a8-a7ad-c7635adac31c",
+  "recharge-merchant-mcp/mcp-marketplace": "3d86a246-2659-8162-89f8-dd3a96aa4074",
+  "recharge-merchant-mcp/mcp-marketplace/mcp-marketplace": "3d86a246-2659-813d-8454-efac9e5e7567",
+  "recharge-merchant-mcp/main": "3d86a246-2659-81de-867a-f441f8a9a5be",
+  "recharge-merchant-mcp/main/inspector-automation": "3d86a246-2659-8199-8633-e12bf3f48c25",
+  "recharge-merchant-mcp/telemetry": "3d86a246-2659-81bf-b9fa-fd69cb1426d7",
+  "recharge-merchant-mcp/telemetry/telemetry": "3d86a246-2659-8128-9ce2-e9fa813ce1af",
+  "hyphae": "3d96a246-2659-8159-bd7e-d8c88bc2f17a"
 }
