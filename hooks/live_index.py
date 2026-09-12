@@ -34,6 +34,14 @@ LIVE_DB = ARCHIVE_BASE / "live.db"
 
 GIANTMEM_RE = re.compile(r"/\.giantmem/")
 MEMORY_RE = re.compile(r"/\.claude/projects/[^/]+/memory/")
+GIANTMEM_MARKER = "/.giantmem/"
+
+
+def workspace_root(path: str) -> str:
+    # last marker, so worktree_path + /.giantmem/ + rel round-trips against
+    # artifacts.RelFromLivePath and giantmem_recall.artifact_snippet
+    i = path.rfind(GIANTMEM_MARKER)
+    return path[:i] if i > 0 else ""
 
 
 def detect_project(cwd: str, archive_base: Path) -> tuple[str, str]:
@@ -199,12 +207,8 @@ def main():
         return  # write may have failed
 
     if is_giantmem:
-        cwd = (
-            os.environ.get("CLAUDE_PROJECT_DIR")
-            or data.get("cwd")
-            or os.path.dirname(file_path)
-        )
-        project, worktree = detect_project(cwd, ARCHIVE_BASE)
+        worktree = workspace_root(file_path) or os.path.dirname(file_path)
+        project, _ = detect_project(worktree, ARCHIVE_BASE)
         # prefer in-tree feature.json detection over path inference
         feature = feature_from_path(file_path) or feature_from_giantmem(worktree)
         dir_type = dir_type_from_path(file_path)
