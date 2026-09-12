@@ -32,6 +32,25 @@ def main():
         "TODO: raise the prime timeout to 8s"
     ]
 
+    # session files carry frontmatter so lifecycle tooling can rewrite the lifecycle line
+    import tempfile  # pylint: disable=import-outside-toplevel
+
+    with tempfile.TemporaryDirectory() as td:
+        ws = Path(td) / "myrepo" / ".giantmem"
+        ws.mkdir(parents=True)
+        out = wse.create_session_file(
+            ws, "abcdef123456", None, None, "general", "brief", [], {}, []
+        )
+        text = out.read_text()
+        head, _, rest = text.partition("\n---\n")
+        assert text.startswith("---\n"), text[:40]
+        assert (
+            "type: history" in head
+            and "lifecycle: candidate" in head
+            and "repo: myrepo" in head
+        ), head
+        assert "# Session:" in rest and "Topic: general" in rest
+
     print("ok")
 
 

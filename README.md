@@ -83,7 +83,7 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 | SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer |
 | SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list for this session plus its pending items, so the running todo is in context from turn one (`claude:` assignment + `/burn`) |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
-| SessionStart | `memory_index_sweep.py` | Re-indexes harness memory into live.db (rebuild/multi-machine durability) |
+| SessionStart | `memory_ingest.py` | Detached `giantmem db ingest --source memory-md`: harness memory into archives.db (durable, backed up, survives a live.db rebuild) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
 | SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
 | SessionEnd | `workspace_session_end.py` | Extracts session summary, indexes into search DB |

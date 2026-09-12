@@ -18,7 +18,10 @@ import sys
 def _try_log(msg: str) -> None:
     try:
         import importlib.util
-        spec = importlib.util.spec_from_file_location("_giantmem_log", os.path.join(os.path.dirname(__file__), "_giantmem_log.py"))
+
+        spec = importlib.util.spec_from_file_location(
+            "_giantmem_log", os.path.join(os.path.dirname(__file__), "_giantmem_log.py")
+        )
         if spec and spec.loader:
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
@@ -53,13 +56,42 @@ def main() -> None:
     if project_filter:
         args += ["--project", project_filter]
 
+    _spawn(args, f"transcript={transcript}, project={project_filter}")
+
+    # once a day: flip stale, never-accessed candidates to deprecated
+    marker = os.path.expanduser("~/.cache/giantmem/last-autodeprecate")
+    today = __import__("datetime").date.today().isoformat()
+    try:
+        stamp = open(marker, encoding="utf-8").read().strip()
+    except OSError:
+        stamp = ""
+    if stamp != today:
+        try:
+            os.makedirs(os.path.dirname(marker), exist_ok=True)
+            with open(marker, "w", encoding="utf-8") as f:
+                f.write(today)
+        except OSError:
+            pass
+        _spawn(
+            [binary, "artifact", "stale", "--days", "0", "--all-repos", "--apply"],
+            "autodeprecate",
+        )
+
+
+def _spawn(args, context: str) -> None:
+    # detached so session shutdown is never blocked
     cmd = " ".join(["'" + a.replace("'", "'\\''") + "'" for a in args])
     cmd = f"({cmd} </dev/null >/dev/null 2>&1 & disown) 2>/dev/null"
     try:
-        subprocess.Popen(["/bin/bash", "-c", cmd], start_new_session=True,
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            ["/bin/bash", "-c", cmd],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except Exception as e:
-        _try_log(f"spawn failed (transcript={transcript}, project={project_filter}): {e}")
+        _try_log(f"spawn failed ({context}): {e}")
 
 
 if __name__ == "__main__":

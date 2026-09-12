@@ -83,7 +83,9 @@ def main() -> None:
     feature = read_features_active(wt)
     plan_path = Path(wt) / ".giantmem" / "plans" / "current.md"
     if feature:
-        feat_plan = Path(wt) / ".giantmem" / "features" / feature / "plans" / "current.md"
+        feat_plan = (
+            Path(wt) / ".giantmem" / "features" / feature / "plans" / "current.md"
+        )
         if feat_plan.exists():
             plan_path = feat_plan
     plan_tail = read_tail(plan_path, 80)
@@ -96,6 +98,14 @@ def main() -> None:
     history_tail = read_tail(history_path, 10)
 
     lines = [
+        "---",
+        "type: history",
+        f"repo: {Path(wt).name}",
+        "status: done",
+        "lifecycle: candidate",
+        f"created: {datetime.now().strftime('%Y-%m-%d')}",
+        "---",
+        "",
         f"# precompact snapshot",
         f"",
         f"- session: `{sid}`",

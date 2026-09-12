@@ -215,6 +215,7 @@ Filter by scope or lifecycle anywhere artifacts are listed:
 giantmem artifact list --scope personal -t delta-spec
 giantmem artifact list --lifecycle candidate
 giantmem artifact stale --days 0           # tier policy, no fixed day cutoff
+giantmem artifact stale --days 0 --all-repos --apply   # auto-deprecate stale candidates untouched for 180d (SessionEnd hook runs this daily)
 giantmem access top --limit 10             # most-touched artifacts in last 30d
 giantmem access prune --older-than 180d    # trim access_log table
 ```

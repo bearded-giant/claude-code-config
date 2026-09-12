@@ -20,6 +20,10 @@ Walk `lifecycle: candidate` artifacts and decide each: promote to durable, demot
 
    Pass `--scope` only when the user supplied one. Empty arg = no scope filter.
 
+   Drop rows with `type: history` before walking. Session logs and precompact
+   snapshots default to candidate so they age out under tier C; they are never
+   promoted by hand.
+
    If the result list is empty: report "no candidates to review" and stop.
 
 2. **Walk each candidate**

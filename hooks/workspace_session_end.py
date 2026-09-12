@@ -44,43 +44,61 @@ from collections import defaultdict
 # a keyword anywhere in a sentence matched ordinary prose, so these anchor to the
 # start of a line or list item and the line must read as a finished sentence
 DISCOVERY_PATTERNS = [
-    (r'(?:discovered|found|learned|realized|noticed)\b', 'finding'),
-    (r'(?:pattern|architecture|structure)\b', 'architecture'),
-    (r'(?:gotcha|caveat|watch out|careful|note that|important)\b', 'gotcha'),
-    (r'(?:convention|standard|style|naming)\b', 'convention'),
-    (r'(?:dependency|requires|depends on|imports?)\b', 'dependency'),
-    (r'(?:config|configuration|setting|environment)\b', 'config'),
-    (r'(?:entry\s*point|main|bootstrap|init)\b', 'entry'),
+    (r"(?:discovered|found|learned|realized|noticed)\b", "finding"),
+    (r"(?:pattern|architecture|structure)\b", "architecture"),
+    (r"(?:gotcha|caveat|watch out|careful|note that|important)\b", "gotcha"),
+    (r"(?:convention|standard|style|naming)\b", "convention"),
+    (r"(?:dependency|requires|depends on|imports?)\b", "dependency"),
+    (r"(?:config|configuration|setting|environment)\b", "config"),
+    (r"(?:entry\s*point|main|bootstrap|init)\b", "entry"),
 ]
 
-LIST_PREFIX_RE = re.compile(r'^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s+)*')
+LIST_PREFIX_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s+)*")
 
 
 def is_sentence(text: str) -> bool:
     """Reject mid-sentence captures: chat prose sliced at a keyword boundary."""
     if len(text) < 20 or text[0].islower():
         return False
-    if '|' in text or '```' in text:
+    if "|" in text or "```" in text:
         return False
-    if text.count('"') % 2 or text.count('`') % 2 or text.count('(') != text.count(')'):
+    if text.count('"') % 2 or text.count("`") % 2 or text.count("(") != text.count(")"):
         return False
-    return text.rstrip().endswith(('.', '!', '?', ':'))
+    return text.rstrip().endswith((".", "!", "?", ":"))
+
 
 # topic extraction keywords
 TOPIC_KEYWORDS = {
-    'auth': ['auth', 'login', 'jwt', 'token', 'password', 'credential', 'oauth', 'permissions'],
-    'api': ['api', 'endpoint', 'route', 'rest', 'graphql', 'request', 'response'],
-    'database': ['database', 'sql', 'query', 'migration', 'model', 'schema', 'table'],
-    'test': ['test', 'spec', 'pytest', 'jest', 'coverage', 'mock', 'fixture'],
-    'bug': ['bug', 'fix', 'error', 'issue', 'debug', 'broken', 'failing'],
-    'feature': ['feature', 'implement', 'add', 'create', 'new', 'build'],
-    'refactor': ['refactor', 'cleanup', 'reorganize', 'restructure', 'rename'],
-    'config': ['config', 'setting', 'env', 'environment', 'setup', 'install'],
-    'docs': ['document', 'readme', 'comment', 'explain', 'describe'],
-    'perf': ['performance', 'optimize', 'speed', 'slow', 'fast', 'cache'],
-    'ui': ['ui', 'frontend', 'component', 'style', 'css', 'render', 'display'],
-    'deploy': ['deploy', 'ci', 'cd', 'pipeline', 'docker', 'kubernetes'],
-    'workspace': ['workspace', 'giantmem', 'hook', 'session', 'claude', 'mcp', 'plugin'],
+    "auth": [
+        "auth",
+        "login",
+        "jwt",
+        "token",
+        "password",
+        "credential",
+        "oauth",
+        "permissions",
+    ],
+    "api": ["api", "endpoint", "route", "rest", "graphql", "request", "response"],
+    "database": ["database", "sql", "query", "migration", "model", "schema", "table"],
+    "test": ["test", "spec", "pytest", "jest", "coverage", "mock", "fixture"],
+    "bug": ["bug", "fix", "error", "issue", "debug", "broken", "failing"],
+    "feature": ["feature", "implement", "add", "create", "new", "build"],
+    "refactor": ["refactor", "cleanup", "reorganize", "restructure", "rename"],
+    "config": ["config", "setting", "env", "environment", "setup", "install"],
+    "docs": ["document", "readme", "comment", "explain", "describe"],
+    "perf": ["performance", "optimize", "speed", "slow", "fast", "cache"],
+    "ui": ["ui", "frontend", "component", "style", "css", "render", "display"],
+    "deploy": ["deploy", "ci", "cd", "pipeline", "docker", "kubernetes"],
+    "workspace": [
+        "workspace",
+        "giantmem",
+        "hook",
+        "session",
+        "claude",
+        "mcp",
+        "plugin",
+    ],
 }
 
 # bonus weight given to workspace-defined topic
@@ -96,7 +114,7 @@ def read_transcript(transcript_path: str) -> List[dict]:
         return messages
 
     try:
-        with open(full_path, 'r') as f:
+        with open(full_path, "r") as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -115,22 +133,22 @@ def extract_user_prompts(messages: List[dict]) -> List[str]:
     """Extract user prompts from transcript."""
     prompts = []
     for msg in messages:
-        if msg.get('type') == 'user':
-            message = msg.get('message', {})
-            content = message.get('content', '')
+        if msg.get("type") == "user":
+            message = msg.get("message", {})
+            content = message.get("content", "")
             if isinstance(content, str) and content.strip():
                 # truncate long prompts
                 text = content.strip()
                 if len(text) > 200:
-                    text = text[:200] + '...'
+                    text = text[:200] + "..."
                 prompts.append(text)
             elif isinstance(content, list):
                 for block in content:
-                    if isinstance(block, dict) and block.get('type') == 'text':
-                        text = block.get('text', '').strip()
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("text", "").strip()
                         if text:
                             if len(text) > 200:
-                                text = text[:200] + '...'
+                                text = text[:200] + "..."
                             prompts.append(text)
     return prompts
 
@@ -140,17 +158,17 @@ def extract_assistant_content(messages: List[dict]) -> str:
     content_parts = []
 
     for msg in messages:
-        if msg.get('type') == 'assistant':
-            message = msg.get('message', {})
-            content = message.get('content', [])
+        if msg.get("type") == "assistant":
+            message = msg.get("message", {})
+            content = message.get("content", [])
 
             for block in content:
-                if isinstance(block, dict) and block.get('type') == 'text':
-                    content_parts.append(block.get('text', ''))
+                if isinstance(block, dict) and block.get("type") == "text":
+                    content_parts.append(block.get("text", ""))
                 elif isinstance(block, str):
                     content_parts.append(block)
 
-    return '\n'.join(content_parts)
+    return "\n".join(content_parts)
 
 
 def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
@@ -161,30 +179,30 @@ def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
     tool_files: Dict[str, Set[str]] = defaultdict(set)
 
     for msg in messages:
-        if msg.get('type') == 'assistant':
-            message = msg.get('message', {})
-            content = message.get('content', [])
+        if msg.get("type") == "assistant":
+            message = msg.get("message", {})
+            content = message.get("content", [])
 
             for block in content:
-                if isinstance(block, dict) and block.get('type') == 'tool_use':
-                    tool_name = block.get('name', 'unknown')
-                    tool_input = block.get('input', {})
+                if isinstance(block, dict) and block.get("type") == "tool_use":
+                    tool_name = block.get("name", "unknown")
+                    tool_input = block.get("input", {})
 
                     # extract file paths based on tool type
                     file_path = None
-                    if tool_name in ('Read', 'Write', 'Edit', 'MultiEdit'):
-                        file_path = tool_input.get('file_path')
-                    elif tool_name == 'Glob':
-                        file_path = tool_input.get('pattern')
-                    elif tool_name == 'Grep':
-                        file_path = tool_input.get('path') or tool_input.get('pattern')
-                    elif tool_name == 'Bash':
-                        cmd = tool_input.get('command', '')
+                    if tool_name in ("Read", "Write", "Edit", "MultiEdit"):
+                        file_path = tool_input.get("file_path")
+                    elif tool_name == "Glob":
+                        file_path = tool_input.get("pattern")
+                    elif tool_name == "Grep":
+                        file_path = tool_input.get("path") or tool_input.get("pattern")
+                    elif tool_name == "Bash":
+                        cmd = tool_input.get("command", "")
                         if cmd:
                             # truncate long commands
-                            file_path = cmd[:100] + ('...' if len(cmd) > 100 else '')
-                    elif tool_name == 'Task':
-                        desc = tool_input.get('description', '')
+                            file_path = cmd[:100] + ("..." if len(cmd) > 100 else "")
+                    elif tool_name == "Task":
+                        desc = tool_input.get("description", "")
                         if desc:
                             file_path = f"[{desc}]"
 
@@ -192,13 +210,10 @@ def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
                         tool_files[tool_name].add(file_path)
                     else:
                         # still count the tool use
-                        tool_files[tool_name].add('')
+                        tool_files[tool_name].add("")
 
     # convert sets to sorted lists, filter empty strings
-    return {
-        tool: sorted([f for f in files if f])
-        for tool, files in tool_files.items()
-    }
+    return {tool: sorted([f for f in files if f]) for tool, files in tool_files.items()}
 
 
 def extract_workspace_topic(workspace_dir: Path) -> Optional[str]:
@@ -214,20 +229,22 @@ def extract_workspace_topic(workspace_dir: Path) -> Optional[str]:
         content = workspace_file.read_text().lower()
 
         # look for purpose section content
-        purpose_match = re.search(r'## purpose\s*\n(.+?)(?=\n##|\Z)', content, re.DOTALL)
+        purpose_match = re.search(
+            r"## purpose\s*\n(.+?)(?=\n##|\Z)", content, re.DOTALL
+        )
         if not purpose_match:
             return None
 
         purpose_text = purpose_match.group(1).strip()
 
         # skip if just placeholder comment
-        if purpose_text.startswith('<!--') or not purpose_text:
+        if purpose_text.startswith("<!--") or not purpose_text:
             return None
 
         # check for topic keywords in purpose
         for topic, keywords in TOPIC_KEYWORDS.items():
             for keyword in keywords:
-                if re.search(r'\b' + keyword + r'\w*\b', purpose_text):
+                if re.search(r"\b" + keyword + r"\w*\b", purpose_text):
                     return topic
 
     except Exception:
@@ -239,7 +256,7 @@ def extract_workspace_topic(workspace_dir: Path) -> Optional[str]:
 def extract_session_topic(
     user_prompts: List[str],
     assistant_content: str,
-    workspace_topic: Optional[str] = None
+    workspace_topic: Optional[str] = None,
 ) -> str:
     """
     Extract a topic/theme from the session by analyzing content.
@@ -247,13 +264,13 @@ def extract_session_topic(
     Returns a short topic tag like 'auth', 'api', 'refactor'.
     """
     # combine all text for analysis
-    all_text = ' '.join(user_prompts).lower() + ' ' + assistant_content.lower()
+    all_text = " ".join(user_prompts).lower() + " " + assistant_content.lower()
 
     # count keyword matches per topic
     topic_scores: Dict[str, int] = defaultdict(int)
     for topic, keywords in TOPIC_KEYWORDS.items():
         for keyword in keywords:
-            count = len(re.findall(r'\b' + keyword + r'\w*\b', all_text))
+            count = len(re.findall(r"\b" + keyword + r"\w*\b", all_text))
             topic_scores[topic] += count
 
     # apply workspace topic bonus if defined
@@ -270,7 +287,7 @@ def extract_session_topic(
     if workspace_topic:
         return workspace_topic
 
-    return 'general'
+    return "general"
 
 
 def extract_session_brief(user_prompts: List[str], topic: str) -> str:
@@ -285,29 +302,31 @@ def extract_session_brief(user_prompts: List[str], topic: str) -> str:
     first_prompt = user_prompts[0]
 
     # clean it up for a brief
-    brief = first_prompt.replace('\n', ' ').strip()
+    brief = first_prompt.replace("\n", " ").strip()
 
     # if it's a question, keep it short
-    if '?' in brief:
-        brief = brief.split('?')[0] + '?'
+    if "?" in brief:
+        brief = brief.split("?")[0] + "?"
 
     # truncate
     if len(brief) > 80:
-        brief = brief[:77] + '...'
+        brief = brief[:77] + "..."
 
     return brief
 
 
-def extract_timestamps(messages: List[dict]) -> Tuple[Optional[datetime], Optional[datetime]]:
+def extract_timestamps(
+    messages: List[dict],
+) -> Tuple[Optional[datetime], Optional[datetime]]:
     """Extract session start and end timestamps from messages."""
     start_time = None
     end_time = None
 
     for msg in messages:
-        ts = msg.get('timestamp')
+        ts = msg.get("timestamp")
         if ts:
             try:
-                dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                 if start_time is None or dt < start_time:
                     start_time = dt
                 if end_time is None or dt > end_time:
@@ -324,14 +343,14 @@ def extract_discoveries(content: str) -> List[Tuple[str, str]]:
     seen = set()
 
     for raw in content.splitlines():
-        line = LIST_PREFIX_RE.sub('', raw.strip(), count=1).strip()
+        line = LIST_PREFIX_RE.sub("", raw.strip(), count=1).strip()
         if not is_sentence(line) or line in seen:
             continue
 
         for pattern, category in DISCOVERY_PATTERNS:
             if not re.match(pattern, line, re.IGNORECASE):
                 continue
-            finding = line if len(line) <= 200 else line[:200] + '...'
+            finding = line if len(line) <= 200 else line[:200] + "..."
             seen.add(line)
             discoveries.append((category, finding))
             break
@@ -344,18 +363,18 @@ def extract_plans(content: str) -> List[str]:
     plans = []
     seen = set()
 
-    list_pattern = r'(?:^|\n)\s*(\d+[\.\)]\s+.+?)(?=\n\s*\d+[\.\)]|\n\n|$)'
+    list_pattern = r"(?:^|\n)\s*(\d+[\.\)]\s+.+?)(?=\n\s*\d+[\.\)]|\n\n|$)"
     matches = re.findall(list_pattern, content, re.MULTILINE | re.DOTALL)
 
     for match in matches:
-        step = ' '.join(match.split())
+        step = " ".join(match.split())
         if len(step) > 15 and step not in seen and is_sentence(step):
             seen.add(step)
             plans.append(step)
 
     # case-sensitive: lowercase "next" and "step" are ordinary words, and with
     # IGNORECASE they captured the rest of any sentence containing them
-    todo_pattern = r'^\s*(?:TODO|NEXT|STEP)\s*[:\-]\s*(.+?)\s*$'
+    todo_pattern = r"^\s*(?:TODO|NEXT|STEP)\s*[:\-]\s*(.+?)\s*$"
     matches = re.findall(todo_pattern, content, re.MULTILINE)
 
     for match in matches:
@@ -384,17 +403,29 @@ def create_session_file(
 
     # filename: YYYYMMDD_HHMMSS_sessionid.md
     now = datetime.now()
-    timestamp_str = now.strftime('%Y%m%d_%H%M%S')
-    session_short = session_id[:8] if session_id else 'unknown'
+    timestamp_str = now.strftime("%Y%m%d_%H%M%S")
+    session_short = session_id[:8] if session_id else "unknown"
     filename = f"{timestamp_str}_{session_short}.md"
     session_file = sessions_dir / filename
 
     # format times
-    start_str = start_time.strftime('%Y-%m-%d %H:%M') if start_time else now.strftime('%Y-%m-%d %H:%M')
-    end_str = end_time.strftime('%H:%M') if end_time else now.strftime('%H:%M')
+    start_str = (
+        start_time.strftime("%Y-%m-%d %H:%M")
+        if start_time
+        else now.strftime("%Y-%m-%d %H:%M")
+    )
+    end_str = end_time.strftime("%H:%M") if end_time else now.strftime("%H:%M")
 
     # build content
     lines = [
+        "---",
+        "type: history",
+        f"repo: {workspace_dir.parent.name}",
+        "status: done",
+        "lifecycle: candidate",
+        f"created: {now.strftime('%Y-%m-%d')}",
+        "---",
+        "",
         f"# Session: {start_str} - {end_str}",
         "",
         "## Summary",
@@ -408,7 +439,7 @@ def create_session_file(
         lines.append("## User Prompts")
         for prompt in user_prompts[:10]:  # limit to 10
             # escape for markdown
-            prompt_clean = prompt.replace('\n', ' ').strip()
+            prompt_clean = prompt.replace("\n", " ").strip()
             lines.append(f"- {prompt_clean}")
         lines.append("")
 
@@ -417,9 +448,9 @@ def create_session_file(
         lines.append("## Files Touched")
 
         # group by modification type
-        modified = tool_usage.get('Edit', []) + tool_usage.get('MultiEdit', [])
-        created = tool_usage.get('Write', [])
-        read_files = tool_usage.get('Read', [])
+        modified = tool_usage.get("Edit", []) + tool_usage.get("MultiEdit", [])
+        created = tool_usage.get("Write", [])
+        read_files = tool_usage.get("Read", [])
 
         if modified:
             lines.append("### Modified")
@@ -447,7 +478,7 @@ def create_session_file(
         lines.append("")
 
     # bash commands
-    bash_cmds = tool_usage.get('Bash', [])
+    bash_cmds = tool_usage.get("Bash", [])
     if bash_cmds:
         lines.append("## Commands Run")
         for cmd in bash_cmds[:10]:
@@ -458,19 +489,21 @@ def create_session_file(
     if discoveries:
         lines.append("## Discoveries Extracted")
         for category, finding in discoveries:
-            finding_clean = finding.replace('\n', ' ').strip()
+            finding_clean = finding.replace("\n", " ").strip()
             lines.append(f"- [{category}] {finding_clean}")
         lines.append("")
 
     # session metadata
-    lines.extend([
-        "## Metadata",
-        f"- Session ID: {session_id}",
-        f"- Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
-    ])
+    lines.extend(
+        [
+            "## Metadata",
+            f"- Session ID: {session_id}",
+            f"- Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}",
+        ]
+    )
 
     try:
-        session_file.write_text('\n'.join(lines))
+        session_file.write_text("\n".join(lines))
         return session_file
     except Exception:
         return None
@@ -489,11 +522,11 @@ def update_session_index(
     index_file = workspace_dir / "history" / "sessions.md"
     index_file.parent.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-    session_short = session_id[:8] if session_id else 'unknown'
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    session_short = session_id[:8] if session_id else "unknown"
 
     # count edits
-    edit_count = len(tool_usage.get('Edit', [])) + len(tool_usage.get('Write', []))
+    edit_count = len(tool_usage.get("Edit", [])) + len(tool_usage.get("Write", []))
 
     # build summary parts
     parts = []
@@ -502,16 +535,16 @@ def update_session_index(
     if discoveries_count > 0:
         parts.append(f"{discoveries_count} discoveries")
 
-    summary = ', '.join(parts) if parts else 'read-only'
+    summary = ", ".join(parts) if parts else "read-only"
 
     # truncate brief for index
-    brief_short = brief[:50] + '...' if len(brief) > 50 else brief
+    brief_short = brief[:50] + "..." if len(brief) > 50 else brief
 
     line = f"- {timestamp}: [{topic}] {session_short} - {brief_short} ({summary})"
 
     try:
-        with open(index_file, 'a') as f:
-            f.write(line + '\n')
+        with open(index_file, "a") as f:
+            f.write(line + "\n")
     except Exception:
         pass
 
@@ -524,14 +557,14 @@ def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) 
     discoveries_file = workspace_dir / "context" / "discoveries.md"
     discoveries_file.parent.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     # a re-run over the same transcript must not re-append what is already there
     recorded = set()
     if discoveries_file.exists():
         try:
-            for line in discoveries_file.read_text(errors='replace').splitlines():
-                hit = re.match(r'- \d{4}-\d\d-\d\d \d\d:\d\d: \[[^\]]+\] (.*)', line)
+            for line in discoveries_file.read_text(errors="replace").splitlines():
+                hit = re.match(r"- \d{4}-\d\d-\d\d \d\d:\d\d: \[[^\]]+\] (.*)", line)
                 if hit:
                     recorded.add(hit.group(1).strip())
         except OSError:
@@ -539,7 +572,7 @@ def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) 
 
     lines = []
     for category, finding in discoveries:
-        finding = finding.replace('\n', ' ').strip()
+        finding = finding.replace("\n", " ").strip()
         if finding in recorded:
             continue
         recorded.add(finding)
@@ -549,8 +582,8 @@ def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) 
         return 0
 
     try:
-        with open(discoveries_file, 'a') as f:
-            f.write('\n'.join(lines) + '\n')
+        with open(discoveries_file, "a") as f:
+            f.write("\n".join(lines) + "\n")
         return len(lines)
     except Exception:
         return 0
@@ -564,30 +597,30 @@ def save_plans(workspace_dir: Path, plans: List[str]) -> bool:
     plans_file = workspace_dir / "plans" / "current.md"
     plans_file.parent.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     content = f"# Current Plan\nUpdated: {timestamp}\n\n"
     content += "## Steps\n"
     for i, plan in enumerate(plans, 1):
-        plan = plan.replace('\n', ' ').strip()
-        if not plan.startswith(('TODO', 'FIXME', 'NEXT')):
+        plan = plan.replace("\n", " ").strip()
+        if not plan.startswith(("TODO", "FIXME", "NEXT")):
             content += f"{i}. {plan}\n"
         else:
             content += f"- {plan}\n"
 
     try:
         if plans_file.exists():
-            steps = content.split('## Steps', 1)[-1].strip()
-            if steps and steps in plans_file.read_text(errors='replace'):
+            steps = content.split("## Steps", 1)[-1].strip()
+            if steps and steps in plans_file.read_text(errors="replace"):
                 return True
             mtime = plans_file.stat().st_mtime
             age_hours = (datetime.now().timestamp() - mtime) / 3600
             if age_hours < 1:
-                with open(plans_file, 'a') as f:
+                with open(plans_file, "a") as f:
                     f.write(f"\n---\n{content}")
                 return True
 
-        with open(plans_file, 'w') as f:
+        with open(plans_file, "w") as f:
             f.write(content)
         return True
     except Exception:
@@ -625,13 +658,13 @@ def build_features_table(workspace_dir: Path) -> str:
     for name, status, branch in rows:
         lines.append(f"| {name} | {status} | {branch} |")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def build_timeline(workspace_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -> str:
     """Build timeline of md file changes, excluding session files and WORKSPACE.md."""
-    exclude_dirs = {'history'}
-    exclude_files = {'WORKSPACE.md', '_index.md'}
+    exclude_dirs = {"history"}
+    exclude_files = {"WORKSPACE.md", "_index.md"}
 
     entries = []
     for md_file in workspace_dir.rglob("*.md"):
@@ -661,10 +694,10 @@ def build_timeline(workspace_dir: Path, limit: Optional[int] = TIMELINE_LIMIT) -
         "|----------|------|",
     ]
     for mtime, rel_path in entries:
-        date_str = mtime.strftime('%Y-%m-%d %H:%M')
+        date_str = mtime.strftime("%Y-%m-%d %H:%M")
         lines.append(f"| {date_str} | {rel_path} |")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def update_workspace_md(workspace_dir: Path):
@@ -684,25 +717,39 @@ def update_workspace_md(workspace_dir: Path):
     current_heading = ""
     current_lines = []
 
-    for line in content.split('\n'):
-        if line.startswith('## '):
-            sections.append((current_heading, '\n'.join(current_lines)))
+    for line in content.split("\n"):
+        if line.startswith("## "):
+            sections.append((current_heading, "\n".join(current_lines)))
             current_heading = line
             current_lines = []
         else:
             current_lines.append(line)
-    sections.append((current_heading, '\n'.join(current_lines)))
+    sections.append((current_heading, "\n".join(current_lines)))
 
     # rebuild: replace Features/Timeline, preserve everything else
-    has_features = any(h == '## Features' for h, _ in sections)
-    has_timeline = any(h == '## Timeline' for h, _ in sections)
+    has_features = any(h == "## Features" for h, _ in sections)
+    has_timeline = any(h == "## Timeline" for h, _ in sections)
 
     new_sections = []
     for heading, body in sections:
-        if heading == '## Features':
-            new_sections.append(('## Features', '\n' + features_table + '\n' if features_table else '\nNo features tracked.\n'))
-        elif heading == '## Timeline':
-            new_sections.append(('## Timeline', '\n' + timeline + '\n' if timeline else '\nNo files tracked yet.\n'))
+        if heading == "## Features":
+            new_sections.append(
+                (
+                    "## Features",
+                    (
+                        "\n" + features_table + "\n"
+                        if features_table
+                        else "\nNo features tracked.\n"
+                    ),
+                )
+            )
+        elif heading == "## Timeline":
+            new_sections.append(
+                (
+                    "## Timeline",
+                    "\n" + timeline + "\n" if timeline else "\nNo files tracked yet.\n",
+                )
+            )
         else:
             new_sections.append((heading, body))
 
@@ -711,16 +758,22 @@ def update_workspace_md(workspace_dir: Path):
     if not has_features or not has_timeline:
         insert_idx = 1  # after header block
         for i, (heading, _) in enumerate(new_sections):
-            if heading == '## Purpose':
+            if heading == "## Purpose":
                 insert_idx = i + 1
                 break
 
         if not has_timeline:
-            timeline_body = '\n' + timeline + '\n' if timeline else '\nNo files tracked yet.\n'
-            new_sections.insert(insert_idx, ('## Timeline', timeline_body))
+            timeline_body = (
+                "\n" + timeline + "\n" if timeline else "\nNo files tracked yet.\n"
+            )
+            new_sections.insert(insert_idx, ("## Timeline", timeline_body))
         if not has_features:
-            features_body = '\n' + features_table + '\n' if features_table else '\nNo features tracked.\n'
-            new_sections.insert(insert_idx, ('## Features', features_body))
+            features_body = (
+                "\n" + features_table + "\n"
+                if features_table
+                else "\nNo features tracked.\n"
+            )
+            new_sections.insert(insert_idx, ("## Features", features_body))
 
     # reassemble
     result_lines = []
@@ -729,10 +782,10 @@ def update_workspace_md(workspace_dir: Path):
             result_lines.append(heading)
         result_lines.append(body)
 
-    new_content = '\n'.join(result_lines)
+    new_content = "\n".join(result_lines)
     # clean up excessive blank lines
-    while '\n\n\n' in new_content:
-        new_content = new_content.replace('\n\n\n', '\n\n')
+    while "\n\n\n" in new_content:
+        new_content = new_content.replace("\n\n\n", "\n\n")
 
     workspace_file.write_text(new_content)
 
@@ -741,7 +794,7 @@ def workspace_init(cwd: Path) -> Path:
     workspace_dir = cwd / ".giantmem"
     name = cwd.name
 
-    subdirs = ['context', 'plans', 'history', 'filebox', 'research', 'reviews']
+    subdirs = ["context", "plans", "history", "filebox", "research", "reviews"]
     for subdir in subdirs:
         (workspace_dir / subdir).mkdir(parents=True, exist_ok=True)
 
@@ -749,17 +802,17 @@ def workspace_init(cwd: Path) -> Path:
 
     workspace_file = workspace_dir / "WORKSPACE.md"
     if not workspace_file.exists():
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now().strftime("%Y-%m-%d")
 
         # try to get git branch
         branch = "main"
         try:
             result = subprocess.run(
-                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 cwd=str(cwd),
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             if result.returncode == 0:
                 branch = result.stdout.strip()
@@ -809,7 +862,9 @@ def main():
         # auto-init workspace if neither exists
         if not workspace_dir.exists():
             workspace_dir = workspace_init(cwd_path)
-            print(f"Workspace: initialized .giantmem/ in {cwd_path.name}", file=sys.stderr)
+            print(
+                f"Workspace: initialized .giantmem/ in {cwd_path.name}", file=sys.stderr
+            )
 
         if not transcript_path:
             return
@@ -850,7 +905,7 @@ def main():
         )
 
         # update index
-        session_filename = session_file.name if session_file else ''
+        session_filename = session_file.name if session_file else ""
         update_session_index(
             workspace_dir=workspace_dir,
             session_id=session_id,
@@ -881,9 +936,14 @@ def main():
             print(f"Workspace: {', '.join(parts)}", file=sys.stderr)
 
         # index this session into the search db (incremental, ~1s)
-        search_script = Path(os.environ.get(
-            'GIANT_TOOLING_DIR', str(Path.home() / "dev/giant-tooling")
-        )) / "giantmem-archive/giantmem-search.py"
+        search_script = (
+            Path(
+                os.environ.get(
+                    "GIANT_TOOLING_DIR", str(Path.home() / "dev/giant-tooling")
+                )
+            )
+            / "giantmem-archive/giantmem-search.py"
+        )
         if search_script.exists():
             try:
                 subprocess.Popen(
