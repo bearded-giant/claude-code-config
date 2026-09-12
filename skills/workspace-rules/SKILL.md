@@ -86,7 +86,7 @@ Notion publish: policy, not questions. Local file is canonical for every class; 
 |---|---|---|
 | state | tasks, plan, facts, notes, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
 | model memory | pattern, discoveries | opt-in `publish: true` |
-| working prose | proposal, design, research, review | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
+| working prose | proposal, design, research, review, grill-run, grill-final | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
 | deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
 
 User asks for a deliverable kind → write it at the normal routed path with `publish: true` (or `kind:`), let the hook fire. Notion-side edits do not flow back; republish overwrites the page; the user backports by hand.

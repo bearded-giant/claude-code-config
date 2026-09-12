@@ -26,6 +26,8 @@ on_request:
   - design
   - proposal
   - review
+  - grill-run
+  - grill-final
   - file
 
 # regex on the .giantmem-relative path. match = never publish.
