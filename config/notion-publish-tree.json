@@ -23,5 +23,12 @@
   "giant-tooling/cli-reorg": "3d96a246-2659-8109-966a-f08c3fac854e",
   "recharge-auth": "3d96a246-2659-8146-bc7f-da54dbde4534",
   "recharge-auth/admin-overhaul": "3d96a246-2659-81ff-a650-d59a48a64a3b",
-  "recharge-auth/admin-overhaul/admin-overhaul": "3d96a246-2659-8101-bffa-d1f0ded39ebb"
+  "recharge-auth/admin-overhaul/admin-overhaul": "3d96a246-2659-8101-bffa-d1f0ded39ebb",
+  "giant-tooling/artifact-creation-rate": "3d96a246-2659-8163-a2ee-e16afa9ebc7d",
+  "giant-tooling/artifacts-projection": "3d96a246-2659-81ff-8d8e-d50b7de2babe",
+  "giant-tooling/live-coverage-backfill": "3d96a246-2659-8195-8b35-f86ba088bfbd",
+  "giant-tooling/session-length-stats": "3d96a246-2659-8180-abbe-cd7d82265e29",
+  "giant-tooling/tool-use-breakdown": "3d96a246-2659-8108-87c6-cd18aad8d638",
+  "giant-tooling/top-mover-badge": "3d96a246-2659-811c-b911-efbd604a9920",
+  "giant-tooling/wails-gui": "3d96a246-2659-8199-bb6f-e8c86736654c"
 }
