@@ -18,5 +18,10 @@
   "hyphae": "3d96a246-2659-8159-bd7e-d8c88bc2f17a",
   "chat-orchestrator": "3d96a246-2659-8157-8589-e3c7675a5059",
   "chat-orchestrator/monorepo": "3d96a246-2659-814f-85ab-d7e63b530c19",
-  "chat-orchestrator/monorepo/monorepo": "3d96a246-2659-8116-b78e-d9cc7ac6a21b"
+  "chat-orchestrator/monorepo/monorepo": "3d96a246-2659-8116-b78e-d9cc7ac6a21b",
+  "giant-tooling": "3d96a246-2659-812f-817b-f5c7808464df",
+  "giant-tooling/cli-reorg": "3d96a246-2659-8109-966a-f08c3fac854e",
+  "recharge-auth": "3d96a246-2659-8146-bc7f-da54dbde4534",
+  "recharge-auth/admin-overhaul": "3d96a246-2659-81ff-a650-d59a48a64a3b",
+  "recharge-auth/admin-overhaul/admin-overhaul": "3d96a246-2659-8101-bffa-d1f0ded39ebb"
 }
