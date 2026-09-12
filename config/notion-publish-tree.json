@@ -15,5 +15,8 @@
   "recharge-merchant-mcp/main/inspector-automation": "3d86a246-2659-8199-8633-e12bf3f48c25",
   "recharge-merchant-mcp/telemetry": "3d86a246-2659-81bf-b9fa-fd69cb1426d7",
   "recharge-merchant-mcp/telemetry/telemetry": "3d86a246-2659-8128-9ce2-e9fa813ce1af",
-  "hyphae": "3d96a246-2659-8159-bd7e-d8c88bc2f17a"
+  "hyphae": "3d96a246-2659-8159-bd7e-d8c88bc2f17a",
+  "chat-orchestrator": "3d96a246-2659-8157-8589-e3c7675a5059",
+  "chat-orchestrator/monorepo": "3d96a246-2659-814f-85ab-d7e63b530c19",
+  "chat-orchestrator/monorepo/monorepo": "3d96a246-2659-8116-b78e-d9cc7ac6a21b"
 }

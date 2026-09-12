@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: cross-project recall from giantmem.
+"""UserPromptSubmit hook: repo-first recall from giantmem, one cross-project slot.
 
 Two signals, run concurrently and merged:
   - FTS5 bm25 over document bodies (`giantmem find --live`) — always works, no
@@ -11,15 +11,20 @@ Two signals, run concurrently and merged:
 Best-effort: any failure prints nothing so the prompt is never blocked.
 
 Quality filters: drop MEMORY.md pointer indexes, drop history session-summary
-noise (unless GIANTMEM_RECALL_INCLUDE_HISTORY=1), and require each FTS hit to
-share >= MIN_OVERLAP distinct keywords with the prompt.
+noise (unless GIANTMEM_RECALL_INCLUDE_HISTORY=1), require each FTS hit to
+share >= MIN_OVERLAP distinct keywords with the prompt, prefer hits from the
+current repo (path under the worktree, or same canonical project with -wt /
+--bare stripped) with at most CROSS_MAX lines from other repos, and collapse
+worktree siblings of one doc to a single line.
 
 Tunables: GIANTMEM_RECALL_LIMIT, GIANTMEM_RECALL_SINCE,
 GIANTMEM_RECALL_MIN_OVERLAP, GIANTMEM_RECALL_INCLUDE_HISTORY,
 GIANTMEM_RECALL_SEMANTIC (0 to disable), GIANTMEM_RECALL_SEMANTIC_MAX,
+GIANTMEM_RECALL_CROSS_MAX (other-repo lines, default 1),
 GIANTMEM_RECALL_TIMEOUT (per-subprocess wall-clock cap, seconds).
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -35,6 +40,7 @@ MIN_OVERLAP = int(os.getenv("GIANTMEM_RECALL_MIN_OVERLAP", "2"))
 INCLUDE_HISTORY = os.getenv("GIANTMEM_RECALL_INCLUDE_HISTORY") == "1"
 SEMANTIC = os.getenv("GIANTMEM_RECALL_SEMANTIC", "1") != "0"
 SEMANTIC_MAX = int(os.getenv("GIANTMEM_RECALL_SEMANTIC_MAX", str(max(1, LIMIT // 2))))
+CROSS_MAX = int(os.getenv("GIANTMEM_RECALL_CROSS_MAX", "1"))
 TIMEOUT = float(os.getenv("GIANTMEM_RECALL_TIMEOUT", "2"))
 MIN_PROMPT_CHARS = 16
 MAX_TERMS = 10
@@ -110,6 +116,54 @@ def keywords_from(prompt):
     return out
 
 
+def canon(project):
+    p = (project or "").strip("/").lower()
+    for suffix in ("--bare", "-wt"):
+        if p.endswith(suffix):
+            p = p[: -len(suffix)]
+    return p
+
+
+def current_repo(data):
+    """(canonical project, worktree root with trailing slash) for this session's cwd."""
+    cwd = os.getenv("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "live_index",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_index.py"),
+        )
+        if spec is None or spec.loader is None:
+            return "", ""
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        project, root = mod.detect_project(cwd, mod.ARCHIVE_BASE)
+    except Exception:  # pylint: disable=broad-exception-caught
+        return "", ""
+    return canon(project), root.rstrip("/") + "/"
+
+
+def is_current(repo, project, path="", worktree=""):
+    cur, root = repo
+    if not cur:
+        return True
+    if root and path.startswith(root):
+        return True
+    if root and worktree and (worktree.rstrip("/") + "/").startswith(root):
+        return True
+    c = canon(project)
+    return c == cur or c.endswith("-" + cur)
+
+
+def sibling_key(project, path):
+    """Same doc across worktree siblings shares (canonical project, path under .giantmem/)."""
+    rel = (
+        path.split("/.giantmem/", 1)[1]
+        if "/.giantmem/" in path
+        else os.path.basename(path)
+    )
+    return (canon(project), rel)
+
+
 def run_giantmem(giantmem, argv, timeout=TIMEOUT):
     try:
         with subprocess.Popen(
@@ -138,7 +192,7 @@ def run_giantmem(giantmem, argv, timeout=TIMEOUT):
         return None
 
 
-def fts_hits(giantmem, keywords):
+def fts_hits(giantmem, keywords, repo):
     """Existing FTS path: OR-query, keyword-overlap filtered. Returns hit dicts."""
     query = " OR ".join(keywords)
     hits = run_giantmem(
@@ -150,7 +204,7 @@ def fts_hits(giantmem, keywords):
             "--json",
             "--full",
             "--limit",
-            str(LIMIT * 4),
+            str(LIMIT * 8),
             "--since",
             SINCE,
         ],
@@ -176,6 +230,8 @@ def fts_hits(giantmem, keywords):
         out.append(
             {
                 "key": path or name,
+                "sib": sibling_key(project, path),
+                "cur": is_current(repo, project, path=path),
                 "loc": loc,
                 "name": name,
                 "snippet": snippet,
@@ -185,7 +241,7 @@ def fts_hits(giantmem, keywords):
     return out
 
 
-def semantic_hits(giantmem, prompt):
+def semantic_hits(giantmem, prompt, repo):
     """Hybrid semantic search over the artifacts projection. Keeps only real
     vector matches (vector_score > 0) so a cold daemon yields nothing here."""
     data = run_giantmem(
@@ -215,20 +271,20 @@ def semantic_hits(giantmem, prompt):
         name = os.path.basename(rel) or a.get("id", "")
         if name in EXCLUDE_NAMES:
             continue
-        repo = a.get("repo") or "?"
-        loc = f"{repo}/{atype}" if atype else repo
+        arepo = a.get("repo") or "?"
+        loc = f"{arepo}/{atype}" if atype else arepo
         snippet = artifact_snippet(worktree, rel) if worktree and rel else ""
         out.append(
             {
                 "key": a.get("id") or rel,
+                "sib": sibling_key(arepo, rel),
+                "cur": is_current(repo, arepo, worktree=worktree),
                 "loc": loc,
                 "name": name,
                 "snippet": snippet,
                 "tag": "sem",
             }
         )
-        if len(out) >= SEMANTIC_MAX:
-            break
     return out
 
 
@@ -263,17 +319,33 @@ def body_snippet(path, maxlen=180):
 
 
 def merge(semantic, fts):
-    """Semantic first (guaranteed slots), fill remainder with FTS, dedup by key."""
-    seen, lines = set(), []
-    for hit in [*semantic, *fts]:
-        key = hit["key"]
-        if key in seen:
-            continue
-        seen.add(key)
+    """Current repo first (semantic before FTS within it), then at most CROSS_MAX
+    lines from other repos. Dedup by key and by worktree-sibling key."""
+    ranked = [*semantic, *fts]
+    cur = [h for h in ranked if h["cur"]]
+    other = [h for h in ranked if not h["cur"]]
+    seen_key, seen_sib, lines = set(), set(), []
+
+    def take(hit):
+        if hit["key"] in seen_key or hit["sib"] in seen_sib:
+            return False
+        seen_key.add(hit["key"])
+        seen_sib.add(hit["sib"])
         suffix = f": {hit['snippet']}" if hit["snippet"] else ""
         lines.append(f"- [{hit['loc']}] {hit['name']} ({hit['tag']}){suffix}")
-        if len(lines) >= LIMIT:
+        return True
+
+    cur_cap = LIMIT - min(CROSS_MAX, len(other))
+    for hit in cur:
+        if len(lines) >= cur_cap:
             break
+        take(hit)
+    taken_other = 0
+    for hit in other:
+        if taken_other >= CROSS_MAX or len(lines) >= LIMIT:
+            break
+        if take(hit):
+            taken_other += 1
     return lines
 
 
@@ -296,9 +368,12 @@ def main():
     if not keywords:
         return
 
+    repo = current_repo(data)
     with ThreadPoolExecutor(max_workers=2) as pool:
-        fts_future = pool.submit(fts_hits, giantmem, keywords)
-        sem_future = pool.submit(semantic_hits, giantmem, prompt) if SEMANTIC else None
+        fts_future = pool.submit(fts_hits, giantmem, keywords, repo)
+        sem_future = (
+            pool.submit(semantic_hits, giantmem, prompt, repo) if SEMANTIC else None
+        )
         fts = fts_future.result()
         semantic = sem_future.result() if sem_future else []
 
@@ -306,7 +381,7 @@ def main():
     if not lines:
         return
 
-    print('<giantmem-recall source="giantmem, cross-project">')
+    print(f'<giantmem-recall source="giantmem, repo-first" repo="{repo[0] or "?"}">')
     print("Possibly-relevant prior context (verify before relying):")
     print("\n".join(lines))
     print("</giantmem-recall>")
