@@ -35,7 +35,11 @@ import sys
 import json
 import os
 import re
+import shutil
+import math
+import socket
 import subprocess
+import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple, Dict, Set, Optional
@@ -54,6 +58,14 @@ DISCOVERY_PATTERNS = [
 ]
 
 LIST_PREFIX_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s+)*")
+
+DISCOVERY_SIM_THRESHOLD = float(os.environ.get("GIANTMEM_DISCOVERY_SIM", "0.9"))
+DISCOVERY_SIM_WINDOW = int(os.environ.get("GIANTMEM_DISCOVERY_SIM_WINDOW", "150"))
+DISCOVERY_SIM_BUDGET = float(os.environ.get("GIANTMEM_DISCOVERY_SIM_BUDGET", "5"))
+DAEMON_SOCKET = os.environ.get(
+    "GIANTMEM_DAEMON_SOCKET",
+    str(Path.home() / ".cache" / "giantmem" / "giantmemd.sock"),
+)
 
 
 def is_sentence(text: str) -> bool:
@@ -315,6 +327,89 @@ def extract_session_brief(user_prompts: List[str], topic: str) -> str:
     return brief
 
 
+SUMMARY_PROMPT = """Read this Claude Code session log. Answer in exactly this format, no preamble, no closing remarks:
+TOPIC: <one lowercase tag, 1-2 words, hyphenated, naming the subject>
+BRIEF: <one sentence under 90 chars saying what the session actually did>
+- <outcome 1>
+- <outcome 2>
+- <outcome 3>
+
+Outcomes are concrete results, not restated instructions. Ignore local-command-caveat, local-command-stdout and command-name blocks; they are terminal noise, not user intent. If the session produced fewer than three real outcomes, emit fewer bullets.
+
+SESSION LOG:
+"""
+
+
+def summarize_session(session_file: Path) -> None:
+    binary = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
+    if not os.path.isfile(binary):
+        return
+    args = [
+        binary,
+        "-p",
+        "--model",
+        "haiku",
+        "--output-format",
+        "text",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--tools",
+        "",
+    ]
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        # --bare skips hooks outright but reads no oauth/keychain credential
+        args.insert(1, "--bare")
+    body = session_file.read_text()
+    proc = subprocess.run(
+        args,
+        input=SUMMARY_PROMPT + body[:12000],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        env=dict(os.environ, GIANTMEM_SUMMARY_CHILD="1"),
+        check=False,
+    )
+    if proc.returncode != 0:
+        return
+    topic = brief = ""
+    bullets = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("TOPIC:"):
+            topic = line[6:].strip().lower()[:32]
+        elif line.startswith("BRIEF:"):
+            brief = line[6:].strip()[:120]
+        elif line.startswith("- ") and len(bullets) < 3:
+            bullets.append(line)
+    if not topic or not brief:
+        return
+
+    new = re.sub(
+        r"^Topic: .*$", lambda _m: f"Topic: {topic}", body, count=1, flags=re.M
+    )
+    new = re.sub(r"^Brief: .*$", lambda _m: f"Brief: {brief}", new, count=1, flags=re.M)
+    if bullets:
+        new = new.replace(
+            f"Brief: {brief}\n",
+            f"Brief: {brief}\n\n## Outcomes\n" + "\n".join(bullets) + "\n",
+            1,
+        )
+    session_file.write_text(new)
+
+    index_file = session_file.parent.parent / "sessions.md"
+    marker = f"] {session_file.stem.split('_')[-1]} - "
+    lines = index_file.read_text().splitlines()
+    for i, line in enumerate(lines):
+        if marker not in line or "[" not in line:
+            continue
+        head, _, tail = line.partition(marker)
+        stats = tail[tail.rindex(" (") :] if " (" in tail else ""
+        lines[i] = f"{head[: head.rindex('[')]}[{topic}{marker}{brief[:50]}{stats}"
+        index_file.write_text("\n".join(lines) + "\n")
+        break
+
+
 def extract_timestamps(
     messages: List[dict],
 ) -> Tuple[Optional[datetime], Optional[datetime]]:
@@ -549,6 +644,81 @@ def update_session_index(
         pass
 
 
+def _daemon_embed(text: str) -> Optional[List[float]]:
+    # the daemon is the only process holding the bge model, so a miss here has to
+    # degrade to the verbatim check rather than load a model inside SessionEnd
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2.0)
+            sock.connect(DAEMON_SOCKET)
+            req = {
+                "jsonrpc": "2.0",
+                "method": "embed",
+                "params": {"text": text},
+                "id": 1,
+            }
+            sock.sendall(json.dumps(req).encode() + b"\n")
+            buf = b""
+            while not buf.endswith(b"\n"):
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+    except OSError:
+        return None
+    try:
+        payload = json.loads(buf.decode())
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if payload.get("error"):
+        return None
+    vec = (payload.get("result") or {}).get("vec")
+    return vec if isinstance(vec, list) and vec else None
+
+
+def _cosine(a: List[float], b: List[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if not na or not nb:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _drop_near_duplicates(
+    fresh: List[Tuple[str, str]], history: List[str]
+) -> List[Tuple[str, str]]:
+    if not fresh or not history:
+        return fresh
+    deadline = time.monotonic() + DISCOVERY_SIM_BUDGET
+    new_vecs = [
+        _daemon_embed(finding) if time.monotonic() < deadline else None
+        for _, finding in fresh
+    ]
+    if not any(new_vecs):
+        return fresh
+    seen: List[List[float]] = []
+    # newest first, so a spent budget still bought the likeliest repeats
+    for old in reversed(history[-DISCOVERY_SIM_WINDOW:]):
+        if time.monotonic() >= deadline:
+            break
+        vec = _daemon_embed(old)
+        if vec:
+            seen.append(vec)
+    if not seen:
+        return fresh
+    kept = []
+    for (category, finding), vec in zip(fresh, new_vecs):
+        if vec and any(
+            _cosine(vec, prior) >= DISCOVERY_SIM_THRESHOLD for prior in seen
+        ):
+            continue
+        kept.append((category, finding))
+        if vec:
+            seen.append(vec)
+    return kept
+
+
 def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) -> int:
     """Append discoveries to discoveries.md."""
     if not discoveries:
@@ -561,22 +731,30 @@ def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) 
 
     # a re-run over the same transcript must not re-append what is already there
     recorded = set()
+    history: List[str] = []
     if discoveries_file.exists():
         try:
             for line in discoveries_file.read_text(errors="replace").splitlines():
                 hit = re.match(r"- \d{4}-\d\d-\d\d \d\d:\d\d: \[[^\]]+\] (.*)", line)
                 if hit:
-                    recorded.add(hit.group(1).strip())
+                    text = hit.group(1).strip()
+                    recorded.add(text)
+                    history.append(text)
         except OSError:
             pass
 
-    lines = []
+    fresh = []
     for category, finding in discoveries:
         finding = finding.replace("\n", " ").strip()
         if finding in recorded:
             continue
         recorded.add(finding)
-        lines.append(f"- {timestamp}: [{category}] {finding}")
+        fresh.append((category, finding))
+
+    lines = [
+        f"- {timestamp}: [{category}] {finding}"
+        for category, finding in _drop_near_duplicates(fresh, history)
+    ]
 
     if not lines:
         return 0
@@ -847,6 +1025,8 @@ No files tracked yet.
 
 def main():
     """Main hook entry point."""
+    if os.environ.get("GIANTMEM_SUMMARY_CHILD"):
+        return
     try:
         input_data = json.load(sys.stdin)
 
@@ -954,9 +1134,32 @@ def main():
             except Exception:
                 pass
 
+        if session_file:
+            try:
+                subprocess.Popen(
+                    [
+                        "python3",
+                        os.path.abspath(__file__),
+                        "--summarize",
+                        str(session_file),
+                    ],
+                    start_new_session=True,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except Exception:
+                pass
+
     except Exception:
         pass
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["--summarize"]:
+        try:
+            summarize_session(Path(sys.argv[2]))
+        except Exception:
+            pass
+    else:
+        main()

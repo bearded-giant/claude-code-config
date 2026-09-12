@@ -40,6 +40,19 @@ def main():
     assert gr.canon("python-cc-wt--bare") == "python-cc"
     assert gr.canon("/hyphae/") == "hyphae"
 
+    # live_index.detect_project is the python peer of Go project.Detect; drift here
+    # silently mislabels every live_docs row, so pin the three shapes that differ
+    li = gr.live_index_mod()
+    assert (
+        li.detect_project("/Users/bryan/dev/giant-tooling/giantmem", li.ARCHIVE_BASE)[0]
+        == "giant-tooling"
+    )
+    assert (
+        li.detect_project("/Users/bryan/dev/python/cc-wt/stage", li.ARCHIVE_BASE)[0]
+        == "cc-wt"
+    )
+    assert li.detect_project("/Users/bryan", li.ARCHIVE_BASE)[0] == "bryan"
+
     repo = ("hyphae", "/Users/bryan/dev/ai/hyphae/")
     assert gr.is_current(
         repo, "frost", path="/Users/bryan/dev/ai/hyphae/.giantmem/x.md"
