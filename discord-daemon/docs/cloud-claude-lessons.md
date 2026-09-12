@@ -30,7 +30,7 @@ Captured during the first real run; subsequently incorporated into the runbook a
 
 - Default symlink mode is `portable` which rejects any absolute-target symlink. Real-world repos have lots of these (Python venvs, our `lib/workspace → /Users/bryan/...`, dbt container paths). Use `--symlink-mode=posix-raw`. Combined with the `/Users/bryan → /home/bryan` root symlink, most laptop-absolute symlinks resolve correctly on the VPS.
 - **Sync mirrors code, not runtime.** Venvs, `node_modules`, `target/`, `build/`, `dist/` are excluded. Recreate them on the VPS the first time you want to run something there.
-- Sync is **alpha→beta one-way-safe** by default in `scripts/mutagen-sync-dev.sh`. Beta-only files survive but the VPS cannot ever push edits back to the laptop. Use git or `scripts/pull-from-vps.sh` to round-trip code edits.
+- Sync is **two-way-resolved** by default in `scripts/mutagen-sync-dev.sh`. Both sides write, newer mtime wins on conflict, deletes propagate, so VPS-side dclaude edits land back on the laptop for commit and push. `.git/` is excluded, so git state stays per-host and commits still happen on the laptop only. `scripts/pull-from-vps.sh` is still there when you want a git-level round-trip instead.
 
 ## 2026-05-23 — Bundled discord plugin DM bug
 

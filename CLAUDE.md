@@ -93,7 +93,7 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
 - Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated discoveries / research land as `candidate` and get reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
 
-Doit list convention, three-spec model, feature-dir routing → `feature-management` skill. Scope registry, lifecycle tiers, preload packs, artifact search, caveman-on-first-write → `workspace-rules` skill.
+Doit list convention, three-spec model, feature-dir routing → `feature-management` skill. Scope registry, lifecycle tiers, artifact search, caveman-on-first-write → `workspace-rules` skill.
 
 ### Burn-down queue (`claude:` marker)
 

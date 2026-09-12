@@ -4,7 +4,7 @@ Cross-worktree memory unit + lifecycle aging + hybrid search. Shipped across 3 p
 
 | Phase | Adds |
 |---|---|
-| 1 | scopes, lifecycle, retention tiers, access log, preload packs, `/review-memory` |
+| 1 | scopes, lifecycle, retention tiers, access log, `/review-memory` |
 | 2 | sqlite-vec embeddings (CGO-free), hybrid scoring, `--semantic` opt-in |
 | 3 | fsnotify watch daemon, TF-IDF domain suggester, entity promotion |
 
@@ -48,7 +48,6 @@ New slash: `/review-memory`.
 | repo-scoped list | `--scope X --repo all` cross-repo |
 | stale = fixed cutoff | `stale --days 0` = per-type retention tier |
 | Discoveries pile up forever | Stamped `lifecycle: candidate`. `/review-memory` walks: approve/reject/skip/quit |
-| Hook: monolithic dump | Hook: legacy sections + `=== PRELOAD PACK ===` from `~/.claude/config/preload_packs.yaml` |
 | Manual reindex per edit | `giantmem watch start` — fsnotify, 2s debounce |
 | FTS-only | `artifact search <q>` blends FTS+vec+recency+access (opt-in) |
 
@@ -67,7 +66,6 @@ Pure Go via `modernc.org/sqlite/vec` blank import. No CGO.
 | Path | Purpose |
 |---|---|
 | `~/.giantmem-global/scopes.yaml` | scope registry (user, gitignored) |
-| `~/.claude/config/preload_packs.yaml` | session-start pack layers |
 | `~/.cache/giantmem/giantmem-watch.{pid,log}` | watcher runtime |
 | `~/.cache/giantmem/live.db` (or `$GIANTMEM_ARCHIVE_BASE/live.db`) | scopes + access + embeddings |
 

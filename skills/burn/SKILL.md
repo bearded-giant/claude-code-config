@@ -18,11 +18,10 @@ Todo text starts `claude:` (case-insensitive) → assigned to model.
 1. `--list <name>` arg → use verbatim
 2. else derive the repo-qualified, worktree-aware name:
 
+`hooks/doit_session_prime.py` owns this derivation and the SessionStart reminder already prints the answer (`doit session list ... list: <name>`) — use that name verbatim. Re-derive only if cwd / worktree / feature changed mid-session:
+
 ```bash
-root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-leaf=$(basename "$root"); par=$(basename "$(dirname "$root")")
-case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
-# active in_progress feature → "$base-$feature", else "$base"
+python3 ~/.claude/hooks/doit_session_prime.py </dev/null | sed -n 's/^  list: \([^ ]*\).*/\1/p'
 ```
 
    - `~/dev/claude-code-config` + feature `oauth-ttl` → `claude-code-config-oauth-ttl`

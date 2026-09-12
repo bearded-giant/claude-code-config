@@ -56,7 +56,7 @@ Remove the section once answered.
 
 `tasks.md` vs `plans/current.md`: tasks.md is durable, archived with feature, OpenSpec-style checkbox list with auto-status from checkbox %. `plans/current.md` is transient scratchpad — what you're currently handling, mutates throughout the session, deleted on `/complete-feature`.
 
-`context/discoveries.md` deprecated. Use `context/patterns.md` for curated architectural patterns.
+`context/discoveries.md` is hook-appended, never hand-authored — `workspace_session_end.py` appends extracted findings, the SessionStart hook replays the last 20 lines. It lands as `candidate` and gets triaged in `/review-memory`. Write `context/patterns.md` for curated architectural patterns.
 
 ## Frontmatter requirement
 
@@ -98,7 +98,7 @@ JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 Lifecycle stage rules:
 - `durable` (default): human-authored, scaffolded by `/new-feature`, accumulated source-specs. Never auto-pruned.
 - `candidate`: AI-captured discoveries / research / mid-session notes. Surface in `/review-memory` for promote → durable / demote → deprecated.
-- `deprecated`: kept on disk but excluded from default preload packs and stale reports.
+- `deprecated`: kept on disk but excluded from stale reports.
 
 Backfill legacy files:
 - Frontmatter keys: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`
@@ -207,7 +207,6 @@ Two new pieces let memory cross worktrees + age gracefully:
 | **scope registry** | `~/.giantmem-global/scopes.yaml` | Named scopes (`personal`, `recharge-customcheckout`, ...) → list of repo names. Artifact membership = repo match OR explicit `scope:` frontmatter. Edit via `giantmem scope init|list|show|add-repo|sync`. |
 | **lifecycle** | per-artifact frontmatter `lifecycle:` | `durable` (default, never auto-prunes), `candidate` (review pending), `deprecated` (kept but excluded from default packs). Walk candidates via `/review-memory`. |
 | **retention tier** | derived from `type:` | Tier A (proposal/design/source-spec) never expires; Tier B (pattern/research/notes) 180d; Tier C (tasks/plan/review/facts/delta-spec) 90d. Surfaced by `giantmem artifact stale --days 0`. |
-| **preload packs** | `~/.claude/config/preload_packs.yaml` | Ordered layers driving session-start hook output. Layers can inline `static_files`, run `giantmem artifact list` with filters, and resolve `{active_scope}` / `{active_feature}` / `{repo}` / `{branch}` placeholders. |
 
 Filter by scope or lifecycle anywhere artifacts are listed:
 

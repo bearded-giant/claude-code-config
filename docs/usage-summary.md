@@ -70,8 +70,6 @@ Retention tier derived from `type:` — A=never expire, B=180d candidate cutoff,
 
 Access log: `live.db.artifact_access` rows `(artifact_id, query, rank, accessed_at)` per list/show/find. `giantmem access top` / `prune`. `access_count` enriched on `--json` output + MCP `find_artifact` results.
 
-Preload packs: `~/.claude/config/preload_packs.yaml` declares ordered layers for `workspace_session_hook.py`. Layers inline `static_files`, run filtered `artifact list`, resolve `{active_scope}` / `{active_feature}` / `{repo}` / `{branch}`. Additive to existing hook sections in phase 1.
-
 ## Hybrid search (phase 2)
 
 CGO-free via `modernc.org/sqlite/vec` blank import. live.db v4 adds vec0 `artifact_embeddings` + `artifact_embedding_meta` (body-hash gated).

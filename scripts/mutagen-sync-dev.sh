@@ -72,8 +72,10 @@ IGNORES=(
 )
 # NOTE: .giantmem intentionally synced — dclaude on VPS needs session
 # memory (plans, features, artifacts.json, discoveries) to share context
-# with laptop. No sqlite DBs live under .giantmem (those go to
-# ~/.giantmem-global/), so two-way-resolved is safe.
+# with laptop. No sqlite DBs live under .giantmem: live.db and archives.db
+# are in ~/giantmem_archive/ and the scope registry is ~/.giantmem-global/
+# scopes.yaml. Both sit outside $HOME/dev, so neither syncs and
+# two-way-resolved is safe.
 
 mutagen daemon start >/dev/null 2>&1 || true
 

@@ -42,9 +42,9 @@ Every artifact written under `features/{name}/` carries a `lifecycle:` field in 
 
 | Lifecycle | Used for | Behavior |
 |---|---|---|
-| `durable` | All `/new-feature` scaffolds (proposal, delta-spec, tasks, design, facts). Source-specs after `/complete-feature` merge. | Never auto-pruned. Shows up in default preload packs. |
+| `durable` | All `/new-feature` scaffolds (proposal, delta-spec, tasks, design, facts). Source-specs after `/complete-feature` merge. | Never auto-pruned. |
 | `candidate` | AI-captured research, discoveries, mid-session notes. | Listed by `/review-memory`. User promotes → durable or demotes → deprecated. |
-| `deprecated` | Previously useful, now rejected. | Kept on disk. Excluded from default packs and stale reports. |
+| `deprecated` | Previously useful, now rejected. | Kept on disk. Excluded from stale reports. |
 
 `/complete-feature` flips merged delta-specs to `lifecycle: durable` if not already (they should be — they came from a durable template).
 
@@ -206,11 +206,10 @@ During multi-step work — feature OR bare repo — when a cluster of user-actio
 
 List name carries repo (+ worktree) so it stays legible across 4-6 parallel sessions — bare feature names lose context. Derive:
 
+`hooks/doit_session_prime.py` owns this derivation and prints the resolved name at SessionStart (`doit session list ... list: <name>`) — use that name verbatim. Re-derive only if cwd / worktree / feature changed mid-session:
+
 ```bash
-root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-leaf=$(basename "$root"); par=$(basename "$(dirname "$root")")
-case "$par" in *-wt) base="$par-$leaf";; *) base="$leaf";; esac
-# active in_progress feature → "$base-$feature", else "$base" (several in_progress → the one whose branch == HEAD)
+python3 ~/.claude/hooks/doit_session_prime.py </dev/null | sed -n 's/^  list: \([^ ]*\).*/\1/p'
 ```
 
 | cwd | active feature | list name |
