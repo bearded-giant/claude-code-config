@@ -160,7 +160,7 @@ Prints `config/standing-constraints.md` verbatim every prompt — re-asserts sco
 
 ## giantmem_recall.py
 
-UserPromptSubmit hook. Sanitizes the prompt into a keyword OR-query, runs `giantmem find --live --json` (FTS5 over workspace docs across all worktrees), and prepends the top hits — cross-project recall. Best-effort: prints nothing on miss/timeout so the prompt is never blocked. Tunable via `GIANTMEM_RECALL_LIMIT` / `GIANTMEM_RECALL_SINCE`. Replaced the dead RLabs `:8765` hooks (`memory_inject`, `memory_session_start`, `memory_curate`).
+UserPromptSubmit hook. Two arms run concurrently: a keyword OR-query through `giantmem find -s memory --json` (FTS5 bm25 over live workspace docs plus archived memory docs) and the full prompt through `giantmem artifact search --repo all --json` (chunked bge vectors; only real `vector_score > 0` hits kept, so a cold daemon degrades to FTS). Repo-first: current-repo hits fill first, at most `GIANTMEM_RECALL_CROSS_MAX` (default 1) lines come from other repos, worktree siblings of one doc collapse to one line. Output is packed into `GIANTMEM_RECALL_BUDGET` tokens (default 600, `ceil(len/4)`), with `GIANTMEM_RECALL_LIMIT` lines (default 8) as a ceiling and `GIANTMEM_RECALL_SNIPPET_CHARS` (default 400) per passage. Best-effort: prints nothing on miss/timeout so the prompt is never blocked. Query terms present in more than `GIANTMEM_RECALL_MAX_DF` of `live_docs` (default 0.2; `session`, `giantmem`, `config` in this corpus) are dropped before the FTS arm runs, so the overlap floor counts only discriminative terms. Other tunables: `GIANTMEM_RECALL_SINCE`, `GIANTMEM_RECALL_MIN_OVERLAP`, `GIANTMEM_RECALL_SEMANTIC`. Every injected line is also appended to `live.db.recall_log` (session, rank, signal, slot, path); `giantmem recall report --since 30d` joins that against the session transcript and `live_docs` writes to report precision per signal, slot, and rank, so ranker changes are compared on numbers. Regression checks: `python3 hooks/giantmem_recall_check.py`. Replaced the dead RLabs `:8765` hooks (`memory_inject`, `memory_session_start`, `memory_curate`).
 
 ## Hook Wiring Summary
 
@@ -168,7 +168,7 @@ All hooks are configured in `settings.json`. Here's the full map:
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `doit_session_prime.py`, `memory_index_sweep.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
+| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `doit_session_prime.py`, `memory_ingest.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
 | UserPromptSubmit | `standing_constraints.py`, `giantmem_recall.py`, `clear_attention.py` | Yes (standing constraints + top FTS5 hits per prompt) |
 | PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
 | SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
@@ -177,6 +177,6 @@ All hooks are configured in `settings.json`. Here's the full map:
 
 Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it.
 
-Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_index_sweep.py` (re-indexes every memory md into live.db, so a `giantmem index live` rebuild or a file from another machine never permanently loses memory).
+Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_ingest.py` (detached `giantmem db ingest --source memory-md`, which lands every memory md in archives.db, the durable, backed-up store; `live_index.py` still writes them into live.db on PostToolUse for same-session recall, and the recall hook's `find -s memory` reads both).
 
 Backup is handled by the giant-tooling db-backup script (`giantmem/scripts/giantmem-db-backup.sh`) on a launchd timer (`com.bryan.giantmem-db-backup`, every 2h), not a hook. Per db it takes a consistent `sqlite3 .backup` of `live.db` + `archives.db`, runs `PRAGMA integrity_check`, gpg-encrypts (asymmetric, key `33F36CDDD530C52910A4608D61258A79557ECB4A`), and publishes to iCloud Drive (`giantmem-db-backups/`), overwriting the single current copy only after validation (one `.prev` kept). No VPS/tailscale. The DBs already hold the ingested sessions + memory md, so they are the backed-up unit. Restore: `gpg --decrypt live.db.gpg > live.db` — needs the private key, stored in 1Password.
