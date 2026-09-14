@@ -30,5 +30,7 @@
   "giant-tooling/session-length-stats": "3d96a246-2659-8180-abbe-cd7d82265e29",
   "giant-tooling/tool-use-breakdown": "3d96a246-2659-8108-87c6-cd18aad8d638",
   "giant-tooling/top-mover-badge": "3d96a246-2659-811c-b911-efbd604a9920",
-  "giant-tooling/wails-gui": "3d96a246-2659-8199-bb6f-e8c86736654c"
+  "giant-tooling/wails-gui": "3d96a246-2659-8199-bb6f-e8c86736654c",
+  "customcheckout/sendgrid-ssl-links": "3db6a246-2659-81f5-bb89-d682c068ce7d",
+  "customcheckout/sendgrid-ssl-links/sendgrid-ssl-links": "3db6a246-2659-8196-bbfc-d37dc64f56d8"
 }

@@ -19,7 +19,7 @@ No AskUserQuestion anywhere in this skill. `config/notion-publish.yaml` already 
 ## Args
 
 ```
-/notion-publish [path ...] [--feature X] [--dirty] [--dry-run] [--force]
+/notion-publish [path ...] [--feature X] [--dirty] [--index] [--dry-run] [--force]
 ```
 
 | Arg | Means |
@@ -27,6 +27,7 @@ No AskUserQuestion anywhere in this skill. `config/notion-publish.yaml` already 
 | `path ...` | publish these files |
 | `--feature X` | every publishable `.md` under `.giantmem/features/X/` |
 | `--dirty` | every publishable doc with no `notion:` or edited after `notion_synced` |
+| `--index` | rebuild both index surfaces (catalog page + `Docs catalog` DB rows), push no docs |
 | `--dry-run` | print gate decisions + `parent_path`, push nothing |
 | `--force` | publish a path the gate rejects (explicit user ask beats policy) |
 
@@ -34,9 +35,11 @@ No args and no hook context → `--dirty`.
 
 ## Config
 
-`config/notion-publish.yaml`: `account` (server account name, every call), `root_page_id` (tree root `Claude Artifacts`), `auto` (kinds that publish on write), `on_request` (types that publish on user ask), `exclude` (regexes on `.giantmem`-relative path). Frontmatter `publish: true|false` overrides both lists. Hook and skill read the same file.
+`config/notion-publish.yaml`: `account` (server account name, every call), `root_page_id` (tree root `Claude Artifacts`), `index_page_id` (catalog page), `index_db_id` + `index_data_source_id` (`Docs catalog` DB), `auto` (kinds that publish on write), `on_request` (types that publish on user ask), `exclude` (regexes on `.giantmem`-relative path). Frontmatter `publish: true|false` overrides both lists. Hook and skill read the same file.
 
-`config/notion-publish-tree.json`: `parent_path` prefix → page id. Written by this skill. Delete an entry to force re-resolution.
+`config/notion-publish-rows.json`: `Source` ref → catalog row page id. Written by this skill; the upsert key, so row sync never queries Notion. Delete an entry to force a new row.
+
+`config/notion-publish-tree.json`: `parent_path` prefix → page id. Written by this skill. Delete an entry to force re-resolution. Also the index generator's container list.
 
 ## Procedure
 
@@ -55,7 +58,16 @@ No args and no hook context → `--dirty`.
    - 404 on `page_id` → treat as empty: create under the resolved parent; step 6 overwrites the stale URL. Say so in the report.
    - 404 on a cached container id → delete that cache entry, redo step 4 for that prefix once, retry.
 6. `python3 ~/.claude/scripts/md_to_notion.py --mark <url> <path>` writes `notion:` + `notion_synced:` into frontmatter.
-7. Report. User-triggered: one table `path | url` pushed, `path | skipped: reason` rest. Hook-triggered: one line `published <rel> → <url>`. Nothing else.
+7. Index, both surfaces. After any push, and on `--index`. Roots for both:
+   `giantmem artifact list --repo all --published --paths | sed 's#/\.giantmem/.*#/.giantmem#' | sort -u`
+   a. Catalog page: `python3 ~/.claude/scripts/md_to_notion.py --index <roots>` → `{page_id, content}`; `notion_update_page` `command: replace_content`, `new_str: <content>`.
+   b. Catalog DB: `python3 ~/.claude/scripts/md_to_notion.py --rows <roots>` → `{data_source_id, rows[], stale[]}`. Per row, every field a flat scalar:
+      - `row_id` set → `notion_update_page` `command: update_properties`, `page_id: <row_id>`, `properties: {Doc, Page, Repo, Worktree, Feature, Type, Status, Lifecycle, Updated, Source}`
+      - `row_id` empty → `notion_create_pages` `parent: {"data_source_id": <data_source_id>}`, one entry per row, then write each new id into `config/notion-publish-rows.json` under its `ref`
+      - `stale[]` → the doc moved or lost its `notion:`. Report the refs, delete no rows.
+   Both modes report `degraded[]`: files that carry a `notion:` URL but gated to `not in git`. Non-empty means the scan was incomplete and the index would be short. Stop, report, push neither surface.
+   Skip the whole step when nothing was pushed and no `--index`.
+8. Report. User-triggered: one table `path | url` pushed, `path | skipped: reason` rest. Hook-triggered: one line `published <rel> → <url>`. Nothing else.
 
 ## Server down
 
@@ -72,6 +84,9 @@ Tools missing in a session that started while the server was down → restart th
 ## Rules
 
 - Parent is always the resolved tree page. Never a database.
+- Both index surfaces are generated. Never hand-edit them; the next publish overwrites.
+- DB rows are pointers, not the docs. Bodies stay in the tree; a row's `Page` links to it. Never publish a doc body into the DB (that was the 2026-09-04 design the reorg trashed).
+- `replace_content` refuses to touch a page that owns child pages, and a markdown link does not count as a reference. That is why the catalog is its own childless page and container bodies stay empty (notion-artifact-reorg decision 7 holds). Never pass `allow_deleting_content: true` on a container; it trashes the subtree.
 - Local file is canonical. Republish overwrites the Notion body. Notion-side edits are the user's to backport by hand.
 - Every page ends with the converter's footer callout `giantmem: repo[@worktree]/path · synced · sha`. That is the reverse link. Do not strip it.
 - Steady state never moves pages. Migration one-offs use `notion_move_pages` with `new_parent: {type: "page_id", page_id}`.

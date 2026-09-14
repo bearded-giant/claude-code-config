@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
+ROWS_CACHE = Path(
+    os.environ.get(
+        "NOTION_PUBLISH_ROWS",
+        Path(__file__).resolve().parent.parent / "config" / "notion-publish-rows.json",
+    )
+)
 CONFIG = Path(
     os.environ.get(
         "NOTION_PUBLISH_CONFIG",
@@ -212,17 +218,23 @@ def convert_body(body):
 
 
 def git(cwd, *args):
-    try:
-        r = subprocess.run(
-            ["git", "-C", str(cwd), *args],
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
-        )
-        return r.stdout.strip()
-    except Exception:  # pylint: disable=broad-exception-caught
-        return ""
+    # a timeout here used to read as "not a git repo" and silently drop the doc
+    # from the index; retry once, loudly, before believing it
+    for timeout in (5, 15):
+        try:
+            r = subprocess.run(
+                ["git", "-C", str(cwd), *args],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            return r.stdout.strip()
+        except subprocess.TimeoutExpired:
+            continue
+        except Exception:  # pylint: disable=broad-exception-caught
+            return ""
+    return ""
 
 
 def repo_from_origin(url):
@@ -315,6 +327,92 @@ def mark(path, url, now):
     p.write_text(text, encoding="utf-8")
 
 
+def first_heading(body):
+    in_fence, fence = False, ""
+    for line in body.splitlines():
+        if in_fence:
+            if line.strip().startswith(fence):
+                in_fence = False
+            continue
+        m = FENCE_RE.match(line)
+        if m:
+            in_fence, fence = True, m.group(1)
+            continue
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+
+def cell(s):
+    return s.replace("|", "\\|").strip()
+
+
+def md_link(text, url):
+    return f"[{cell(text).replace('[', '(').replace(']', ')')}]({url})"
+
+
+def catalog(rows, now):
+    """Flat per-repo catalog of every published doc. Pure: rows in, markdown out."""
+    by_repo = {}
+    for r in rows:
+        parts = r["parent_path"].split("/")
+        by_repo.setdefault(parts[0], []).append(r)
+
+    out = []
+    for repo in sorted(by_repo, key=str.lower):
+        docs = sorted(by_repo[repo], key=lambda r: r["title"].lower())
+        out.append(f"## {escape_prose(repo)}\n")
+        out.append("| Doc | Feature | Type | Updated |")
+        out.append("|---|---|---|---|")
+        for d in docs:
+            parts = d["parent_path"].split("/")
+            feature = parts[-1] if len(parts) > 1 else ""
+            out.append(
+                f"| {md_link(d['title'], d['notion'])} | {cell(feature)} "
+                f"| {cell(d['type'])} | {cell(d['updated'])} |"
+            )
+        out.append("")
+    out.append(
+        f"> [!NOTE]\n> index: {len(rows)} docs \u00b7 {len(by_repo)} repos"
+        f" \u00b7 generated {now} \u00b7 rebuild with `/notion-publish --index`"
+    )
+    return "\n".join(out) + "\n"
+
+
+def degraded(rows):
+    return sorted(
+        r["path"] for r in rows if r["notion"] and r["reason"] == "not in git"
+    )
+
+
+def load_rows_cache(path=ROWS_CACHE):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # pylint: disable=broad-exception-caught
+        return {}
+
+
+def db_rows(rows, cache=None):
+    """One catalog row per published doc. `ref` is the upsert key."""
+    cache = cache or {}
+    return [
+        {
+            "ref": r["ref"],
+            "row_id": cache.get(r["ref"], ""),
+            "title": r["title"],
+            "url": r["notion"],
+            "repo": r["repo"],
+            "worktree": r["worktree"],
+            "feature": r["feature"],
+            "type": r["type"],
+            "status": r["status"],
+            "lifecycle": r["lifecycle"],
+            "updated": r["updated"],
+        }
+        for r in sorted(rows, key=lambda r: (r["repo"].lower(), r["title"].lower()))
+    ]
+
+
 def scan(root, cfg):
     rows, seen = [], set()
     for p in sorted(Path(root).rglob("*.md")):
@@ -325,19 +423,27 @@ def scan(root, cfg):
         if real in seen:
             continue
         seen.add(real)
-        fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        fm, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
         ident = identity(str(real.parent))
         ok, reason, rel, kind, cls = gate(p, cfg, fm, ident)
         rows.append(
             {
                 "path": str(p),
                 "source": rel,
+                "title": first_heading(body) or p.stem,
+                "updated": fm.get("updated", ""),
                 "type": kind,
                 "class": cls,
                 "publishable": ok,
                 "reason": reason,
                 "dirty": is_dirty(p, fm),
                 "notion": fm.get("notion", ""),
+                "status": fm.get("status", ""),
+                "lifecycle": fm.get("lifecycle", "durable"),
+                "repo": ident["repo"] if ident else "",
+                "worktree": ident["worktree"] if ident else "",
+                "feature": feature_of(rel) if rel else "",
+                "ref": source_ref(ident, rel) if ident and rel else "",
                 "parent_path": parent_path(ident, rel) if ident and rel else "",
             }
         )
@@ -410,6 +516,79 @@ def selftest():
         plain, "context/x.md", "T"
     )
     assert identity("/") is None
+    assert first_heading("```\n# fenced\n```\n\n# Real\n") == "Real"
+    cat = catalog(
+        [
+            {
+                "title": "Doc | One",
+                "type": "research",
+                "updated": "2026-09-14",
+                "notion": "https://app.notion.com/p/x-1",
+                "parent_path": "r/w/f",
+            },
+            {
+                "title": "Doc Two",
+                "type": "proposal",
+                "updated": "2026-09-13",
+                "notion": "https://app.notion.com/p/x-2",
+                "parent_path": "r",
+            },
+        ],
+        "T",
+    )
+    assert "## r\n" in cat
+    assert (
+        "| [Doc \\| One](https://app.notion.com/p/x-1) | f | research | 2026-09-14 |"
+        in cat
+    )
+    assert "| [Doc Two](https://app.notion.com/p/x-2) |  | proposal |" in cat
+    assert "index: 2 docs \u00b7 1 repos" in cat
+    dbr = db_rows(
+        [
+            {
+                "ref": "r@w/features/f/research/x.md",
+                "title": "X",
+                "notion": "u",
+                "repo": "r",
+                "worktree": "w",
+                "feature": "f",
+                "type": "research",
+                "status": "ready",
+                "lifecycle": "candidate",
+                "updated": "2026-09-14",
+            }
+        ]
+    )
+    assert dbr[0]["url"] == "u" and dbr[0]["ref"].endswith("x.md")
+    assert dbr[0]["row_id"] == ""
+    assert (
+        db_rows(
+            [
+                {
+                    "ref": "k",
+                    "title": "X",
+                    "notion": "u",
+                    "repo": "r",
+                    "worktree": "",
+                    "feature": "",
+                    "type": "notes",
+                    "status": "",
+                    "lifecycle": "durable",
+                    "updated": "",
+                }
+            ],
+            {"k": "ROWID"},
+        )[0]["row_id"]
+        == "ROWID"
+    )
+    assert dbr[0]["lifecycle"] == "candidate" and "notion" not in dbr[0]
+    assert degraded(
+        [
+            {"path": "/a.md", "notion": "u", "reason": "not in git"},
+            {"path": "/b.md", "notion": "", "reason": "not in git"},
+            {"path": "/c.md", "notion": "u", "reason": "on_request research"},
+        ]
+    ) == ["/a.md"]
     for url in (
         "https://app.notion.com/p/Memory-architecture-giantmem-backbone-3d76a2462659816ea2f9df3713a3c47c",
         "https://app.notion.com/p/Proposal-Local-Email-Send-3d76a24626598173810bf2efd30be5d4?pvs=4",
@@ -429,13 +608,51 @@ def main(argv):
         root = Path(argv[1] if len(argv) > 1 else ".giantmem")
         print(json.dumps(scan(root, load_config()), indent=1))
         return 0
+    if argv[:1] == ["--index"]:
+        cfg = load_config()
+        roots = argv[1:] or [".giantmem"]
+        scanned = [r for root in roots for r in scan(Path(root), cfg)]
+        rows = [r for r in scanned if r["publishable"] and r["notion"]]
+        print(
+            json.dumps(
+                {
+                    "generated": now,
+                    "docs": len(rows),
+                    "degraded": degraded(scanned),
+                    "page_id": cfg.get("index_page_id", ""),
+                    "content": catalog(rows, now),
+                },
+                indent=1,
+            )
+        )
+        return 0
+    if argv[:1] == ["--rows"]:
+        cfg = load_config()
+        roots = argv[1:] or [".giantmem"]
+        scanned = [r for root in roots for r in scan(Path(root), cfg)]
+        rows = [r for r in scanned if r["publishable"] and r["notion"]]
+        print(
+            json.dumps(
+                {
+                    "generated": now,
+                    "data_source_id": cfg.get("index_data_source_id", ""),
+                    "degraded": degraded(scanned),
+                    "stale": sorted(set(load_rows_cache()) - {r["ref"] for r in rows}),
+                    "rows": db_rows(rows, load_rows_cache()),
+                },
+                indent=1,
+            )
+        )
+        return 0
     if argv[:1] == ["--mark"]:
         mark(argv[2], argv[1], now)
         print(f"marked {argv[2]} -> {argv[1]}")
         return 0
     if not argv:
         print(
-            "usage: md_to_notion.py <file.md> | --scan [dir] | --mark <url> <file.md> | --selftest",
+            "usage: md_to_notion.py <file.md> | --scan [dir]"
+            " | --index [dir ...] | --rows [dir ...]"
+            " | --mark <url> <file.md> | --selftest",
             file=sys.stderr,
         )
         return 1

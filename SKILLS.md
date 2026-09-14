@@ -47,7 +47,7 @@
 | `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
-| `/notion-publish [path \| --feature X \| --dirty \| --dry-run]` | Push .giantmem/ docs into the personal Notion page tree `Claude Artifacts / repo / worktree / feature`; policy in `config/notion-publish.yaml` (auto on write vs on request), never asks; upserts by frontmatter `notion:` |
+| `/notion-publish [path \| --feature X \| --dirty \| --index \| --dry-run]` | Push .giantmem/ docs into the personal Notion page tree `Claude Artifacts / repo / worktree / feature`; policy in `config/notion-publish.yaml` (auto on write vs on request), never asks; upserts by frontmatter `notion:`; regenerates both index surfaces (catalog page + `Docs catalog` DB rows) after every push, or on `--index` |
 
 ## Code Quality
 

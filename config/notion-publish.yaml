@@ -4,6 +4,11 @@
 account: personal
 # tree root page `Claude Artifacts`; pages nest repo > worktree > feature > doc
 root_page_id: 3d76a246-2659-8019-93bb-de726c6fa524
+# flat catalog of every published doc; rewritten whole on each publish. Child of the root.
+index_page_id: 3db6a246-2659-81fb-8239-c5c00b8f591e
+# `Docs catalog` DB: one row per published doc, rows point at tree pages. Upsert key = Source.
+index_db_id: d76993f5-a623-41a3-8fd8-280265dd7229
+index_data_source_id: f4bc3a60-ce9e-4039-a807-230f552705f8
 
 # frontmatter `kind:` or `type:` that publishes on write, no ask.
 # frontmatter `publish: true` on any file does the same.
