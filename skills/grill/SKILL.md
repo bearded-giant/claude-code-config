@@ -1,6 +1,6 @@
 ---
 name: grill
-description: Adversarial pre-ship review loop for larger/complex changes. Reviews local branch diff vs base as skeptical staff engineer, scores each finding (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai-review:review-code or kai:review-adversarial for those).
+description: Adversarial pre-ship review loop for larger/complex changes. Reviews local branch diff vs base as skeptical staff engineer, scores each finding (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn, --kai/--no-kai. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai-review:review-code or kai:review-adversarial for those).
 ---
 <!-- caveman:compressed -->
 
@@ -10,7 +10,7 @@ NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 
 ## When to use
 
-- **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened.
+- **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened. `--kai` predicts Recharge CI reviewer verdict before push.
 - **kai-review:review-code**: posted GitLab MR exists.
 - **kai:review-adversarial**: posted MR, verify claims vs diff.
 - **caveman-review**: posted PR, line-by-line feedback.
@@ -95,6 +95,8 @@ All optional. Parsed from `$ARGUMENTS` after `/grill`.
 | `--dry-run` | flag | off | — | Score + report only. No edits, no loops past run 01. |
 | `--base <branch>` | string | auto | any ref | Override base branch detection. |
 | `--max-fixes-per-turn N` | int | unlimited | 1+ | Hard cap on edits applied per turn. Extra `auto-fix` items demoted to `deferred` and surfaced in final.md. |
+| `--kai` | flag | auto | — | Force Kai preflight on. Auto = on when `origin` points at `gitlab.rechargeapps.net`. |
+| `--no-kai` | flag | auto | — | Force Kai preflight off. |
 
 Examples:
 - `/grill --loops 2 --threshold 0.9`
@@ -123,6 +125,7 @@ sev2_threshold: 0.95
 dry_run: false
 base: main
 max_fixes_per_turn: null
+kai: auto
 ```
 
 User can hand-edit `.config.yaml` between runs. Skill respects it.
@@ -168,6 +171,71 @@ Sev-5 items do NOT block the loop — they're flagged in `final.md` and executio
 
 Diff touches a script that emits data artifacts (converters, generators, mutation builders, exporters): reviewing the code is NOT sufficient — these bugs produce valid-looking output. Run the script against a sample/fixture input (its own `--dry-run` / sample mode if present) and inspect output shape: column count + order, null/NaN density, list lengths (empty delete list = sev-5 candidate), required-field presence. No sample input available → `flag-user` with what's needed to verify. Never score a generated-output finding above 0.84 without having looked at actual output.
 
+## Kai preflight
+
+Predicts whether Recharge's CI reviewer blocks the MR, before it is pushed.
+
+**Enabled** when `git remote get-url origin` contains `gitlab.rechargeapps.net`, unless `--no-kai`. `--kai` forces on for any repo. Disabled → skip K1-K5 entirely and emit no Kai sections.
+
+Kai's CI gate approves only at `must_fix == 0`. Two things raise it:
+
+1. any finding labeled `Must fix`
+2. any finding carrying a `**File:**` / `**Issue:**` marker with NO `Must fix` / `Should fix` / `Advisory` keyword — a deterministic backstop in kai's gate, so an unlabeled finding blocks just as hard as a real one
+
+### K1 — size gate (before turn 1)
+
+Count from `git diff --numstat <base>...HEAD`: files = line count, lines = sum of added + deleted.
+
+| | Files | Lines |
+|---|---|---|
+| Warn | > 30 | > 600 |
+| Block | > 75 | > 2000 |
+
+**Block** → abort before any review turn. Write `final.md` with `termination: kai-size-block`, rating `BLOCK`, and a concrete split proposal: group changed paths by top-level dir, name each proposed piece. Kai refuses to review at this size — splitting is the only fix, a review pass here is wasted.
+
+**Warn** → record in `final.md`, continue.
+
+### K2 — load references
+
+Resolve in order, first hit wins:
+
+1. `<project_root>/.claude/skills/review-code/SKILL.md` — repo owns its review (kai DEFER mode). This file **replaces** the reference set below. Apply it instead and note `defer: <path>` in final.md.
+2. `~/.claude/kai/plugins/kai/skills/review-code/references/index.md`
+
+From the index, apply every entry whose `**Paths:**` globs match a changed file. Entries with no `Paths:` always apply. Skip `**Category:** dapr` entries unless the repo is a dapr repo (has `deploy/` plus `**/consumers/**` or `**/handlers/**`).
+
+Read each matched reference and fold its checks into the turn's review. Neither path resolves → note `kai references unavailable` in final.md, run K3-K5 anyway (labeling and verdict still work).
+
+Also read the repo's own `CLAUDE.md` for designated high-risk files. Diff touches one → sev-3 finding naming any missing MR requirement (post-deploy monitoring plan, QA instructions, revert MR).
+
+### K3 — label every finding
+
+Every finding carries a Kai label next to sev/conf. Unlabeled is the failure mode kai's backstop catches.
+
+| Grill sev | Kai label |
+|---|---|
+| 5, 4 | Must fix |
+| 3 | Should fix |
+| 2, 1 | Advisory |
+
+Refuted findings get no label — dropped, not reported.
+
+### K4 — checks outside the category table
+
+- **Unrelated changes** — hunk not serving the branch's stated purpose (dep bump, rename, reformat bundled with a feature). sev-3, disposition `flag-user`, never auto-fix. Name the split.
+- **Risk assessment** — scored once per run, not per finding:
+  - Severity: `Critical` (checkout, charge processing, payment collection) | `Major` (subscriptions, customer portal, orders, billing) | `Minor` (memberships, rewards, notifications) | `No Incident` (tooling, admin views, logging, background jobs)
+  - Likelihood: `Probable` | `Occasional` | `Remote` | `Improbable`. Raised by: no test coverage on changed paths, downstream behavior not understood, no observability plan, large mixed diff. Lowered by: beta flag, thorough tests, log-only mode, small focused diff.
+  - Risk reducer, only when one actually applies: beta flag, log-only mode, store setting, smaller changeset. None apply → say so.
+
+### K5 — predicted verdict
+
+`must_fix` = findings still labeled `Must fix` when the loop ends. Auto-fixed ones do not count.
+
+`must_fix == 0` → `would approve`. Otherwise `would block`, and final rating is `BLOCK`.
+
+---
+
 ## Steps
 
 1. **Parse args** (see Arguments). Reject invalid values terse.
@@ -178,13 +246,13 @@ Diff touches a script that emits data artifacts (converters, generators, mutatio
    - Else project CLAUDE.md `mr_base_branch: <branch>`
    - Else git remote default
    - Else ask (main / master / stage / develop)
-5. **Refusal check** (see Refusal cases). Bail out terse if tripped.
+5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Kai preflight** if enabled: K1 size gate (block → abort per K1), then K2 reference load.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
    a. `git diff <base>...HEAD`
-   b. Review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output).
+   b. Review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
-   d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix
+   d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix. Kai preflight on → also assign a Kai label per K3.
    e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
    f. If `max_fixes_per_turn` set: keep first N `auto-fix` items, demote rest to `deferred`
    g. Write `0N-run.md` (template below)
@@ -257,8 +325,11 @@ type: grill-final
 status: complete
 feature: {name or "none"}
 runs_completed: N
-termination: all-clear | loop-limit | refusal
+termination: all-clear | loop-limit | refusal | kai-size-block
 final_rating: SHIP IT | NEEDS WORK | BLOCK
+kai_preflight: true | false
+kai_must_fix: N
+kai_size: ok | warn | block
 lifecycle: candidate
 ---
 ```
@@ -271,6 +342,20 @@ lifecycle: candidate
 Rating: NEEDS WORK
 Runs: 2/3
 Termination: all-clear
+
+## Kai preflight
+
+Predicted CI verdict: **would block — must_fix=1**
+Size: 12 files / 340 lines (ok)
+References applied: core-principles, test-coverage, react-hooks-deps
+Risk: Severity Major — touches subscription cancel path. Likelihood Occasional — new validation branch, tests cover happy path only.
+Risk reducer: beta flag — change alters cancel behavior for all stores.
+
+| File:Line | Kai label | Sev | Status |
+|---|---|---|---|
+| src/db/migrate.py:42 | Must fix | 5 | still open |
+
+(Omit this whole section when Kai preflight is off.)
 
 ## Fixed across runs
 
@@ -312,7 +397,7 @@ Termination: all-clear
 
 ## Final rating logic
 
-- `BLOCK` — any sev-5 flagged-human OR any remaining sev-4 not fixed
+- `BLOCK` — any sev-5 flagged-human OR any remaining sev-4 not fixed OR Kai preflight size-block
 - `NEEDS WORK` — any remaining sev-3 OR sev-4 flagged-user
 - `SHIP IT` — no remaining sev≥3, no flagged-human, no flagged-user
 
@@ -322,8 +407,11 @@ After loop ends, reply ONLY:
 
 ```
 Grill complete. Rating: <rating>. Runs: N/3.
+Kai: would block — must_fix=N
 final.md: <path>
 ```
+
+Omit the `Kai:` line when preflight is off.
 
 No additional summary in chat. User reads `final.md`.
 
@@ -349,3 +437,6 @@ State refusal reason terse, write a stub `NN-run.md` with `status: refused` + re
 - NEVER mutate `final.md` after first write — immutable end-of-loop artifact.
 - NEVER apply edits in `--dry-run` mode.
 - Demoted (over `max_fixes_per_turn` cap) items must surface in final.md `Deferred` section.
+- Kai preflight on → NEVER emit a finding without a Kai label. Unlabeled is what trips kai's gate.
+- NEVER auto-fix an unrelated-change finding — splitting the branch is the user's call.
+- NEVER continue past a K1 size block. A review at that size is wasted work; kai will not run one either.

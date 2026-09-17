@@ -22,6 +22,7 @@ plugins/cache/
 plugins/marketplaces/
 plugins/repos/
 plugins/subtask/
+plugins/synced/
 plugins/install-counts-cache.json
 plugins/.last_inuse_sweep
 
@@ -54,3 +55,6 @@ __pycache__/
 # transient memory state
 .memory-project.json
 .mdlive/
+
+# first-party skills downloaded by the harness (anthropic-skills:*)
+skills/synced/
