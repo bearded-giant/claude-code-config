@@ -5,10 +5,14 @@ Repo is authoritative for structural config (hooks/env/statusLine/mcpServers/
 marketplaces/scalar flags). Home keeps runtime-mutated state. Plugins and the
 permission lists are unioned so runtime additions survive. Writes home only;
 the repo copy is never modified, so the git tree stays clean.
+
+Reads the committed blob, not the working tree: syncing the tree shipped
+half-finished edits to the live config on the next session start.
 """
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,10 +65,35 @@ def merge(repo, home):
     return merged
 
 
+def load_repo_settings():
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(REPO_SETTINGS.parent), "show", "HEAD:settings.json"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return json.loads(result.stdout)
+        reason = (result.stderr or "").strip().splitlines()[:1]
+        print(
+            f"sync_settings: no committed settings.json ({reason or 'unknown'}), "
+            "falling back to working tree",
+            file=sys.stderr,
+        )
+    except (subprocess.SubprocessError, OSError, json.JSONDecodeError) as exc:
+        print(
+            f"sync_settings: committed read failed ({exc}), falling back to working tree",
+            file=sys.stderr,
+        )
+    return load(REPO_SETTINGS)
+
+
 def main():
     if REPO_SETTINGS.resolve() == HOME_SETTINGS.resolve():
         return
-    repo = load(REPO_SETTINGS)
+    repo = load_repo_settings()
     if not repo:
         return
     home = load(HOME_SETTINGS)
