@@ -46,8 +46,51 @@ function loadConfig() {
 
 // --- helpers ---
 
+// UTF-16 code units are not display columns: CJK and emoji occupy two, marks
+// and joiners occupy none, and a surrogate pair is one glyph across two units.
+// East Asian Ambiguous (the pies and separators used here) stays narrow, which
+// is what wezterm/iTerm2 draw by default; set STATUSLINE_AMBIGUOUS_WIDE=1 for
+// terminals configured to draw it wide.
+const AMBIGUOUS_WIDE = process.env.STATUSLINE_AMBIGUOUS_WIDE === '1';
+
+const ZERO_RANGES = [
+  [0x200b, 0x200f], [0x2060, 0x2064], [0x0300, 0x036f], [0x1ab0, 0x1aff],
+  [0x1dc0, 0x1dff], [0x20d0, 0x20ff], [0xfe00, 0xfe0f], [0xfe20, 0xfe2f],
+];
+const WIDE_RANGES = [
+  [0x1100, 0x115f], [0x2e80, 0x303e], [0x3041, 0x33ff], [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xa960, 0xa97f], [0xac00, 0xd7a3],
+  [0xf900, 0xfaff], [0xfe10, 0xfe19], [0xfe30, 0xfe6f], [0xff00, 0xff60],
+  [0xffe0, 0xffe6], [0x1f300, 0x1f64f], [0x1f680, 0x1f6ff], [0x1f900, 0x1f9ff],
+  [0x20000, 0x2fffd], [0x30000, 0x3fffd],
+];
+const AMBIGUOUS_RANGES = [
+  [0x2190, 0x21ff], [0x2500, 0x257f], [0x25a0, 0x25ff], [0x2660, 0x266f],
+  [0x2776, 0x277f], [0xe000, 0xf8ff],
+];
+
+function inRanges(cp, ranges) {
+  for (const [lo, hi] of ranges) if (cp >= lo && cp <= hi) return true;
+  return false;
+}
+
+function charWidth(cp) {
+  if (cp < 0x20 || (cp >= 0x7f && cp < 0xa0)) return 0;
+  if (inRanges(cp, ZERO_RANGES)) return 0;
+  if (inRanges(cp, WIDE_RANGES)) return 2;
+  if (AMBIGUOUS_WIDE && inRanges(cp, AMBIGUOUS_RANGES)) return 2;
+  return 1;
+}
+
+const NON_ASCII_RE = /[^\x20-\x7e]/;
+
 function visLen(s) {
-  return s.replace(/\x1b\[[0-9;]*m/g, '').length;
+  const plain = s.replace(/\x1b\[[0-9;]*m/g, '');
+  // most segments are plain ascii, where columns and length agree
+  if (!NON_ASCII_RE.test(plain)) return plain.length;
+  let w = 0;
+  for (const ch of plain) w += charWidth(ch.codePointAt(0));
+  return w;
 }
 
 // hard-truncate to max visible chars, ANSI-aware; last resort after the fit
@@ -57,16 +100,20 @@ function clampAnsi(s, max) {
   let out = '';
   let vis = 0;
   let i = 0;
-  while (i < s.length && vis < max) {
+  while (i < s.length) {
     const m = /^\x1b\[[0-9;]*m/.exec(s.slice(i));
     if (m) {
       out += m[0];
       i += m[0].length;
       continue;
     }
-    out += s[i];
-    vis++;
-    i++;
+    // step by code point so a surrogate pair is never cut in half
+    const ch = String.fromCodePoint(s.codePointAt(i));
+    const w = charWidth(ch.codePointAt(0));
+    if (vis + w > max) break;
+    out += ch;
+    vis += w;
+    i += ch.length;
   }
   return out + RST;
 }
@@ -884,5 +931,5 @@ if (require.main === module) {
 
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
-  buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed,
+  buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
 };

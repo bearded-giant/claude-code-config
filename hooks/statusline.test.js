@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
-  fitLine1, fitSolo, packLine2,
+  fitLine1, fitSolo, packLine2, charWidth,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -118,4 +118,44 @@ test('pie buckets', () => {
 test('fmtDuration', () => {
   assert.equal(fmtDuration(59 * 1000), '59s');
   assert.equal(fmtDuration(61 * 60 * 1000), '1h01m');
+});
+
+test('charWidth: columns, not code units', () => {
+  assert.equal(charWidth(0x61), 1);           // a
+  assert.equal(charWidth(0x6a5f), 2);         // CJK
+  assert.equal(charWidth(0x1f680), 2);        // rocket
+  assert.equal(charWidth(0x0301), 0);         // combining acute
+  assert.equal(charWidth(0x200d), 0);         // ZWJ
+  assert.equal(charWidth(0x2502), 1);         // ambiguous stays narrow
+});
+
+test('visLen counts display columns', () => {
+  assert.equal(visLen('hello'), 5);
+  assert.equal(visLen('\u6a5f\u80fd'), 4);       // 2 CJK = 4 columns
+  assert.equal(visLen('e\u0301clair'), 6);       // combining mark is free
+  assert.equal(visLen('a\u200db'), 2);           // ZWJ is free
+  assert.equal(visLen(`${GREEN}\u{1F680}${RST}`), 2);
+});
+
+test('clampAnsi never splits a surrogate pair', () => {
+  const s = 'ab\u{1F680}cd';
+  for (let max = 1; max <= 6; max++) {
+    const out = clampAnsi(s, max).replace(/\x1b\[[0-9;]*m/g, '');
+    const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    assert.ok(!lone.test(out), `lone surrogate at max=${max}`);
+    assert.ok(visLen(out) <= max, `over budget at max=${max}`);
+  }
+});
+
+test('clampAnsi budgets wide chars by column', () => {
+  // a 2-column glyph is dropped rather than half-drawn
+  assert.equal(visLen(clampAnsi('ab\u{1F680}cd', 3)), 2);
+  assert.equal(visLen(clampAnsi('\u6a5f\u80fd\u6a5f', 4)), 4);
+});
+
+test('fit ladder holds with wide characters in the path', () => {
+  const wide = seg({ displayPath: '.../dev/\u6a5f\u80fd\u30d6\u30e9\u30f3\u30c1', shortPath: '\u6a5f\u80fd' });
+  for (const w of [200, 120, 100, 80, 60, 40, 20]) {
+    assert.ok(visLen(fitLine1(w, wide).line1) <= w, `width ${w}`);
+  }
 });
