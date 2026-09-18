@@ -44,11 +44,8 @@ SKIP_NAMES = {
     "MEMORY.md",
     "tree.md",
     "patterns.md",  # curated, hand-maintained
-    "facts.md",     # already terse key/value
-    "current.md",   # transient session work, churns too fast
-    "features.json",
-    "meta.json",
-    "plan_context.json",
+    "facts.md",  # already terse key/value
+    "current.md",  # transient session work, churns too fast
 }
 
 NUDGE_DIR = Path("/tmp/claude-caveman-nudged")
@@ -61,7 +58,7 @@ def is_artifact_path(path: str) -> bool:
     m = GIANTMEM_RE.search(path)
     if not m:
         return False
-    rest = path[m.end():]
+    rest = path[m.end() :]
     parts = rest.split("/")
     if not parts or not parts[0]:
         return False

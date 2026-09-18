@@ -29,8 +29,8 @@ PROTECTED_PATTERNS = [
 ]
 
 PERSONAL_ROOTS = [
-    "~/dev/claude-code-config",
-    "~/dotfiles",
+    # "~/dev/claude-code-config",
+    # "~/dotfiles",
     "~/.claude",
 ]
 
