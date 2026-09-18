@@ -3,15 +3,8 @@
 PreToolUse Guard Hook for Claude Code
 Hook: PreToolUse (matcher: Write, Edit, MultiEdit)
 
-Blocks writes to protected directories that shouldn't be modified:
-- archive/ (gitignored, reference only)
-- plugins/marketplaces/ (third-party code)
-- plugins/cache/ (downloaded plugin content)
-- node_modules/ (anywhere)
-
-Also ask-gates edits to team-shared agent config (git-tracked CLAUDE.md /
-AGENTS.md / INSTRUCTIONS.md / checked-in .claude/**) outside personal repos —
-the model must get explicit user approval instead of editing as a side effect.
+Blocks writes to vendored or reference-only trees. Bash is not covered by the
+matcher, so this is a guard against tool-driven edits, not a security boundary.
 
 NOTE: Uses only Python standard library (no external dependencies)
 """
@@ -19,59 +12,31 @@ NOTE: Uses only Python standard library (no external dependencies)
 import sys
 import json
 import os
-import subprocess
 
-PROTECTED_PATTERNS = [
-    "/archive/",
-    "/plugins/marketplaces/",
-    "/plugins/cache/",
-    "/node_modules/",
+PROTECTED_ROOTS = [
+    # plugin code is re-downloaded on update; edits here vanish silently
+    "~/.claude/plugins",
+    # gitignored reference copies, not live config
+    "~/dev/claude-code-config/archive",
 ]
 
-PERSONAL_ROOTS = [
-    # "~/dev/claude-code-config",
-    # "~/dotfiles",
-    "~/.claude",
-]
-
-TEAM_SHARED_BASENAMES = {"CLAUDE.md", "AGENTS.md", "INSTRUCTIONS.md"}
+PROTECTED_SUBSTRINGS = ["/node_modules/"]
 
 
 def is_protected(file_path: str, cwd: str) -> str | None:
-    # normalize to absolute
-    if not os.path.isabs(file_path):
-        file_path = os.path.join(cwd, file_path)
-    file_path = os.path.normpath(file_path)
-
-    for pattern in PROTECTED_PATTERNS:
-        if pattern in file_path:
-            return pattern.strip("/")
-    return None
-
-
-def is_team_shared_agent_config(file_path: str, cwd: str) -> bool:
     if not os.path.isabs(file_path):
         file_path = os.path.join(cwd, file_path)
     real = os.path.realpath(file_path)
 
-    for root in PERSONAL_ROOTS:
+    for root in PROTECTED_ROOTS:
         root_real = os.path.realpath(os.path.expanduser(root))
         if real == root_real or real.startswith(root_real + os.sep):
-            return False
+            return root.replace("~", "")
 
-    if os.path.basename(real) not in TEAM_SHARED_BASENAMES and "/.claude/" not in real:
-        return False
-
-    # only git-tracked files count as team-shared; untracked/local stay editable
-    try:
-        result = subprocess.run(
-            ["git", "-C", os.path.dirname(real), "ls-files", "--error-unmatch", real],
-            capture_output=True,
-            timeout=5,
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
+    for pattern in PROTECTED_SUBSTRINGS:
+        if pattern in real:
+            return pattern.strip("/")
+    return None
 
 
 def main():
@@ -87,28 +52,13 @@ def main():
 
         protected = is_protected(file_path, cwd)
         if protected:
+            # legacy top-level `decision` on purpose: permissionDecision values
+            # are advisory under defaultMode bypassPermissions, this is not
             result = {
                 "decision": "block",
-                "reason": f"Protected path: {protected}/ is read-only. Do not modify files in this directory.",
+                "reason": f"Protected path: {protected} is read-only. Do not modify files there.",
             }
             print(json.dumps(result))
-            return
-
-        if is_team_shared_agent_config(file_path, cwd):
-            print(
-                json.dumps(
-                    {
-                        "hookSpecificOutput": {
-                            "hookEventName": "PreToolUse",
-                            "permissionDecision": "ask",
-                            "permissionDecisionReason": (
-                                "Team-shared agent config (git-tracked). Proceed only if the user "
-                                "explicitly directed this exact edit; otherwise propose the diff in chat."
-                            ),
-                        }
-                    }
-                )
-            )
 
     except Exception:
         pass
