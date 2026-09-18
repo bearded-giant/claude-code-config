@@ -3,8 +3,9 @@
 Workspace Session End Hook for Claude Code
 Hook: SessionEnd
 
-Extracts session summary, discoveries, and plans from transcript.
 Creates individual session files for grep-ability and git history.
+Topic, brief and outcomes are written by summarize_session (claude -p haiku),
+spawned detached after the file is on disk.
 
 If .giantmem/ doesn't exist, auto-initializes workspace structure first.
 Falls back to scratch/ for legacy workspaces.
@@ -19,8 +20,6 @@ Input (JSON on stdin):
 Output files:
 - .giantmem/history/sessions/{timestamp}_{session_id}.md  (detailed session file)
 - .giantmem/history/sessions.md  (index with one-liners)
-- .giantmem/context/discoveries.md  (appended)
-- .giantmem/plans/current.md  (updated if plans found)
 
 Auto-init creates (if .giantmem/ missing):
 - .giantmem/{context,plans,history,filebox,research,reviews}/
@@ -36,87 +35,17 @@ import json
 import os
 import re
 import shutil
-import math
-import socket
 import subprocess
-import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Tuple, Dict, Set, Optional
 from collections import defaultdict
 
+
 # a keyword anywhere in a sentence matched ordinary prose, so these anchor to the
 # start of a line or list item and the line must read as a finished sentence
-DISCOVERY_PATTERNS = [
-    (r"(?:discovered|found|learned|realized|noticed)\b", "finding"),
-    (r"(?:pattern|architecture|structure)\b", "architecture"),
-    (r"(?:gotcha|caveat|watch out|careful|note that|important)\b", "gotcha"),
-    (r"(?:convention|standard|style|naming)\b", "convention"),
-    (r"(?:dependency|requires|depends on|imports?)\b", "dependency"),
-    (r"(?:config|configuration|setting|environment)\b", "config"),
-    (r"(?:entry\s*point|main|bootstrap|init)\b", "entry"),
-]
-
-LIST_PREFIX_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s+)*")
-
-DISCOVERY_SIM_THRESHOLD = float(os.environ.get("GIANTMEM_DISCOVERY_SIM", "0.9"))
-DISCOVERY_SIM_WINDOW = int(os.environ.get("GIANTMEM_DISCOVERY_SIM_WINDOW", "150"))
-DISCOVERY_SIM_BUDGET = float(os.environ.get("GIANTMEM_DISCOVERY_SIM_BUDGET", "5"))
-DAEMON_SOCKET = os.environ.get(
-    "GIANTMEM_DAEMON_SOCKET",
-    str(Path.home() / ".cache" / "giantmem" / "giantmemd.sock"),
-)
-
-
-def is_sentence(text: str) -> bool:
-    """Reject mid-sentence captures: chat prose sliced at a keyword boundary."""
-    if len(text) < 20 or text[0].islower():
-        return False
-    if "|" in text or "```" in text:
-        return False
-    if text.count('"') % 2 or text.count("`") % 2 or text.count("(") != text.count(")"):
-        return False
-    return text.rstrip().endswith((".", "!", "?", ":"))
-
-
 # topic extraction keywords
-TOPIC_KEYWORDS = {
-    "auth": [
-        "auth",
-        "login",
-        "jwt",
-        "token",
-        "password",
-        "credential",
-        "oauth",
-        "permissions",
-    ],
-    "api": ["api", "endpoint", "route", "rest", "graphql", "request", "response"],
-    "database": ["database", "sql", "query", "migration", "model", "schema", "table"],
-    "test": ["test", "spec", "pytest", "jest", "coverage", "mock", "fixture"],
-    "bug": ["bug", "fix", "error", "issue", "debug", "broken", "failing"],
-    "feature": ["feature", "implement", "add", "create", "new", "build"],
-    "refactor": ["refactor", "cleanup", "reorganize", "restructure", "rename"],
-    "config": ["config", "setting", "env", "environment", "setup", "install"],
-    "docs": ["document", "readme", "comment", "explain", "describe"],
-    "perf": ["performance", "optimize", "speed", "slow", "fast", "cache"],
-    "ui": ["ui", "frontend", "component", "style", "css", "render", "display"],
-    "deploy": ["deploy", "ci", "cd", "pipeline", "docker", "kubernetes"],
-    "workspace": [
-        "workspace",
-        "giantmem",
-        "hook",
-        "session",
-        "claude",
-        "mcp",
-        "plugin",
-    ],
-}
-
 # bonus weight given to workspace-defined topic
-WORKSPACE_TOPIC_WEIGHT = 5
-
-
 def read_transcript(transcript_path: str) -> List[dict]:
     """Read and parse the JSONL transcript file."""
     messages = []
@@ -228,105 +157,6 @@ def extract_tool_usage(messages: List[dict]) -> Dict[str, List[str]]:
     return {tool: sorted([f for f in files if f]) for tool, files in tool_files.items()}
 
 
-def extract_workspace_topic(workspace_dir: Path) -> Optional[str]:
-    """
-    Extract topic hint from WORKSPACE.md Purpose section.
-    Returns matching topic keyword if found, None otherwise.
-    """
-    workspace_file = workspace_dir / "WORKSPACE.md"
-    if not workspace_file.exists():
-        return None
-
-    try:
-        content = workspace_file.read_text().lower()
-
-        # look for purpose section content
-        purpose_match = re.search(
-            r"## purpose\s*\n(.+?)(?=\n##|\Z)", content, re.DOTALL
-        )
-        if not purpose_match:
-            return None
-
-        purpose_text = purpose_match.group(1).strip()
-
-        # skip if just placeholder comment
-        if purpose_text.startswith("<!--") or not purpose_text:
-            return None
-
-        # check for topic keywords in purpose
-        for topic, keywords in TOPIC_KEYWORDS.items():
-            for keyword in keywords:
-                if re.search(r"\b" + keyword + r"\w*\b", purpose_text):
-                    return topic
-
-    except Exception:
-        pass
-
-    return None
-
-
-def extract_session_topic(
-    user_prompts: List[str],
-    assistant_content: str,
-    workspace_topic: Optional[str] = None,
-) -> str:
-    """
-    Extract a topic/theme from the session by analyzing content.
-    If workspace has a topic defined, it gets bonus weight.
-    Returns a short topic tag like 'auth', 'api', 'refactor'.
-    """
-    # combine all text for analysis
-    all_text = " ".join(user_prompts).lower() + " " + assistant_content.lower()
-
-    # count keyword matches per topic
-    topic_scores: Dict[str, int] = defaultdict(int)
-    for topic, keywords in TOPIC_KEYWORDS.items():
-        for keyword in keywords:
-            count = len(re.findall(r"\b" + keyword + r"\w*\b", all_text))
-            topic_scores[topic] += count
-
-    # apply workspace topic bonus if defined
-    if workspace_topic and workspace_topic in topic_scores:
-        topic_scores[workspace_topic] += WORKSPACE_TOPIC_WEIGHT
-
-    # get top topic
-    if topic_scores:
-        top_topic = max(topic_scores.items(), key=lambda x: x[1])
-        if top_topic[1] > 2:  # minimum threshold
-            return top_topic[0]
-
-    # fallback to workspace topic if available
-    if workspace_topic:
-        return workspace_topic
-
-    return "general"
-
-
-def extract_session_brief(user_prompts: List[str], topic: str) -> str:
-    """
-    Generate a brief summary from user prompts.
-    Tries to capture the main intent of the session.
-    """
-    if not user_prompts:
-        return f"{topic} session"
-
-    # use first substantive prompt as base
-    first_prompt = user_prompts[0]
-
-    # clean it up for a brief
-    brief = first_prompt.replace("\n", " ").strip()
-
-    # if it's a question, keep it short
-    if "?" in brief:
-        brief = brief.split("?")[0] + "?"
-
-    # truncate
-    if len(brief) > 80:
-        brief = brief[:77] + "..."
-
-    return brief
-
-
 SUMMARY_PROMPT = """Read this Claude Code session log. Answer in exactly this format, no preamble, no closing remarks:
 TOPIC: <one lowercase tag, 1-2 words, hyphenated, naming the subject>
 BRIEF: <one sentence under 90 chars saying what the session actually did>
@@ -432,55 +262,6 @@ def extract_timestamps(
     return start_time, end_time
 
 
-def extract_discoveries(content: str) -> List[Tuple[str, str]]:
-    """Extract potential discoveries from assistant content."""
-    discoveries = []
-    seen = set()
-
-    for raw in content.splitlines():
-        line = LIST_PREFIX_RE.sub("", raw.strip(), count=1).strip()
-        if not is_sentence(line) or line in seen:
-            continue
-
-        for pattern, category in DISCOVERY_PATTERNS:
-            if not re.match(pattern, line, re.IGNORECASE):
-                continue
-            finding = line if len(line) <= 200 else line[:200] + "..."
-            seen.add(line)
-            discoveries.append((category, finding))
-            break
-
-    return discoveries[:10]
-
-
-def extract_plans(content: str) -> List[str]:
-    """Extract implementation plans/steps from content."""
-    plans = []
-    seen = set()
-
-    list_pattern = r"(?:^|\n)\s*(\d+[\.\)]\s+.+?)(?=\n\s*\d+[\.\)]|\n\n|$)"
-    matches = re.findall(list_pattern, content, re.MULTILINE | re.DOTALL)
-
-    for match in matches:
-        step = " ".join(match.split())
-        if len(step) > 15 and step not in seen and is_sentence(step):
-            seen.add(step)
-            plans.append(step)
-
-    # case-sensitive: lowercase "next" and "step" are ordinary words, and with
-    # IGNORECASE they captured the rest of any sentence containing them
-    todo_pattern = r"^\s*(?:TODO|NEXT|STEP)\s*[:\-]\s*(.+?)\s*$"
-    matches = re.findall(todo_pattern, content, re.MULTILINE)
-
-    for match in matches:
-        step = match.strip()
-        if len(step) > 10 and step not in seen:
-            seen.add(step)
-            plans.append(f"TODO: {step}")
-
-    return plans[:15]
-
-
 def create_session_file(
     workspace_dir: Path,
     session_id: str,
@@ -490,7 +271,6 @@ def create_session_file(
     brief: str,
     user_prompts: List[str],
     tool_usage: Dict[str, List[str]],
-    discoveries: List[Tuple[str, str]],
 ) -> Optional[Path]:
     """Create individual session summary file."""
     sessions_dir = workspace_dir / "history" / "sessions"
@@ -580,14 +360,6 @@ def create_session_file(
             lines.append(f"- `{cmd}`")
         lines.append("")
 
-    # discoveries
-    if discoveries:
-        lines.append("## Discoveries Extracted")
-        for category, finding in discoveries:
-            finding_clean = finding.replace("\n", " ").strip()
-            lines.append(f"- [{category}] {finding_clean}")
-        lines.append("")
-
     # session metadata
     lines.extend(
         [
@@ -610,7 +382,6 @@ def update_session_index(
     topic: str,
     brief: str,
     tool_usage: Dict[str, List[str]],
-    discoveries_count: int,
     session_filename: str,
 ):
     """Add one-liner to sessions.md index."""
@@ -627,8 +398,6 @@ def update_session_index(
     parts = []
     if edit_count > 0:
         parts.append(f"{edit_count} edits")
-    if discoveries_count > 0:
-        parts.append(f"{discoveries_count} discoveries")
 
     summary = ", ".join(parts) if parts else "read-only"
 
@@ -642,167 +411,6 @@ def update_session_index(
             f.write(line + "\n")
     except Exception:
         pass
-
-
-def _daemon_embed(text: str) -> Optional[List[float]]:
-    # the daemon is the only process holding the bge model, so a miss here has to
-    # degrade to the verbatim check rather than load a model inside SessionEnd
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.settimeout(2.0)
-            sock.connect(DAEMON_SOCKET)
-            req = {
-                "jsonrpc": "2.0",
-                "method": "embed",
-                "params": {"text": text},
-                "id": 1,
-            }
-            sock.sendall(json.dumps(req).encode() + b"\n")
-            buf = b""
-            while not buf.endswith(b"\n"):
-                chunk = sock.recv(65536)
-                if not chunk:
-                    break
-                buf += chunk
-    except OSError:
-        return None
-    try:
-        payload = json.loads(buf.decode())
-    except (ValueError, UnicodeDecodeError):
-        return None
-    if payload.get("error"):
-        return None
-    vec = (payload.get("result") or {}).get("vec")
-    return vec if isinstance(vec, list) and vec else None
-
-
-def _cosine(a: List[float], b: List[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(y * y for y in b))
-    if not na or not nb:
-        return 0.0
-    return dot / (na * nb)
-
-
-def _drop_near_duplicates(
-    fresh: List[Tuple[str, str]], history: List[str]
-) -> List[Tuple[str, str]]:
-    if not fresh or not history:
-        return fresh
-    deadline = time.monotonic() + DISCOVERY_SIM_BUDGET
-    new_vecs = [
-        _daemon_embed(finding) if time.monotonic() < deadline else None
-        for _, finding in fresh
-    ]
-    if not any(new_vecs):
-        return fresh
-    seen: List[List[float]] = []
-    # newest first, so a spent budget still bought the likeliest repeats
-    for old in reversed(history[-DISCOVERY_SIM_WINDOW:]):
-        if time.monotonic() >= deadline:
-            break
-        vec = _daemon_embed(old)
-        if vec:
-            seen.append(vec)
-    if not seen:
-        return fresh
-    kept = []
-    for (category, finding), vec in zip(fresh, new_vecs):
-        if vec and any(
-            _cosine(vec, prior) >= DISCOVERY_SIM_THRESHOLD for prior in seen
-        ):
-            continue
-        kept.append((category, finding))
-        if vec:
-            seen.append(vec)
-    return kept
-
-
-def append_discoveries(workspace_dir: Path, discoveries: List[Tuple[str, str]]) -> int:
-    """Append discoveries to discoveries.md."""
-    if not discoveries:
-        return 0
-
-    discoveries_file = workspace_dir / "context" / "discoveries.md"
-    discoveries_file.parent.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    # a re-run over the same transcript must not re-append what is already there
-    recorded = set()
-    history: List[str] = []
-    if discoveries_file.exists():
-        try:
-            for line in discoveries_file.read_text(errors="replace").splitlines():
-                hit = re.match(r"- \d{4}-\d\d-\d\d \d\d:\d\d: \[[^\]]+\] (.*)", line)
-                if hit:
-                    text = hit.group(1).strip()
-                    recorded.add(text)
-                    history.append(text)
-        except OSError:
-            pass
-
-    fresh = []
-    for category, finding in discoveries:
-        finding = finding.replace("\n", " ").strip()
-        if finding in recorded:
-            continue
-        recorded.add(finding)
-        fresh.append((category, finding))
-
-    lines = [
-        f"- {timestamp}: [{category}] {finding}"
-        for category, finding in _drop_near_duplicates(fresh, history)
-    ]
-
-    if not lines:
-        return 0
-
-    try:
-        with open(discoveries_file, "a") as f:
-            f.write("\n".join(lines) + "\n")
-        return len(lines)
-    except Exception:
-        return 0
-
-
-def save_plans(workspace_dir: Path, plans: List[str]) -> bool:
-    """Save plans to plans/current.md."""
-    if not plans:
-        return False
-
-    plans_file = workspace_dir / "plans" / "current.md"
-    plans_file.parent.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    content = f"# Current Plan\nUpdated: {timestamp}\n\n"
-    content += "## Steps\n"
-    for i, plan in enumerate(plans, 1):
-        plan = plan.replace("\n", " ").strip()
-        if not plan.startswith(("TODO", "FIXME", "NEXT")):
-            content += f"{i}. {plan}\n"
-        else:
-            content += f"- {plan}\n"
-
-    try:
-        if plans_file.exists():
-            steps = content.split("## Steps", 1)[-1].strip()
-            if steps and steps in plans_file.read_text(errors="replace"):
-                return True
-            mtime = plans_file.stat().st_mtime
-            age_hours = (datetime.now().timestamp() - mtime) / 3600
-            if age_hours < 1:
-                with open(plans_file, "a") as f:
-                    f.write(f"\n---\n{content}")
-                return True
-
-        with open(plans_file, "w") as f:
-            f.write(content)
-        return True
-    except Exception:
-        return False
 
 
 TIMELINE_LIMIT = 50
@@ -1062,15 +670,10 @@ def main():
         if not assistant_content and not user_prompts:
             return
 
-        # derive topic and brief (with workspace hint if available)
-        workspace_topic = extract_workspace_topic(workspace_dir)
-        topic = extract_session_topic(user_prompts, assistant_content, workspace_topic)
-        brief = extract_session_brief(user_prompts, topic)
-
-        # extract discoveries and plans
-        discoveries = extract_discoveries(assistant_content)
-        plans = extract_plans(assistant_content)
-
+        # summarize_session rewrites both from the transcript; these are the
+        # placeholders it looks for, and what stays if the model call fails
+        topic = "pending"
+        brief = "pending"
         # create individual session file
         session_file = create_session_file(
             workspace_dir=workspace_dir,
@@ -1081,7 +684,6 @@ def main():
             brief=brief,
             user_prompts=user_prompts,
             tool_usage=tool_usage,
-            discoveries=discoveries,
         )
 
         # update index
@@ -1092,13 +694,8 @@ def main():
             topic=topic,
             brief=brief,
             tool_usage=tool_usage,
-            discoveries_count=len(discoveries),
             session_filename=session_filename,
         )
-
-        # persist discoveries and plans (existing behavior)
-        discoveries_count = append_discoveries(workspace_dir, discoveries)
-        has_plans = save_plans(workspace_dir, plans)
 
         # regenerate features table and timeline in WORKSPACE.md
         update_workspace_md(workspace_dir)
@@ -1107,10 +704,6 @@ def main():
         parts = []
         if session_file:
             parts.append(f"session:{session_file.name}")
-        if discoveries_count > 0:
-            parts.append(f"{discoveries_count} discoveries")
-        if has_plans:
-            parts.append("plans")
 
         if parts:
             print(f"Workspace: {', '.join(parts)}", file=sys.stderr)

@@ -30,6 +30,25 @@ def _try_log(msg: str) -> None:
         pass
 
 
+def _detect_project(cwd: str) -> str:
+    # the project-slug directory name is lossy (hyphens in the repo name are
+    # indistinguishable from path separators), so ask live_index's detector,
+    # which is the one giantmem's Go side mirrors
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "_live_index", os.path.join(os.path.dirname(__file__), "live_index.py")
+        )
+        if not (spec and spec.loader):
+            return ""
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.detect_project(cwd, mod.ARCHIVE_BASE)[0]
+    except Exception:
+        return ""
+
+
 def main() -> None:
     try:
         data = json.load(sys.stdin)
@@ -41,18 +60,10 @@ def main() -> None:
         return
 
     transcript = data.get("transcript_path") or ""
-    project_filter = ""
-    # the JSONL lives at ~/.claude/projects/<project-slug>/<uuid>.jsonl
-    if transcript:
-        slug = os.path.basename(os.path.dirname(transcript))
-        # strip leading -Users-bryan-
-        if slug.startswith("-Users-"):
-            parts = slug.split("-", 3)
-            if len(parts) >= 4:
-                project_filter = parts[3].replace("-", "/")
+    project_filter = _detect_project(data.get("cwd") or os.getcwd())
 
     # run as a detached process so the session shutdown isn't blocked
-    args = [binary, "ingest", "--sessions-only"]
+    args = [binary, "db", "ingest", "--sessions-only"]
     if project_filter:
         args += ["--project", project_filter]
 
