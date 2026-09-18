@@ -332,6 +332,15 @@ function nextMonthResetEpoch() {
 }
 
 const STALE_AFTER = 300;
+const LINE2_CACHE_TTL_MS = 60000;
+const TOOL_STALE_MS = 120000;
+const STALE_CACHE_FACTOR = 20;
+
+function isStale(tool) {
+  if (!tool.startTime) return false;
+  const started = new Date(tool.startTime).getTime();
+  return Number.isFinite(started) && Date.now() - started > TOOL_STALE_MS;
+}
 
 function usageGauges(compact) {
   const countdown = compact ? () => '' : fmtCountdown;
@@ -569,9 +578,12 @@ function fmtToolFeed(tools, mode) {
   if (!mode || !tools.length) return '';
 
   if (mode === 'last') {
-    // just show the most recent non-completed tool, or last completed
-    const running = tools.filter(t => !t.completed);
-    const t = running.length ? running[running.length - 1] : tools[tools.length - 1];
+    // just show the most recent non-completed tool, or last completed. a
+    // tool_use whose result never arrived (interrupt, crash) would otherwise
+    // read as running forever, so ignore ones that have gone cold.
+    const fresh = tools.filter(t => !t.completed && !isStale(t));
+    const lastDone = [...tools].reverse().find(x => x.completed);
+    const t = fresh.length ? fresh[fresh.length - 1] : (lastDone || tools[tools.length - 1]);
     const target = t.target ? ` ${t.target.slice(0, 60)}` : '';
     if (!t.completed) return `${CYAN}${t.name}${target}...${RST}`;
     return `${DIM}${t.name}${target}${RST}`;
@@ -640,7 +652,13 @@ function giantmemStatus(dir) {
       child.unref();
     }
   } catch (e) {}
-  // stale same-dir data beats a blank segment while the refresh lands
+  // stale same-dir data beats a blank segment while the refresh lands, but a
+  // giantmem that never answers should not pin one answer on screen forever
+  try {
+    if (Date.now() - fs.statSync(cachePath).mtimeMs > ttlMs * STALE_CACHE_FACTOR) {
+      return null;
+    }
+  } catch (e) {}
   return cached;
 }
 
@@ -809,7 +827,12 @@ const renderTick = () => {
       if (line2) {
         try { fs.mkdirSync(STATE_DIR, { recursive: true }); fs.writeFileSync(line2Cache, line2); } catch (e) {}
       } else {
-        try { line2 = fs.readFileSync(line2Cache, 'utf8'); } catch (e) {}
+        // bounded: an unbounded fallback re-rendered a dead line forever
+        try {
+          if (Date.now() - fs.statSync(line2Cache).mtimeMs < LINE2_CACHE_TTL_MS) {
+            line2 = fs.readFileSync(line2Cache, 'utf8');
+          }
+        } catch (e) {}
       }
     }
 
@@ -839,5 +862,5 @@ if (require.main === module) {
 
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
-  buildLine1, fitLine1, fitSolo, packLine2,
+  buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed,
 };

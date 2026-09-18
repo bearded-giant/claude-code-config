@@ -69,18 +69,22 @@ def has_unresolved_debug(debug_dir: Path) -> list[str]:
             content = md_file.read_text()
             # check if resolution section has actual content
             resolution_match = re.search(
-                r'^## Resolution\s*\n(.*?)(?=^## |\Z)',
-                content, re.MULTILINE | re.DOTALL
+                r"^## Resolution\s*\n(.*?)(?=^## |\Z)",
+                content,
+                re.MULTILINE | re.DOTALL,
             )
             if resolution_match:
                 body = resolution_match.group(1).strip()
                 # if resolution has real content (not just template placeholders), it's resolved
-                if body and not body.startswith("root_cause:") or "root_cause: " in body:
+                if (
+                    body
+                    and not body.startswith("root_cause:")
+                    or "root_cause: " in body
+                ):
                     # has filled resolution -- check if it's just the template
                     lines = [l.strip() for l in body.split("\n") if l.strip()]
                     filled = any(
-                        ":" in l and not l.endswith(":")
-                        and l.split(":", 1)[1].strip()
+                        ":" in l and not l.endswith(":") and l.split(":", 1)[1].strip()
                         for l in lines
                     )
                     if filled:
@@ -117,11 +121,13 @@ def main():
             return
 
         names = ", ".join(all_unresolved[:3])
-        suffix = f" (+{len(all_unresolved) - 3} more)" if len(all_unresolved) > 3 else ""
+        suffix = (
+            f" (+{len(all_unresolved) - 3} more)" if len(all_unresolved) > 3 else ""
+        )
 
         result = {
             "decision": "block",
-            "reason": f"Active debug session(s): {names}{suffix}. Update next_action in the debug file or move to debug/resolved/ before stopping."
+            "reason": f"Active debug session(s): {names}{suffix}. Update next_action in the debug file or move to debug/resolved/ before stopping.",
         }
         print(json.dumps(result))
 

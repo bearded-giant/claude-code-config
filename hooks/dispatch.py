@@ -22,6 +22,18 @@ from pathlib import Path
 HOOKS = Path(__file__).resolve().parent
 
 
+def _log_exception(name):
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_giantmem_log", HOOKS / "_giantmem_log.py"
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.log_exception(f"dispatch:{name}")
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+
 def run(name, raw):
     buf = io.StringIO()
     saved = sys.stdin
@@ -35,8 +47,10 @@ def run(name, raw):
         with redirect_stdout(buf):
             mod.main()
     except BaseException:  # pylint: disable=broad-exception-caught
-        # SystemExit too: one hook must not end the run
-        pass
+        # SystemExit too: one hook must not end the run. Log it: a module that
+        # raises is otherwise indistinguishable from one that chose to say
+        # nothing, which hid a broken hook for weeks.
+        _log_exception(name)
     finally:
         sys.stdin = saved
     return buf.getvalue().strip()

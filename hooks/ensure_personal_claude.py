@@ -27,7 +27,10 @@ def get_git_common_dir(cwd: str) -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--git-common-dir"],
-            capture_output=True, text=True, cwd=cwd, timeout=5
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            timeout=5,
         )
         if result.returncode == 0:
             raw = result.stdout.strip()
@@ -56,7 +59,13 @@ def find_personal_claude(repo_root: str) -> str | None:
 
 def ensure_symlink(claude_projects: str, project_id: str, source: str):
     target = os.path.join(claude_projects, project_id, "CLAUDE.md")
-    if os.path.exists(target) or os.path.islink(target):
+    if os.path.islink(target):
+        # repoint a link whose source moved or whose preferred source changed;
+        # a dangling link used to survive forever and lose the personal config
+        if os.path.realpath(target) == os.path.realpath(source):
+            return
+        os.unlink(target)
+    elif os.path.exists(target):
         return
     os.makedirs(os.path.dirname(target), exist_ok=True)
     os.symlink(source, target)

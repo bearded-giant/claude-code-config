@@ -42,7 +42,17 @@ def _notify_mac(title: str, message: str, window_id: str | None) -> None:
             execute = "tmux select-window -t %s; %s" % (window_id, execute)
         try:
             subprocess.run(
-                [tn, "-title", title, "-message", message, "-sound", "Submarine", "-execute", execute],
+                [
+                    tn,
+                    "-title",
+                    title,
+                    "-message",
+                    message,
+                    "-sound",
+                    "Submarine",
+                    "-execute",
+                    execute,
+                ],
                 capture_output=True,
                 timeout=4,
             )
@@ -51,7 +61,9 @@ def _notify_mac(title: str, message: str, window_id: str | None) -> None:
             pass
     safe_t = title.replace('"', "'")
     safe_m = message.replace('"', "'")
-    script = f'display notification "{safe_m}" with title "{safe_t}" sound name "Submarine"'
+    script = (
+        f'display notification "{safe_m}" with title "{safe_t}" sound name "Submarine"'
+    )
     try:
         subprocess.run(["osascript", "-e", script], capture_output=True, timeout=3)
     except (OSError, subprocess.SubprocessError):

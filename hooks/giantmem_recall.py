@@ -204,7 +204,9 @@ def rare_terms(keywords, conn=None):
 def is_current(repo, project, path="", worktree=""):
     cur, root = repo
     if not cur:
-        return True
+        # project detection failed: without it every hit reads as local, which
+        # collapses the cross-repo separation, so treat nothing as current
+        return False
     if root and path.startswith(root):
         return True
     if root and worktree and (worktree.rstrip("/") + "/").startswith(root):
@@ -282,11 +284,14 @@ def fts_hits(giantmem, keywords, repo):
         dtype = hit.get("dir_type") or hit.get("source_type") or ""
         if dtype in EXCLUDE_DIR_TYPES:
             continue
-        snippet = clean_snippet(
+        full = clean_snippet(
             hit.get("snippet") or hit.get("content") or hit.get("text") or ""
-        )[:SNIPPET_CHARS]
-        if sum(1 for k in keywords if k in snippet.lower()) < required:
+        )
+        # overlap is judged on everything the hit gave us, not the display
+        # slice: a doc whose keywords sat past SNIPPET_CHARS was being dropped
+        if sum(1 for k in keywords if k in full.lower()) < required:
             continue
+        snippet = full[:SNIPPET_CHARS]
         project = (hit.get("project") or "").strip("/") or "?"
         loc = f"{project}/{dtype}" if dtype else project
         out.append(

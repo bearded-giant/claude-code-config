@@ -46,10 +46,16 @@ def main() -> None:
             if data.get("tmux_auto_rename") == "1":
                 _tmux("set-window-option", "-t", win, "automatic-rename", "on")
 
-        marker.unlink(missing_ok=True)
-        marker.with_suffix(".notified").unlink(missing_ok=True)
     except Exception:
         pass
+    finally:
+        # a malformed marker used to skip the unlinks, so the window stayed
+        # renamed and every later prompt re-read the same bad json
+        try:
+            marker.unlink(missing_ok=True)
+            marker.with_suffix(".notified").unlink(missing_ok=True)
+        except (OSError, NameError):
+            pass
 
 
 if __name__ == "__main__":
