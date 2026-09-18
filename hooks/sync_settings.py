@@ -18,7 +18,12 @@ from pathlib import Path
 
 HOME_OWNED = {"model", "effortLevel", "theme", "feedbackSurveyState"}
 UNION_DICTS = ["enabledPlugins"]
-UNION_LISTS = [("permissions", "allow"), ("permissions", "ask")]
+UNION_LISTS = [
+    ("permissions", "allow"),
+    ("permissions", "ask"),
+    ("permissions", "deny"),
+    ("permissions", "additionalDirectories"),
+]
 
 REPO_SETTINGS = Path(__file__).resolve().parents[1] / "settings.json"
 HOME_SETTINGS = Path.home() / ".claude" / "settings.json"

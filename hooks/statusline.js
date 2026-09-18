@@ -210,13 +210,35 @@ const DEFAULT_BADGES = [
 
 function accountBadge(cfg) {
   try {
-    const raw = fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8');
+    const src = path.join(os.homedir(), '.claude.json');
+    const badges = (cfg && cfg.badges) || DEFAULT_BADGES;
+    // ~450KB of project history parsed per tick for one oauthAccount field;
+    // key a cache on the file's identity plus the badge rules
+    const st = fs.statSync(src);
+    const stamp = `${st.mtimeMs}:${st.size}:${JSON.stringify(badges)}`;
+    const cacheFile = path.join(STATE_DIR, 'account-badge.json');
+    try {
+      const hit = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+      if (hit.stamp === stamp) return hit.badge;
+    } catch (e) {}
+
+    const badge = computeBadge(fs.readFileSync(src, 'utf8'), badges);
+    try {
+      fs.mkdirSync(STATE_DIR, { recursive: true });
+      fs.writeFileSync(cacheFile, JSON.stringify({ stamp, badge }));
+    } catch (e) {}
+    return badge;
+  } catch (e) { return ''; }
+}
+
+function computeBadge(raw, badges) {
+  try {
     const j = JSON.parse(raw);
     const oa = j.oauthAccount || {};
     const type = (oa.organizationType || '').toLowerCase();
     const name = (oa.organizationName || '').toLowerCase();
     const haystack = `${name} ${type}`;
-    for (const b of (cfg && cfg.badges) || DEFAULT_BADGES) {
+    for (const b of badges) {
       try {
         if (new RegExp(b.match).test(haystack)) {
           return `${BADGE_COLORS[b.color] || YELLOW}[${b.label}]${RST}`;
