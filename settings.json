@@ -73,7 +73,6 @@
     "defaultMode": "bypassPermissions",
     "additionalDirectories": ["/Users/bryan/"]
   },
-  "model": "Opus",
   "hooks": {
     "SessionStart": [
       {
@@ -160,6 +159,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall clear_attention",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node ~/.claude/hooks/caveman-mode-tracker.js",
+            "timeout": 5
           }
         ]
       }
@@ -181,11 +185,11 @@
     "kai-review@kai": true,
     "kai@kai": true,
     "slack@claude-plugins-official": true,
-    "bigquery@skio": false,
+    "bigquery@skio": true,
     "debug-features@skio": false,
-    "dev-workflow@skio": false,
-    "fargate-jobs@skio": false,
-    "hasura-schema@skio": false,
+    "dev-workflow@skio": true,
+    "fargate-jobs@skio": true,
+    "hasura-schema@skio": true,
     "linear-triage@skio": false,
     "opensearch-logs@skio": false,
     "subscriptions@skio": false,
