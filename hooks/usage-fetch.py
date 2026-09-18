@@ -21,7 +21,6 @@ COOKIE_DB = os.path.expanduser(
 )
 
 USAGE_TTL = 60
-COOKIE_TTL = 600
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -31,9 +30,17 @@ UA = (
 
 def get_keychain_password():
     r = subprocess.run(
-        ["security", "find-generic-password",
-         "-s", "Brave Safe Storage", "-a", "Brave", "-w"],
-        capture_output=True, text=True,
+        [
+            "security",
+            "find-generic-password",
+            "-s",
+            "Brave Safe Storage",
+            "-a",
+            "Brave",
+            "-w",
+        ],
+        capture_output=True,
+        text=True,
     )
     if r.returncode != 0:
         raise RuntimeError("keychain access failed")
@@ -49,9 +56,19 @@ def decrypt_value(blob, key):
         return ""
     iv = b"\x20" * 16
     r = subprocess.run(
-        ["openssl", "enc", "-aes-128-cbc", "-d", "-nopad",
-         "-K", key.hex(), "-iv", iv.hex()],
-        input=blob[3:], capture_output=True,
+        [
+            "openssl",
+            "enc",
+            "-aes-128-cbc",
+            "-d",
+            "-nopad",
+            "-K",
+            key.hex(),
+            "-iv",
+            iv.hex(),
+        ],
+        input=blob[3:],
+        capture_output=True,
     )
     if r.returncode != 0:
         return ""
@@ -114,6 +131,7 @@ LABEL_OVERRIDES = {
     "recharge, inc": "rc-inc",
     "recharge, team": "rc-team",
 }
+
 
 def is_personal(org):
     name = (org.get("name") or "").lower()
@@ -215,15 +233,12 @@ def main():
                 pass
 
         now = time.time()
-        cookies = None
-
-        if cached and cached.get("cookies_expire_at", 0) > now:
-            cookies = cached.get("cookies")
-
-        if not cookies or "sessionKey" not in cookies:
-            password = get_keychain_password()
-            key = derive_key(password)
-            cookies = read_cookies(key)
+        # cookies are re-derived from the browser store every run: caching the
+        # sessionKey only saves a keychain read, and costs a live credential
+        # sitting in a cache file between refreshes
+        password = get_keychain_password()
+        key = derive_key(password)
+        cookies = read_cookies(key)
 
         if not cookies.get("sessionKey"):
             sys.exit(1)
@@ -231,7 +246,8 @@ def main():
         # fetch org list and filter to chat-capable business orgs (drop personal)
         all_orgs = api_get_retry(cookies, "/api/organizations")
         chat_orgs = [
-            o for o in all_orgs
+            o
+            for o in all_orgs
             if "chat" in o.get("capabilities", []) and not is_personal(o)
         ]
 
@@ -252,23 +268,22 @@ def main():
                     orgs.append(prev[label])
                 continue
             usage = parse_usage(raw)
-            orgs.append({
-                "id": org_id,
-                "label": label,
-                **usage,
-            })
+            orgs.append(
+                {
+                    "id": org_id,
+                    "label": label,
+                    **usage,
+                }
+            )
 
         cache = {
             "orgs": orgs,
             "fetched_at": now,
             "expires_at": now + USAGE_TTL,
-            "cookies": cookies,
-            "cookies_expire_at": now + COOKIE_TTL,
         }
 
         os.makedirs(CACHE_DIR, exist_ok=True)
         tmp = CACHE_FILE + ".tmp"
-        # cache holds the claude.ai sessionKey — keep it owner-only
         fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
         with os.fdopen(fd, "w") as f:
             json.dump(cache, f, indent=2)
@@ -410,5 +425,7 @@ if __name__ == "__main__":
     elif args[0] == "--switch":
         cmd_switch()
     else:
-        print("usage: usage-fetch.py [--dump|--list|--toggle <label>|--only <label>|--show-all|--switch]")
+        print(
+            "usage: usage-fetch.py [--dump|--list|--toggle <label>|--only <label>|--show-all|--switch]"
+        )
         sys.exit(1)

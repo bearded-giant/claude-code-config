@@ -413,7 +413,7 @@ def update_session_index(
         pass
 
 
-TIMELINE_LIMIT = 50
+TIMELINE_LIMIT = 10
 # TIMELINE_LIMIT = None  # uncomment for no limit
 
 

@@ -44,7 +44,7 @@ def main() -> None:
         return
 
     # skip the prime if there's nothing actionable
-    if not (data.get("active_feature") or data.get("recent_docs") or data.get("recent_sessions") or data.get("history_tail")):
+    if not (data.get("active_feature") or data.get("recent_docs")):
         return
 
     lines = ["<system-reminder>", "giantmem prime: workspace context"]
@@ -61,21 +61,6 @@ def main() -> None:
             tag = d.get("dir_type") or ""
             feat = f" [{d['feature']}]" if d.get("feature") else ""
             lines.append(f"  - {tag}{feat} {d['path']}")
-
-    if data.get("recent_sessions"):
-        lines.append("")
-        lines.append("recent Claude sessions in this project (resume via giantmem session resume <id>):")
-        for s in data["recent_sessions"]:
-            sid = (s.get("session_id") or "")[:8]
-            topic = s.get("topic") or "general"
-            lines.append(f"  - {sid}  topic={topic}  ts={s.get('timestamp','?')}")
-
-    if data.get("history_tail"):
-        lines.append("")
-        lines.append("history tail:")
-        for h in data["history_tail"]:
-            if h.strip():
-                lines.append(f"  {h}")
 
     lines.append("</system-reminder>")
     print("\n".join(lines))
