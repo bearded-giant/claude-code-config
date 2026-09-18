@@ -148,15 +148,21 @@ Skips the check when `stop_hook_active` is true (already continuing from a prior
 
 **Hook:** `PreToolUse` (matcher: Write, Edit, MultiEdit)
 
-Blocks writes to protected directories: `archive/`, `plugins/marketplaces/`, `plugins/cache/`, `node_modules/`. Returns a block decision with a reason explaining the path is read-only. Prevents swarm workers and main sessions from accidentally modifying third-party or archived code.
+Blocks writes under `~/.claude/plugins` and this repo's `archive/`, plus any `node_modules/`. Returns a top-level block decision, which a permission decision would not do here: `defaultMode` is `bypassPermissions`, so `ask` and `deny` are advisory and only a block actually stops the write.
 
-Also ask-gates team-shared agent config: git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` and anything under a checked-in `.claude/` in repos outside the personal roots (`~/dev/claude-code-config`, `~/dotfiles`, `~/.claude`). Returns `permissionDecision: ask` so the edit surfaces a confirmation prompt instead of landing silently. Untracked files (e.g. `.claude/settings.local.json`, `CLAUDE.local.md`) stay freely editable.
+Matching is on the resolved path, anchored to those roots — an earlier version matched `/archive/` and `/plugins/cache/` as substrings, which silently blocked those directory names in every repo on the machine.
+
+Bash is not in the matcher, so this guards tool-driven edits only. A `sed -i` or heredoc into a protected path goes through.
 
 ## standing_constraints.py
 
 **Hook:** `UserPromptSubmit`
 
-Prints `config/standing-constraints.md` verbatim every prompt — re-asserts scope / artifact-vs-execution / precedence invariants late in context so they survive conflicts with project-level instructions. Edit the md file to change the injected rules (keep in sync with the matching CLAUDE.md sections). Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing.
+Prints `config/standing-constraints.md` to re-assert scope / artifact-vs-execution / precedence invariants late in context, where they survive conflicts with project-level instructions.
+
+It does not fire every prompt. UserPromptSubmit context accumulates in the transcript, so injecting 1.6KB per turn cost roughly 40k tokens by turn 100, re-stating rules CLAUDE.md already holds in the system prompt for the whole session. What actually erodes those rules is compaction, so it now fires on the first prompt, on the first prompt after each compact (reading the marker the PreCompact hook writes), and every 25 prompts as a drift backstop. Per-session counters live in `$TMPDIR/claude-standing-constraints/`.
+
+Edit the md file to change the injected rules, keeping it in sync with the matching CLAUDE.md sections. Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing.
 
 ## giantmem_recall.py
 
@@ -164,19 +170,26 @@ UserPromptSubmit hook. Two arms run concurrently: a keyword OR-query through `gi
 
 ## Hook Wiring Summary
 
-All hooks are configured in `settings.json`. Here's the full map:
+Most events run through `dispatch.py`, which loads several modules in one process so an event pays one interpreter start instead of N. It calls each module's `main()` with the same stdin, merges every `additionalContext` into one object, and lets a control object (a block or permission decision) win alone. It catches everything a module raises, including `SystemExit`, and logs the traceback to `~/.cache/giantmem/hook.log` — without that log a crashing hook is indistinguishable from a quiet one.
+
+The caveman plugin registers its own SessionStart and UserPromptSubmit hooks through its `plugin.json`, so `settings.json` is not the whole picture.
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmemd start`, `sync_settings.py`, `session_prime.py`, `doit_session_prime.py`, `memory_ingest.py`, `workspace_session_hook.py`, `ensure_personal_claude.py` | Yes (one-time) |
-| UserPromptSubmit | `standing_constraints.py`, `giantmem_recall.py`, `clear_attention.py` | Yes (standing constraints + top FTS5 hits per prompt) |
-| PreCompact | `precompact_capture.py`, timestamp file | No (stderr + file) |
-| SessionEnd | `session_end_ingest.py`, `workspace_session_end.py` | No (stderr + file writes) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `memory_ingest` | Yes (one-time, ~4.9KB) |
+| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `clear_attention`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above) |
+| PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
+| SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
-| Stop | `debug_stop_check.py` | No (JSON decision only) |
+| Stop | dispatch: `debug_stop_check`, `notify_attention` | No (JSON decision only) |
+| statusLine | `statusline.js` (spawns `usage-fetch.py` detached) | N/A (terminal only) |
+
+Undocumented above but present: `live_index.py` (PostToolUse, indexes `.giantmem/` and memory writes into live.db), the PostToolUse nudges (`caveman_artifact_nudge`, `code_comment_nudge`, `notion_publish_nudge`), the attention trio (`request_attention` writes the marker from `commands/babysit.md`, `notify_attention` consumes it on Stop, `clear_attention` clears it on the next prompt), and `_giantmem_log.py`, a shared logger imported by several of them.
+
+Run the statusline unit tests with `npm test` from this directory.
 
 Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it.
 
-Durability + speed: SessionStart runs `giantmemd start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_ingest.py` (detached `giantmem db ingest --source memory-md`, which lands every memory md in archives.db, the durable, backed-up store; `live_index.py` still writes them into live.db on PostToolUse for same-session recall, and the recall hook's `find -s memory` reads both).
+Durability + speed: SessionStart runs `giantmem daemon start` (a unix-socket daemon that kills ~700ms cold starts, so per-prompt recall is sub-ms) and `memory_ingest.py` (detached `giantmem db ingest --source memory-md`, which lands every memory md in archives.db, the durable, backed-up store; `live_index.py` still writes them into live.db on PostToolUse for same-session recall, and the recall hook's `find -s memory` reads both).
 
 Backup is handled by the giant-tooling db-backup script (`giantmem/scripts/giantmem-db-backup.sh`) on a launchd timer (`com.bryan.giantmem-db-backup`, every 2h), not a hook. Per db it takes a consistent `sqlite3 .backup` of `live.db` + `archives.db`, runs `PRAGMA integrity_check`, gpg-encrypts (asymmetric, key `33F36CDDD530C52910A4608D61258A79557ECB4A`), and publishes to iCloud Drive (`giantmem-db-backups/`), overwriting the single current copy only after validation (one `.prev` kept). No VPS/tailscale. The DBs already hold the ingested sessions + memory md, so they are the backed-up unit. Restore: `gpg --decrypt live.db.gpg > live.db` — needs the private key, stored in 1Password.
