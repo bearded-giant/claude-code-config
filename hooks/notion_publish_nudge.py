@@ -64,6 +64,7 @@ def main():
         fm, _ = conv.parse_frontmatter(
             Path(file_path).read_text(encoding="utf-8", errors="replace")
         )
+        os.environ["MD_TO_NOTION_FAST"] = "1"
         ok, _, rel, kind, cls = conv.gate(file_path, cfg, fm)
     except Exception:  # pylint: disable=broad-exception-caught
         return

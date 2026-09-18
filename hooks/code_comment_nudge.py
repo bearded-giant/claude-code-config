@@ -98,9 +98,16 @@ def docstring_lines(lines: list) -> list:
     """Line indexes where a docstring opens right after a def/class signature."""
     hits = []
     pending_signature = False
+    in_signature = False
     for idx, raw in enumerate(lines):
         stripped = raw.strip()
         if not stripped:
+            continue
+        if in_signature:
+            # multi-line signature: arm only once the closing `:` lands
+            if stripped.endswith(":"):
+                in_signature = False
+                pending_signature = True
             continue
         if pending_signature and DOCSTRING_RE.match(raw):
             hits.append(idx)
@@ -108,9 +115,9 @@ def docstring_lines(lines: list) -> list:
             continue
         if SIGNATURE_END_RE.match(raw):
             pending_signature = True
-        elif SIGNATURE_START_RE.match(raw) or (pending_signature and not stripped.endswith(":")):
-            # multi-line signature -- stay armed until the closing `:`
-            pending_signature = stripped.endswith(":") or pending_signature
+        elif SIGNATURE_START_RE.match(raw):
+            in_signature = True
+            pending_signature = False
         else:
             pending_signature = False
     return hits
@@ -139,7 +146,9 @@ def scan(text: str) -> list:
 
 
 def marker_for(session_id: str, file_path: str, findings: list) -> Path:
-    payload = file_path + "|" + "|".join(f"{kind}:{snippet}" for kind, snippet in findings)
+    payload = (
+        file_path + "|" + "|".join(f"{kind}:{snippet}" for kind, snippet in findings)
+    )
     digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()[:16]
     return NUDGE_DIR / session_id / digest
 

@@ -77,7 +77,9 @@ def feature_from_giantmem(worktree_path: str) -> str:
         data = json.loads(fp.read_text())
     except Exception:
         return ""
-    feats = data.get("features", {})
+    # features.json is a flat name -> meta map; older writers wrapped it in a
+    # "features" key, and some emitted a list
+    feats = data.get("features", data) if isinstance(data, dict) else data
     if isinstance(feats, dict):
         for name, f in feats.items():
             if isinstance(f, dict) and f.get("status") == "in_progress":
@@ -188,6 +190,12 @@ def main():
     file_path = tool_input.get("file_path") or ""
     if not file_path:
         return
+    # normalize first: a relative .giantmem/... path fails GIANTMEM_RE, which
+    # wants the leading slash, and the write was silently dropped from the index
+    if not os.path.isabs(file_path):
+        file_path = os.path.abspath(
+            os.path.join(data.get("cwd") or os.getcwd(), file_path)
+        )
     is_giantmem = bool(GIANTMEM_RE.search(file_path))
     is_memory = bool(MEMORY_RE.search(file_path))
     if not (is_giantmem or is_memory):
@@ -201,8 +209,6 @@ def main():
         return
     if is_memory and os.path.basename(file_path).startswith("."):
         return
-    if not os.path.isabs(file_path):
-        file_path = os.path.abspath(file_path)
     if not os.path.exists(file_path):
         return  # write may have failed
 

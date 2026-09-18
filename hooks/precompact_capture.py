@@ -32,11 +32,13 @@ def read_features_active(worktree: str) -> str:
         data = json.loads(fp.read_text())
     except Exception:
         return ""
-    feats = data.get("features", {})
+    # features.json is a flat name -> meta map; older writers wrapped it in a
+    # "features" key, and some emitted a list
+    feats = data.get("features", data) if isinstance(data, dict) else data
     if isinstance(feats, dict):
         for name, f in feats.items():
             if isinstance(f, dict) and f.get("status") == "in_progress":
-                return name
+                return f.get("name", name)
     elif isinstance(feats, list):
         for f in feats:
             if isinstance(f, dict) and f.get("status") == "in_progress":
@@ -71,6 +73,11 @@ def main() -> None:
 
     wt = detect_worktree(cwd)
     if not wt:
+        return
+
+    # only capture where the workspace already exists; compacting in an
+    # unrelated repo should not create .giantmem/ there
+    if not (Path(wt) / ".giantmem").is_dir():
         return
 
     target_dir = Path(wt) / ".giantmem" / "history"

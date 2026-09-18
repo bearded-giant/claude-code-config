@@ -126,10 +126,6 @@ def gate(path, cfg, fm=None, ident=None):
         return False, "dot dir", rel, "", ""
     if rel.rsplit("/", 1)[-1] in ("_index.md", "_history.md"):
         return False, "machine index", rel, "", ""
-    if ident is None:
-        ident = identity(str(Path(path).resolve().parent))
-    if not ident:
-        return False, "not in git", rel, "", ""
     if fm is None:
         fm, _ = parse_frontmatter(
             Path(path).read_text(encoding="utf-8", errors="replace")
@@ -143,14 +139,23 @@ def gate(path, cfg, fm=None, ident=None):
     for rx in cfg.get("exclude", []):
         if re.search(rx, rel):
             return False, f"exclude {rx}", rel, kind, ""
-    if publish in ("true", "yes"):
-        return True, "publish: true", rel, kind, "auto"
     doc_kind = fm.get("kind", "")
-    if doc_kind in cfg.get("auto", []) or kind in cfg.get("auto", []):
-        return True, f"auto {doc_kind or kind}", rel, kind, "auto"
-    if kind in cfg.get("on_request", []):
-        return True, f"on_request {kind}", rel, kind, "on_request"
-    return False, f"type {kind} not in auto or on_request", rel, kind, ""
+    if publish in ("true", "yes"):
+        decision = (True, "publish: true", rel, kind, "auto")
+    elif doc_kind in cfg.get("auto", []) or kind in cfg.get("auto", []):
+        decision = (True, f"auto {doc_kind or kind}", rel, kind, "auto")
+    elif kind in cfg.get("on_request", []):
+        decision = (True, f"on_request {kind}", rel, kind, "on_request")
+    else:
+        return False, f"type {kind} not in auto or on_request", rel, kind, ""
+
+    # identity() costs five git subprocesses, so only pay it once a doc has
+    # cleared every cheap check
+    if ident is None:
+        ident = identity(str(Path(path).resolve().parent))
+    if not ident:
+        return False, "not in git", rel, kind, ""
+    return decision
 
 
 def is_dirty(path, fm):
@@ -220,7 +225,10 @@ def convert_body(body):
 def git(cwd, *args):
     # a timeout here used to read as "not a git repo" and silently drop the doc
     # from the index; retry once, loudly, before believing it
-    for timeout in (5, 15):
+    # MD_TO_NOTION_FAST is for callers on a hook budget, where five calls at
+    # 5s+15s each would blow the event's whole allowance
+    timeouts = (2,) if os.environ.get("MD_TO_NOTION_FAST") else (5, 15)
+    for timeout in timeouts:
         try:
             r = subprocess.run(
                 ["git", "-C", str(cwd), *args],
