@@ -220,6 +220,34 @@ def release_lock():
         pass
 
 
+def write_cache(cache):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    tmp = CACHE_FILE + ".tmp"
+    fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(cache, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp, 0o600)
+    os.rename(tmp, CACHE_FILE)
+
+
+def record_failure(exc):
+    # a failed fetch used to leave the cache untouched, so expires_at stayed in
+    # the past and the statusline rendered the old numbers as if they were live
+    try:
+        with open(CACHE_FILE) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    cache["failed_at"] = time.time()
+    cache["error"] = type(exc).__name__
+    try:
+        write_cache(cache)
+    except OSError:
+        pass
+
+
 def main():
     if not acquire_lock():
         sys.exit(0)
@@ -282,17 +310,9 @@ def main():
             "expires_at": now + USAGE_TTL,
         }
 
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        tmp = CACHE_FILE + ".tmp"
-        fd = os.open(tmp, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
-        with os.fdopen(fd, "w") as f:
-            json.dump(cache, f, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        os.chmod(tmp, 0o600)
-        os.rename(tmp, CACHE_FILE)
-    except Exception:
-        pass
+        write_cache(cache)
+    except Exception as exc:
+        record_failure(exc)
     finally:
         release_lock()
 

@@ -173,13 +173,13 @@ function effortLabel(data) {
 
 let usageFetchSpawned = false;
 
-function spawnUsageFetch() {
+function spawnUsageFetch(backoffMs = 15000) {
   if (usageFetchSpawned) return;
   usageFetchSpawned = true;
   try {
     const marker = path.join(STATE_DIR, 'usage-fetch-spawned');
     try {
-      if (Date.now() - fs.statSync(marker).mtimeMs < 15000) return;
+      if (Date.now() - fs.statSync(marker).mtimeMs < backoffMs) return;
     } catch (e) {}
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(marker, '');
@@ -331,6 +331,8 @@ function nextMonthResetEpoch() {
   return next / 1000;
 }
 
+const STALE_AFTER = 300;
+
 function usageGauges(compact) {
   const countdown = compact ? () => '' : fmtCountdown;
   try {
@@ -351,8 +353,13 @@ function usageGauges(compact) {
     }
     const now = Date.now() / 1000;
 
+    // a fetch that cannot reach claude.ai leaves the previous numbers in place,
+    // so mark them rather than rendering month-old percentages as if live
+    const stale = cache.failed_at != null
+      || (cache.fetched_at != null && now - cache.fetched_at > STALE_AFTER);
+
     if (!cache.expires_at || cache.expires_at < now) {
-      spawnUsageFetch();
+      spawnUsageFetch(cache.failed_at != null ? 120000 : 15000);
     }
 
     let visibleFilter = null;
@@ -396,7 +403,7 @@ function usageGauges(compact) {
 
       if (!parts.length) continue;
       const label = orgs.length > 1 ? `${DIM}${org.label}${RST} ` : '';
-      out.push(`${label}${parts.join(' ')}`);
+      out.push(`${label}${parts.join(' ')}${stale ? ` ${DIM}!${RST}` : ''}`);
     }
     return out;
   } catch (e) { return []; }
