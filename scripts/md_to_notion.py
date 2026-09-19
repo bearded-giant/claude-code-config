@@ -8,12 +8,6 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
-ROWS_CACHE = Path(
-    os.environ.get(
-        "NOTION_PUBLISH_ROWS",
-        Path(__file__).resolve().parent.parent / "config" / "notion-publish-rows.json",
-    )
-)
 CONFIG = Path(
     os.environ.get(
         "NOTION_PUBLISH_CONFIG",
@@ -33,6 +27,13 @@ BR_RE = re.compile(r"<br\s*/?>")
 BR_TOKEN = "\x00BR\x00"
 # anchored: slug letters like the e in "backbone" are hex, so an unanchored match shifts the id
 PAGE_ID_RE = re.compile(r"([0-9a-f]{32})$")
+
+
+def page_id(url):
+    """The ledger's upsert key. A doc's own `notion:` URL identifies its row, so a doc
+    that moves repo, worktree or path keeps the row it already has."""
+    m = PAGE_ID_RE.search((url or "").split("?", 1)[0].rstrip("/").replace("-", ""))
+    return m.group(1) if m else ""
 
 
 def load_config(path=CONFIG):
@@ -303,7 +304,7 @@ def convert(path, cfg, now):
     if ident and rel:
         content += footer(ident, rel, now)
     url = fm.get("notion", "")
-    m = PAGE_ID_RE.search(url.split("?", 1)[0].rstrip("/").replace("-", ""))
+    pid = page_id(url)
     return {
         "path": str(Path(path).resolve()),
         "source": rel,
@@ -313,7 +314,7 @@ def convert(path, cfg, now):
         "reason": reason,
         "dirty": is_dirty(path, fm),
         "notion": url,
-        "page_id": m.group(1) if m else "",
+        "page_id": pid,
         "title": title,
         "repo": ident["repo"] if ident else "",
         "worktree": ident["worktree"] if ident else "",
@@ -322,16 +323,25 @@ def convert(path, cfg, now):
     }
 
 
-def mark(path, url, now):
+def mark(path, url, now, row=""):
     p = Path(path)
     text = p.read_text(encoding="utf-8")
+    keep = f"notion: {url}\nnotion_synced: {now}\n"
+    if row:
+        keep += f"notion_row: {row}\n"
     m = FM_RE.match(text)
     if m:
-        fm_text = re.sub(r"(?m)^notion(_synced)?:.*\n?", "", m.group(1)).rstrip("\n")
-        head = f"---\n{fm_text}\nnotion: {url}\nnotion_synced: {now}\n---\n"
-        text = head + text[m.end() :]
+        fm_text = re.sub(
+            r"(?m)^notion(_synced|_row)?:.*\n?", "", m.group(1)
+        ).rstrip("\n")
+        # a doc that already had a row keeps it when --mark is called without one
+        if not row:
+            prior = re.search(r"(?m)^notion_row:\s*(\S+)", m.group(1))
+            if prior:
+                keep += f"notion_row: {prior.group(1)}\n"
+        text = f"---\n{fm_text}\n{keep}---\n" + text[m.end() :]
     else:
-        text = f"---\nnotion: {url}\nnotion_synced: {now}\n---\n" + text
+        text = f"---\n{keep}---\n" + text
     p.write_text(text, encoding="utf-8")
 
 
@@ -393,20 +403,19 @@ def degraded(rows):
     )
 
 
-def load_rows_cache(path=ROWS_CACHE):
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:  # pylint: disable=broad-exception-caught
-        return {}
+def db_rows(rows):
+    """One catalog row per published doc.
 
-
-def db_rows(rows, cache=None):
-    """One catalog row per published doc. `ref` is the upsert key."""
-    cache = cache or {}
+    `row_id` comes out of the doc's own `notion_row:` frontmatter rather than a side
+    cache keyed on the doc's location. A ref is a location: rename the repo and the key
+    changes, so the upsert misses and mints a second row while the first is orphaned.
+    The pointer travels with the file instead, and there is nothing on disk to resync.
+    """
     return [
         {
             "ref": r["ref"],
-            "row_id": cache.get(r["ref"], ""),
+            "page_id": page_id(r["notion"]),
+            "row_id": r.get("notion_row", ""),
             "title": r["title"],
             "url": r["notion"],
             "repo": r["repo"],
@@ -446,6 +455,7 @@ def scan(root, cfg):
                 "reason": reason,
                 "dirty": is_dirty(p, fm),
                 "notion": fm.get("notion", ""),
+                "notion_row": fm.get("notion_row", ""),
                 "status": fm.get("status", ""),
                 "lifecycle": fm.get("lifecycle", "durable"),
                 "repo": ident["repo"] if ident else "",
@@ -569,26 +579,29 @@ def selftest():
     )
     assert dbr[0]["url"] == "u" and dbr[0]["ref"].endswith("x.md")
     assert dbr[0]["row_id"] == ""
-    assert (
-        db_rows(
-            [
-                {
-                    "ref": "k",
-                    "title": "X",
-                    "notion": "u",
-                    "repo": "r",
-                    "worktree": "",
-                    "feature": "",
-                    "type": "notes",
-                    "status": "",
-                    "lifecycle": "durable",
-                    "updated": "",
-                }
-            ],
-            {"k": "ROWID"},
-        )[0]["row_id"]
-        == "ROWID"
-    )
+    pid = "3d76a2462659816ea2f9df3713a3c47c"
+    moved = [
+        {
+            "ref": f"{repo}/features/f/x.md",
+            "title": "X",
+            "notion": f"https://app.notion.com/p/X-{pid}",
+            "repo": repo,
+            "worktree": "",
+            "feature": "f",
+            "type": "notes",
+            "status": "",
+            "lifecycle": "durable",
+            "updated": "",
+        }
+        for repo in ("chat-orchestrator", "remi")
+    ]
+    # the rename that broke the ledger: same doc, new ref, must reuse the row
+    for m in moved:
+        m["notion_row"] = "ROWID"
+    assert [db_rows([m])[0]["row_id"] for m in moved] == ["ROWID", "ROWID"]
+    assert db_rows([{**moved[1], "notion_row": ""}])[0]["row_id"] == ""
+    assert page_id("https://app.notion.com/p/X-" + pid) == pid
+    assert page_id("") == "" and page_id("https://app.notion.com/p/no-id") == ""
     assert dbr[0]["lifecycle"] == "candidate" and "notion" not in dbr[0]
     assert degraded(
         [
@@ -605,6 +618,14 @@ def selftest():
         m = PAGE_ID_RE.search(url.split("?", 1)[0].rstrip("/").replace("-", ""))
         assert m and m.group(1).startswith("3d76a2462659"), url
     print("selftest ok")
+
+
+def strip_opt(argv, name):
+    """Pull `--name value` out of argv, returning the rest and the value."""
+    if name not in argv:
+        return argv, ""
+    i = argv.index(name)
+    return argv[:i] + argv[i + 2 :], argv[i + 1] if i + 1 < len(argv) else ""
 
 
 def main(argv):
@@ -639,28 +660,30 @@ def main(argv):
         roots = argv[1:] or [".giantmem"]
         scanned = [r for root in roots for r in scan(Path(root), cfg)]
         rows = [r for r in scanned if r["publishable"] and r["notion"]]
+        built = db_rows(rows)
         print(
             json.dumps(
                 {
                     "generated": now,
                     "data_source_id": cfg.get("index_data_source_id", ""),
                     "degraded": degraded(scanned),
-                    "stale": sorted(set(load_rows_cache()) - {r["ref"] for r in rows}),
-                    "rows": db_rows(rows, load_rows_cache()),
+                    "known_rows": sorted(r["row_id"] for r in built if r["row_id"]),
+                    "rows": built,
                 },
                 indent=1,
             )
         )
         return 0
     if argv[:1] == ["--mark"]:
-        mark(argv[2], argv[1], now)
-        print(f"marked {argv[2]} -> {argv[1]}")
+        rest, row = strip_opt(argv[1:], "--row")
+        mark(rest[1], rest[0], now, row)
+        print(f"marked {rest[1]} -> {rest[0]}" + (f" (row {row})" if row else ""))
         return 0
     if not argv:
         print(
             "usage: md_to_notion.py <file.md> | --scan [dir]"
             " | --index [dir ...] | --rows [dir ...]"
-            " | --mark <url> <file.md> | --selftest",
+            " | --mark <url> <file.md> [--row <row_id>] | --selftest",
             file=sys.stderr,
         )
         return 1

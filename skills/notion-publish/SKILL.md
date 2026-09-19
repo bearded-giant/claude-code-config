@@ -37,8 +37,6 @@ No args and no hook context → `--dirty`.
 
 `config/notion-publish.yaml`: `account` (server account name, every call), `root_page_id` (tree root `Claude Artifacts`), `index_page_id` (catalog page), `index_db_id` + `index_data_source_id` (`Docs catalog` DB), `auto` (kinds that publish on write), `on_request` (types that publish on user ask), `exclude` (regexes on `.giantmem`-relative path). Frontmatter `publish: true|false` overrides both lists. Hook and skill read the same file.
 
-`config/notion-publish-rows.json`: `Source` ref → catalog row page id. Written by this skill; the upsert key, so row sync never queries Notion. Delete an entry to force a new row.
-
 `config/notion-publish-tree.json`: `parent_path` prefix → page id. Written by this skill. Delete an entry to force re-resolution. Also the index generator's container list.
 
 ## Procedure
@@ -57,14 +55,14 @@ No args and no hook context → `--dirty`.
    - `page_id` empty → `notion_create_pages` `parent: {"page_id": <resolved parent>}`, `pages: [{"properties": {"title": "<title>"}, "content": <content>}]`. Take `url` from the result.
    - 404 on `page_id` → treat as empty: create under the resolved parent; step 6 overwrites the stale URL. Say so in the report.
    - 404 on a cached container id → delete that cache entry, redo step 4 for that prefix once, retry.
-6. `python3 ~/.claude/scripts/md_to_notion.py --mark <url> <path>` writes `notion:` + `notion_synced:` into frontmatter.
+6. `python3 ~/.claude/scripts/md_to_notion.py --mark <url> <path> [--row <row id>]` writes `notion:`, `notion_synced:` and, when given, `notion_row:` into frontmatter. Without `--row` an existing `notion_row:` is preserved.
 7. Index, both surfaces. After any push, and on `--index`. Roots for both:
    `giantmem artifact list --repo all --published --paths | sed 's#/\.giantmem/.*#/.giantmem#' | sort -u`
    a. Catalog page: `python3 ~/.claude/scripts/md_to_notion.py --index <roots>` → `{page_id, content}`; `notion_update_page` `command: replace_content`, `new_str: <content>`.
-   b. Catalog DB: `python3 ~/.claude/scripts/md_to_notion.py --rows <roots>` → `{data_source_id, rows[], stale[]}`. Per row, every field a flat scalar:
+   b. Catalog DB: `python3 ~/.claude/scripts/md_to_notion.py --rows <roots>` → `{data_source_id, rows[], known_rows[]}`. Each row's `row_id` is the doc's own `notion_row:` frontmatter. Per row, every field a flat scalar:
       - `row_id` set → `notion_update_page` `command: update_properties`, `page_id: <row_id>`, `properties: {Doc, Page, Repo, Worktree, Feature, Type, Status, Lifecycle, Updated, Source}`
-      - `row_id` empty → `notion_create_pages` `parent: {"data_source_id": <data_source_id>}`, one entry per row, then write each new id into `config/notion-publish-rows.json` under its `ref`
-      - `stale[]` → the doc moved or lost its `notion:`. Report the refs, delete no rows.
+      - `row_id` empty → `notion_create_pages` `parent: {"data_source_id": <data_source_id>}`, one entry per row, then `--mark <url> <path> --row <new row id>` to record it on the doc
+      - orphan rows are not detectable from a scan; audit on request with `notion_query_data_source` and compare against `known_rows[]`. Archive one with `notion_update_page` `command: update_properties`, `properties: {"in_trash": "__YES__"}`, and only when the user asks.
    Both modes report `degraded[]`: files that carry a `notion:` URL but gated to `not in git`. Non-empty means the scan was incomplete and the index would be short. Stop, report, push neither surface.
    Skip the whole step when nothing was pushed and no `--index`.
 8. Report. User-triggered: one table `path | url` pushed, `path | skipped: reason` rest. Hook-triggered: one line `published <rel> → <url>`. Nothing else.
@@ -86,6 +84,7 @@ Tools missing in a session that started while the server was down → restart th
 - Parent is always the resolved tree page. Never a database.
 - Both index surfaces are generated. Never hand-edit them; the next publish overwrites.
 - DB rows are pointers, not the docs. Bodies stay in the tree; a row's `Page` links to it. Never publish a doc body into the DB (that was the 2026-09-04 design the reorg trashed).
+- A doc's catalog row id lives in its own `notion_row:` frontmatter, beside `notion:`, so the pointer travels with the file. Never key the ledger on the `Source` ref and never mirror row ids into a side file: a ref is a location, so a repo rename or a file move changes the key, the upsert misses, and a second row appears while the first is orphaned. That is exactly what `chat-orchestrator` → `remi` did on 2026-09-18 — three duplicate rows — and the side cache made it worse by being one more thing to keep in sync. `live.db` mirrors `notion`/`notion_synced` from frontmatter the same way; it is a projection, not the source.
 - `replace_content` refuses to touch a page that owns child pages, and a markdown link does not count as a reference. That is why the catalog is its own childless page and container bodies stay empty (notion-artifact-reorg decision 7 holds). Never pass `allow_deleting_content: true` on a container; it trashes the subtree.
 - Local file is canonical. Republish overwrites the Notion body. Notion-side edits are the user's to backport by hand.
 - Every page ends with the converter's footer callout `giantmem: repo[@worktree]/path · synced · sha`. That is the reverse link. Do not strip it.
