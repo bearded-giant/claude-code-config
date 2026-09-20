@@ -58,3 +58,7 @@ __pycache__/
 
 # first-party skills downloaded by the harness (anthropic-skills:*)
 skills/synced/
+
+# third-party skills copied from vercel-labs/agent-skills
+skills/deploy-to-vercel/
+skills/vercel-optimize/
