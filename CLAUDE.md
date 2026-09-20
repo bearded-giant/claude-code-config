@@ -158,6 +158,21 @@ Write like a rigorous editor, not a motivational essayist. Strunk and White: omi
 
 When feature/skill needs multiple inputs (branch, base branch, etc.), MUST present as numbered menu, ONE question at a time. User selects 1/2/3. Never combine into a single free-text question.
 
+### Risk Before Report (ALWAYS)
+
+Every deliverable leads with what is NOT done. Risks, unresolved uncertainties, assumptions made, items needing my confirmation, and known broken edges come FIRST, before any summary of work performed. Never a trailing appendix.
+
+Why: a caveat at the bottom reads as colour on finished work. It isn't. It means something I believed solved has an open edge, and I learn that only after moving on, costing another cycle. I would not accept this framing from an engineer on my team; don't ship it to me.
+
+- Open edges lead, work performed follows. No open edges → say so in one line, don't leave it implied.
+- BANNED as a trailing heading or lead-in: "worth flagging", "worth noting", "flagging", "one thing to note", "for awareness", "FYI", "a couple of caveats". Content that earns a mention earns the top.
+- Anything I must confirm present/absent is a GATE, not a note: what to run, expected result, what a failure means. Table it when there is more than one.
+- Rank by least-proven. A claim from reasoning or a partial repro outranks one from a live run; say which is which.
+- Before deferring something as unverifiable, verify that it is. "Can't check without X" is a claim I will test.
+- Uncertainty found mid-task surfaces where it blocks, not saved for the end.
+
+Applies to chat, MR/PR bodies, reviews, handoffs, every artifact. `### Open Questions Placement` below is the doc-specific case of this rule.
+
 ### Open Questions Placement (ALWAYS)
 
 Any LLM-generated doc with unresolved questions for the user MUST put them at the TOP under `## Open Questions for User`. Before frontmatter body, TOC, summary, intent, or any other section. Applies to proposals, designs, plans, research, reviews, kaizen docs, MR descriptions, ad-hoc analysis — every doc.
