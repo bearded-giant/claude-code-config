@@ -233,6 +233,7 @@ Diagnostics (type errors, missing imports) are NOT in this LSP tool. Run the `py
 - Show usage example after implementing
 - Complex quoting (nested-quote curls, JSON payloads, heredoc-in-heredoc): write to a scratchpad script file and execute the file. Inline quoting monsters trip the permission parser and waste turns.
 - Deletion: `rm` is allowlisted — use it directly (after confirm-first rule for non-scratch targets). Do not fall back to `shutil.rmtree` workarounds.
+- `rm` on a variable path: write `"${VAR:?}"/glob`, never `"$VAR"/glob`. An empty variable expands to the filesystem root, and that check is `bypassImmune` — no permission rule or mode suppresses it, so the unguarded form always stops for confirmation. Literal paths need no guard.
 
 ## API URL Conventions
 
