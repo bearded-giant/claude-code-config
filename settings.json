@@ -138,6 +138,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Read|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/guard_env_files.py",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "PostToolUse": [
