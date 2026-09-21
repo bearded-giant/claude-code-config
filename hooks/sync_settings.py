@@ -2,8 +2,10 @@
 """Reconcile repo settings.json into live ~/.claude/settings.json.
 
 Repo is authoritative for structural config (hooks/env/statusLine/mcpServers/
-marketplaces/scalar flags). Home keeps runtime-mutated state. Plugins and the
-permission lists are unioned so runtime additions survive. Writes home only;
+marketplaces/scalar flags). Home keeps runtime-mutated state. Plugins, allow,
+deny and additionalDirectories are unioned so runtime additions survive. The
+ask list is repo-owned instead: union is write-once, so a runtime "don't ask
+again" would pin a rule that no repo edit could then remove. Writes home only;
 the repo copy is never modified, so the git tree stays clean.
 
 Reads the committed blob, not the working tree: syncing the tree shipped
@@ -20,7 +22,6 @@ HOME_OWNED = {"model", "effortLevel", "theme", "feedbackSurveyState"}
 UNION_DICTS = ["enabledPlugins"]
 UNION_LISTS = [
     ("permissions", "allow"),
-    ("permissions", "ask"),
     ("permissions", "deny"),
     ("permissions", "additionalDirectories"),
 ]
