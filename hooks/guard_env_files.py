@@ -35,11 +35,15 @@ def is_env_file(file_path: str) -> bool:
     return any(fnmatch.fnmatch(name, pattern) for pattern in ENV_PATTERNS)
 
 
-def payload(file_path: str) -> dict:
-    reason = (
-        f"{os.path.basename(file_path)} is an environment file and may hold "
-        "secrets. Reading it puts its contents in the transcript."
-    )
+def payload(file_path: str, tool_name: str) -> dict:
+    name = os.path.basename(file_path)
+    if tool_name == "Read":
+        reason = (
+            f"{name} is an environment file and may hold secrets. "
+            "Reading it puts its contents in the transcript."
+        )
+    else:
+        reason = f"{name} is an environment file and may hold live credentials."
     if MODE == "block":
         return {"decision": "block", "reason": reason}
     return {
@@ -61,7 +65,7 @@ def main():
             return
 
         if is_env_file(file_path):
-            print(json.dumps(payload(file_path)))
+            print(json.dumps(payload(file_path, input_data.get("tool_name", ""))))
 
     except Exception:  # pylint: disable=broad-exception-caught
         pass
