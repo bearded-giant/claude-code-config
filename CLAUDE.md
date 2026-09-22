@@ -74,6 +74,8 @@ This applies to MR descriptions, proposals, kaizens, runbooks, ADRs, frontmatter
 
 Corollary — do not author the staleness you would later have to ignore. When editing or generating code, NEVER write comments / docstrings / module banners that describe *current* functional behavior, response shapes, return values, request/response flow, "today returns X" / "ships dark" / "once Y lands" framing, fallback chains, or any other claim that the code itself already states. The reader will read the code; your comment will rot the moment the code changes. See `## Code Comment Rules` for the only permitted comment shape (the *why* of a non-obvious choice, one line). If you find yourself describing *what* a function does in a docstring, delete the docstring.
 
+Second corollary — READMEs and published docs are timeless. NEVER write working state into a README: no dated changelog entries ("Closed 2026-09-20", "deployed on", "as of today"), no deploy or verification status, no "still carries X", no "Bryan owns this file", no closed items in an open-edges list. Test before writing: would the sentence still be true in a month with no edits? If not, it goes in the handoff doc, `.giantmem/`, or the commit message, never the README. Provenance for a measured number ("measured 2026-09-20 on Opus") is not status and is fine. Applies to every README in every repo, skeleton and solutions included.
+
 <session_recovery>
 Session-start hooks already inject WORKSPACE.md, the features index, the active plan, and recent discoveries — do not re-read those.
 
