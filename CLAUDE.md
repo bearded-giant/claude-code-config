@@ -269,7 +269,7 @@ MUST NOT spawn agents for:
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
-- commit + push without re-confirmation when user says "commit and push" / "yes commit"
+- "commit" MEANS commit AND push. "commit", "commit and push", "yes commit", "commit the docs" → commit then push, no re-confirmation. Commit-only requires an explicit "don't push" / "no push" / "commit locally"
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - default Jira key when a repo hook demands one and the user gave none: `PE-0000`. customcheckout's `verify_commit_msg.py` wants the key at line start, so subject shape is `[PE-0000] feat: ...`, not `feat(PE-0000): ...`
