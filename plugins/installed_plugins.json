@@ -303,6 +303,16 @@
         "lastUpdated": "2026-06-13T14:06:54.758Z",
         "gitCommitSha": "0882e2d256fd953c6a3e90b946f68ce4f9f35153"
       }
+    ],
+    "langchain-skills@langchain-skills": [
+      {
+        "scope": "user",
+        "installPath": "/Users/bryan/.claude/plugins/cache/langchain-skills/langchain-skills/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-09-21T20:11:13.139Z",
+        "lastUpdated": "2026-09-21T20:11:13.139Z",
+        "gitCommitSha": "88df7d9b0cf8fedf40b99c1de806135fc2e2582d"
+      }
     ]
   }
 }
