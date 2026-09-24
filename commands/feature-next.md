@@ -13,7 +13,7 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
    python3 ~/dev/giant-tooling/workspace/scripts/feature.py --cwd "$(pwd)" next [feature]
    ```
 
-   `--cwd` goes before `next`. Feature is inferred from the in_progress one when omitted. Exit 1 with `no active feature` means bare-repo mode: skip this step and the `tasks.md` part of step 4, and keep the rest.
+   Feature is inferred from the in_progress one when omitted. Exit 1 with `no active feature` means bare-repo mode: skip this step and the `tasks.md` part of step 4, and keep the rest.
 
 2. doit list: use the name from the SessionStart `doit session list` line. Re-derive only if cwd or feature changed:
 

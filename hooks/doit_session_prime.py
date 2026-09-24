@@ -109,6 +109,31 @@ def render_items(pending) -> list:
     return lines
 
 
+def ready_handoff(root: str, feat):
+    base = os.path.join(root, ".giantmem")
+    path = (
+        os.path.join(base, "features", feat, "handoff.md")
+        if feat
+        else os.path.join(base, "handoff.md")
+    )
+    try:
+        with open(path) as fh:
+            head = fh.read(4096)
+    except Exception:
+        return None
+    if not head.startswith("---"):
+        return None
+    meta = {}
+    for line in head.split("\n")[1:]:
+        if line.strip() == "---":
+            break
+        key, _, val = line.partition(":")
+        meta[key.strip()] = val.strip().strip("'\"")
+    if meta.get("status") != "ready":
+        return None
+    return path, meta.get("updated") or "?"
+
+
 def list_name(root: str, feat) -> str:
     leaf = os.path.basename(root)
     parent = os.path.basename(os.path.dirname(root))
@@ -135,6 +160,12 @@ def main() -> None:
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
         "list) follows the tmux link / DOIT_ACTIVE_LIST env, not this derivation",
     ]
+    handoff = ready_handoff(root, feat)
+    if handoff:
+        lines.append(
+            f"  handoff ready: {handoff[0]} (updated {handoff[1]}). Read it FIRST, "
+            "verify its state against git, act on Start here, then set status: done"
+        )
 
     if not exists:
         lines += [
