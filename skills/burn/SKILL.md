@@ -1,6 +1,7 @@
 ---
 name: burn
-description: Burn down `claude:`-marked todos from a doit list, priority-first. Model claims each via in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
+description: >-
+  Burn down `claude:`-marked todos from a doit list, priority-first. Model claims each via in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
 ---
 <!-- caveman:compressed -->
 

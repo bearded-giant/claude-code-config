@@ -1,6 +1,7 @@
 ---
 name: notion-publish
-description: Push .giantmem/ docs into the personal Notion page tree under `Claude Artifacts` (repo > worktree > feature > doc) through the local notion-multi-mcp server (MCP `notion-personal`, account `personal`). Policy in config/notion-publish.yaml decides what publishes, never a question. Class `auto` docs (frontmatter `publish: true`, or `kind:`/`type:` in the `auto` list) publish on write when the PostToolUse hook says `publish now`. Class `on_request` docs (research, pattern, notes, design, proposal, review, grill-run, grill-final, file) publish when the user says "publish to notion", "push to notion", "notion this", "send this to notion", or invokes /notion-publish. Upserts by the `notion:` URL in frontmatter and writes the URL back. Plans, tasks, facts, specs are outside both lists and skip silently.
+description: >-
+  Push .giantmem/ docs into the personal Notion page tree under `Claude Artifacts` (repo / worktree / feature / doc) through the local notion-multi-mcp server (MCP `notion-personal`, account `personal`). Policy in config/notion-publish.yaml decides what publishes, never a question. Class `auto` docs (frontmatter `publish: true`, or `kind:`/`type:` in the `auto` list) publish on write when the PostToolUse hook says `publish now`. Class `on_request` docs (research, pattern, notes, design, proposal, review, grill-run, grill-final, file) publish when the user says "publish to notion", "push to notion", "notion this", "send this to notion", or invokes /notion-publish. Upserts by the `notion:` URL in frontmatter and writes the URL back. Plans, tasks, facts, specs are outside both lists and skip silently.
 ---
 
 # notion-publish

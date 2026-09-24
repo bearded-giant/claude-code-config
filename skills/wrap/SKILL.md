@@ -1,6 +1,7 @@
 ---
 name: wrap
-description: Pre-exit gate for any one-way door, with or without a feature: ending a session, moving to a new one, or completing / abandoning a feature. Checks git and MR state, syncs the doit list, updates feature or repo docs, settles running processes, writes the handoff, and ends with `safe to exit: yes|no`. Auto-fires when user says "wrap up", "wrap this up", "update feature docs and I'll end session", "once you confirm I'll exit", "I'll end the session", "starting a new session", "create a handoff", "new session prompt", "close this out", or invokes /wrap. Also runs before /complete-feature and /abandon-feature. Flags: --feature, --no-handoff.
+description: >-
+  Pre-exit gate for any one-way door, with or without a feature: ending a session, moving to a new one, or completing / abandoning a feature. Checks git and MR state, syncs the doit list, updates feature or repo docs, settles running processes, writes the handoff, and ends with `safe to exit: yes|no`. Auto-fires when user says "wrap up", "wrap this up", "update feature docs and I'll end session", "once you confirm I'll exit", "I'll end the session", "starting a new session", "create a handoff", "new session prompt", "close this out", or invokes /wrap. Also runs before /complete-feature and /abandon-feature. Flags: --feature, --no-handoff.
 ---
 
 The user is about to lose this session's context or close a feature. Anything not written down is gone. Run the checklist, fix what is safe to fix, and report the rest.

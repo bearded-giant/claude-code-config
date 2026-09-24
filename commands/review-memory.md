@@ -1,3 +1,9 @@
+---
+description: >-
+  Walk `lifecycle: candidate` .giantmem/ artifacts one by one and decide each: promote to durable, demote to deprecated, or skip.
+argument-hint: "[scope] [repo] [limit]"
+---
+
 # Review Memory
 
 Walk `lifecycle: candidate` artifacts and decide each: promote to durable, demote to deprecated, or skip.

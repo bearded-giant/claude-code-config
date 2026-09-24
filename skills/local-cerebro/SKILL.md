@@ -1,6 +1,6 @@
 ---
 name: local-cerebro
-description: Ask the local cerebro raw CLI code-level questions about repos indexed there (frost, customcheckout, the dapr services) WITHOUT checking them out in this session. Formats the call, preflights readiness, and returns a status report if cerebro is not ready. Also adds/removes/lists the repos local cerebro reads. Auto-fires when user says "ask cerebro", "ask local cerebro", "query the frost/customcheckout repo", "delta a repo I don't have checked out", "what does <repo> do for X", "add <repo> to cerebro", "remove <repo> from cerebro", "what repos does cerebro have", or invokes /local-cerebro. Skip when the file is already in this session's tree (read it directly).
+description: Ask the local cerebro raw CLI code-level questions about repos indexed there (frost, customcheckout, the dapr services) WITHOUT checking them out in this session. Formats the call, preflights readiness, and returns a status report if cerebro is not ready. Also adds/removes/lists the repos local cerebro reads. Auto-fires when user says "ask cerebro", "ask local cerebro", "query the frost/customcheckout repo", "delta a repo I don't have checked out", "what does {repo} do for X", "add {repo} to cerebro", "remove {repo} from cerebro", "what repos does cerebro have", or invokes /local-cerebro. Skip when the file is already in this session's tree (read it directly).
 ---
 <!-- caveman:compressed -->
 
