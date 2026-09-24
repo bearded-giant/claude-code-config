@@ -129,6 +129,7 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 | Command | Purpose |
 |---------|---------|
 | `/ws-init` | Initialize `.giantmem/` workspace |
+| `/wrap [--feature]` | Pre-exit check before you end a session or close a feature: git and MR state, doit sync, docs, running processes, and a handoff for the next session. Ends with `safe to exit: yes/no` |
 
 ## Archive Search
 

@@ -72,7 +72,8 @@ When adding beta flags or key config, add to Quick Reference section.
 | `/feature-facts <name>` | quick lookup |
 | `/feature-report [feature]` | validation report (parses delta-spec Requirements) |
 | `/feature-validate <name> [--fix]` | lint structure; `--fix` auto-repairs |
-| `/feature-next [name]` | informational: next ready artifact per DAG |
+| `/feature-next [name]` | informational status: DAG next artifact + doit list + open MRs, next split user vs claude |
+| `/wrap [--feature]` | pre-exit gate (session end or feature close): git/MR, doit, docs, processes, handoff; runs before complete/abandon |
 | `/start-feature <name>` | promote pending → in_progress |
 | `/pause-feature` | mark current paused |
 | `/complete-feature` | mark complete, merge delta-specs to source-of-truth |

@@ -53,10 +53,41 @@ Remove the section once answered.
 | `research/*.md` | Findings + sources | Medium, cite sources | Key findings, code examples |
 | `reviews/*.md` | Issues + locations | Terse, file:line refs | Bullets with code refs |
 | `filebox/*` | Raw data | N/A | JSON, logs, samples |
+| `handoff.md` | Session-to-session handoff | Terse, exact commands and paths | One per scope, overwritten by `/wrap`. See `## Handoff`. |
 
 `tasks.md` vs `plans/current.md`: tasks.md is durable, archived with feature, OpenSpec-style checkbox list with auto-status from checkbox %. `plans/current.md` is transient scratchpad — what you're currently handling, mutates throughout the session, deleted on `/complete-feature`.
 
 `context/discoveries.md` is hook-appended, never hand-authored — `workspace_session_end.py` appends extracted findings, the SessionStart hook replays the last 20 lines. It lands as `candidate` and gets triaged in `/review-memory`. Write `context/patterns.md` for curated architectural patterns.
+
+## Handoff
+
+The contract between a session that is ending and the next one. One file per scope, overwritten in place, never dated or numbered:
+
+| Scope | Path |
+|---|---|
+| feature `in_progress` | `features/{name}/handoff.md` |
+| no feature | `.giantmem/handoff.md` |
+
+Written by `/wrap`, or when the user asks for a handoff. It is a doc for the user alone, so absolute paths, branch names, and IDs belong in it; the shared-docs rule does not apply. It holds what a cold session needs that the feature docs don't already say. Link to feature docs instead of copying them.
+
+Frontmatter: `type: handoff`, `status: ready`, `feature:` or `repo:`, `lifecycle: durable`, `created`, `updated`.
+
+Sections in fixed order; omit empty ones:
+
+```markdown
+## Open Questions for User   only when there are any
+## Open edges                blockers, gaps, and items the user waived during /wrap
+## Start here                numbered, exact commands; step 1 runs as-is
+## State
+- repos: absolute path, branch, HEAD sha, pushed or not, MR !N and its state
+- running: process, how it was started, port/pid, left up or torn down, restart command
+- doit: list name, pending count, next 3 by do-order
+## Decisions                 non-obvious choices, one line of why each
+## External docs             absolute paths / URLs of docs outside this dir (Desktop, other repos, Notion)
+## Paste prompt              fenced block: the complete prompt for the new session
+```
+
+Resume: a session that finds a `status: ready` handoff reads it first, and treats it as a snapshot. It verifies repo and MR state against git before acting, then sets `status: done` once it has acted on `Start here`. A `ready` handoff whose `updated` is older than the branch's last commit is stale; say so instead of following it.
 
 ## Frontmatter requirement
 
@@ -64,7 +95,7 @@ Every `.md` and `.yaml` artifact MUST start with YAML frontmatter:
 
 ```yaml
 ---
-type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | notes | pattern | facts}
+type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | notes | pattern | facts | handoff}
 feature: {name}              # for feature-scoped artifacts
 repo: {repo-name}            # for repo-level artifacts (one of feature or repo)
 status: {draft | ready | done | blocked | stale}
@@ -84,7 +115,7 @@ Notion publish: policy, not questions. Local file is canonical for every class; 
 
 | Class | Types or kinds | Notion |
 |---|---|---|
-| state | tasks, plan, facts, notes, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
+| state | tasks, plan, facts, notes, handoff, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
 | model memory | pattern, discoveries | opt-in `publish: true` |
 | working prose | proposal, design, research, review, grill-run, grill-final | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
 | deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
