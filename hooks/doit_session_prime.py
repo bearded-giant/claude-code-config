@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import os
 import subprocess
@@ -108,16 +109,20 @@ def render_items(pending) -> list:
     return lines
 
 
-def main() -> None:
-    cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    root = git_root(cwd)
+def list_name(root: str, feat) -> str:
     leaf = os.path.basename(root)
     parent = os.path.basename(os.path.dirname(root))
     # parent ending -wt is the worktree container; fold it into the name so
     # parallel worktrees of the same repo don't collide on one list
     base = f"{parent}-{leaf}" if parent.endswith("-wt") else leaf
+    return f"{base}-{feat}" if feat else base
+
+
+def main() -> None:
+    cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    root = git_root(cwd)
     feat = active_feature(root)
-    name = f"{base}-{feat}" if feat else base
+    name = list_name(root, feat)
 
     path = os.path.join(LISTS_DIR, f"{name}.json")
     exists = os.path.isfile(path)
@@ -168,5 +173,19 @@ def main() -> None:
     print("\n".join(lines))
 
 
+def cli() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name-only", action="store_true")
+    parser.add_argument("--feature")
+    parser.add_argument("--cwd")
+    args = parser.parse_args()
+    if not args.name_only:
+        main()
+        return
+    root = git_root(args.cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+    print(list_name(root, args.feature or active_feature(root)))
+
+
 if __name__ == "__main__":
-    main()
+    # dispatch.py imports this module and calls main() under its own argv, so flags parse only here
+    cli()

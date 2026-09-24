@@ -21,7 +21,8 @@ Todo text starts `claude:` (case-insensitive) → assigned to model.
 `hooks/doit_session_prime.py` owns this derivation and the SessionStart reminder already prints the answer (`doit session list ... list: <name>`) — use that name verbatim. Re-derive only if cwd / worktree / feature changed mid-session:
 
 ```bash
-python3 ~/.claude/hooks/doit_session_prime.py </dev/null | sed -n 's/^  list: \([^ ]*\).*/\1/p'
+python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"
+python3 ~/.claude/hooks/doit_session_prime.py --name-only --feature <name> --cwd "$(pwd)"
 ```
 
    - `~/dev/claude-code-config` + feature `oauth-ttl` → `claude-code-config-oauth-ttl`

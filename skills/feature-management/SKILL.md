@@ -209,8 +209,11 @@ List name carries repo (+ worktree) so it stays legible across 4-6 parallel sess
 `hooks/doit_session_prime.py` owns this derivation and prints the resolved name at SessionStart (`doit session list ... list: <name>`) — use that name verbatim. Re-derive only if cwd / worktree / feature changed mid-session:
 
 ```bash
-python3 ~/.claude/hooks/doit_session_prime.py </dev/null | sed -n 's/^  list: \([^ ]*\).*/\1/p'
+python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"
+python3 ~/.claude/hooks/doit_session_prime.py --name-only --feature <name> --cwd "$(pwd)"
 ```
+
+First form follows the `in_progress` feature (same as SessionStart). Second pins a named feature of any status — use it whenever work is for a feature other than the primed one, incl. a `pending` feature just made by `/new-feature` (which creates that list).
 
 | cwd | active feature | list name |
 |---|---|---|
@@ -222,6 +225,7 @@ python3 ~/.claude/hooks/doit_session_prime.py </dev/null | sed -n 's/^  list: \(
 - Worktree = parent dir ends `-wt` → prepend it (`{parent}-{leaf}`). Else `{leaf}`.
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
+- Todos belong to the feature the work is for, not the one SessionStart primed. Work on a `pending` feature while another is `in_progress` → that feature's list (`--feature <name>`), never the primed list.
 - Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default follows the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this derivation.
 - Pending items are the feature's open work. Land one this session → `start_todo` on pickup, `complete_todo` + DONE record when it lands. Never leave a landed item open.
 - `daily` stays the manual cross-repo priority sweep — qualified lists never auto-dump into it.

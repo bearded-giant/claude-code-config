@@ -18,3 +18,8 @@ After it runs:
 2. `.giantmem/features/` missing → tell user to run `/ws-init`.
 3. Success → summarize from JSON (branch+base, created-vs-reused, status+why, paired).
 4. Echo Open Questions only if `open_questions` != `"none (placeholder only)"`. Offer to draft intent/scope from the feature goal.
+5. Success → create the feature's doit list, any status incl. `pending`:
+   ```bash
+   python3 ~/.claude/hooks/doit_session_prime.py --name-only --feature <name> --cwd "$(pwd)"
+   ```
+   Pass the printed name to doit MCP `create_list`; an "already exists" error means reuse. Put the list name in the summary. For the rest of the session every doit call about this feature uses that list, not the one SessionStart primed (that one follows the `in_progress` feature). `create_list` reports the tmux session linked to another list → ask before `switch_list`; never relink silently.
