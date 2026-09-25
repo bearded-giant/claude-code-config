@@ -35,6 +35,8 @@ done
 for a in "${AGENTS[@]}"; do
   if [ -f "$SRC/agents/$a.md" ]; then cp "$SRC/agents/$a.md" "$OUT/agents/"; else echo "warn: agent not upstream: $a" >&2; fi
 done
+# upstream pins model: claude-opus, which the API 404s; bare aliases resolve
+sed -i '' -E 's/^model: claude-(opus|sonnet|haiku)$/model: \1/' "$OUT"/agents/*.md
 
 python3 - "$SRC/.claude-plugin/plugin.json" "$OUT/.claude-plugin/plugin.json" "${MCPS[@]}" <<'PY'
 import json
