@@ -87,7 +87,7 @@ Session-start hooks already inject WORKSPACE.md, the features index, the active 
 
 Read on resume, IF they exist and the hook output is stale or absent: `.giantmem/artifacts.json` (typed index, `giantmem artifact reindex`), the active feature's `{name}-notes.md` when it has body content past the seed, and the delta-/source-specs (`features/{name}/specs/{domain}/spec.md`, `.giantmem/specs/{domain}/spec.md`) for domains the feature touches. Surface captured commands/identifiers only when resumed work touches them.
 
-Always check for a handoff (`features/{name}/handoff.md` for the active feature, else `.giantmem/handoff.md`). If it is `status: ready`, read it before anything else, verify its state against git, act on `Start here`, then set `status: done`. Format and staleness rule: `workspace-rules` skill, `## Handoff`. `/wrap` writes it.
+Always check for a handoff (`features/{name}/handoff.md` for the active feature, then `.giantmem/handoff.md`). If it is `status: ready`, read it before anything else, verify its state against git, act on `Start here`, then set `status: done`. Format and staleness rule: `workspace-rules` skill, `## Handoff`. `/wrap` writes it.
 </session_recovery>
 
 ## Feature & Workspace Output

@@ -66,7 +66,9 @@ The contract between a session that is ending and the next one. One file per sco
 | Scope | Path |
 |---|---|
 | feature `in_progress` | `features/{name}/handoff.md` |
-| no feature | `.giantmem/handoff.md` |
+| no feature, or work unrelated to the `in_progress` feature | `.giantmem/handoff.md` |
+
+The SessionStart hook checks the feature path first, then `.giantmem/handoff.md`.
 
 Written by `/wrap`, or when the user asks for a handoff. It is a doc for the user alone, so absolute paths, branch names, and IDs belong in it; the shared-docs rule does not apply. It holds what a cold session needs that the feature docs don't already say. Link to feature docs instead of copying them.
 

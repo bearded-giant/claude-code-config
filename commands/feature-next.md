@@ -34,7 +34,7 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
 
    Pull the state (draft / open / merged / closed), the pipeline result, and the unresolved thread count.
 
-4. Feature docs: unchecked items in `tasks.md`. Also the handoff (`features/<name>/handoff.md`, else `.giantmem/handoff.md`) when it is `status: ready`: its `Open edges` feed Blocked and its `Start here` feeds Next. A ready handoff older than the branch's last commit is listed as stale (workspace-rules `## Handoff`).
+4. Feature docs: unchecked items in `tasks.md`. Also the handoff (`features/<name>/handoff.md`, then `.giantmem/handoff.md`) when it is `status: ready`: its `Open edges` feed Blocked and its `Start here` feeds Next. A ready handoff older than the branch's last commit is listed as stale (workspace-rules `## Handoff`).
 
 ## Output
 

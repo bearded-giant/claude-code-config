@@ -109,13 +109,7 @@ def render_items(pending) -> list:
     return lines
 
 
-def ready_handoff(root: str, feat):
-    base = os.path.join(root, ".giantmem")
-    path = (
-        os.path.join(base, "features", feat, "handoff.md")
-        if feat
-        else os.path.join(base, "handoff.md")
-    )
+def read_ready(path: str):
     try:
         with open(path) as fh:
             head = fh.read(4096)
@@ -132,6 +126,18 @@ def ready_handoff(root: str, feat):
     if meta.get("status") != "ready":
         return None
     return path, meta.get("updated") or "?"
+
+
+def ready_handoff(root: str, feat):
+    base = os.path.join(root, ".giantmem")
+    # repo-level fallback: work unrelated to the in_progress feature still hands off
+    paths = [os.path.join(base, "features", feat, "handoff.md")] if feat else []
+    paths.append(os.path.join(base, "handoff.md"))
+    for path in paths:
+        found = read_ready(path)
+        if found:
+            return found
+    return None
 
 
 def list_name(root: str, feat) -> str:
