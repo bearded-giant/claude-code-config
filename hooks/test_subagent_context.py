@@ -14,8 +14,7 @@ spec.loader.exec_module(mod)
 
 
 def run(flag, constraints):
-    setattr(mod, "CAVEMAN_FLAG", flag)
-    setattr(mod, "CONSTRAINTS", constraints)
+    vars(mod).update(CAVEMAN_FLAG=flag, CONSTRAINTS=constraints)
     sys.stdin = io.StringIO("{}")
     buf = io.StringIO()
     with redirect_stdout(buf):
