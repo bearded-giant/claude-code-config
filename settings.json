@@ -177,6 +177,17 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event SubagentStart subagent_context",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -192,8 +203,9 @@
     "lua-lsp@claude-plugins-official": true,
     "discord@claude-plugins-official": false,
     "caveman@caveman": true,
-    "kai-review@kai": true,
-    "kai@kai": true,
+    "kai-review@kai": false,
+    "kai@kai": false,
+    "kai@kai-local": true,
     "slack@claude-plugins-official": true,
     "bigquery@skio": true,
     "debug-features@skio": false,
@@ -215,7 +227,13 @@
     "kai": {
       "source": {
         "source": "directory",
-        "path": "/Users/bryan/dev/ai/kai"
+        "path": "/Users/bryan/dev/ai/kai-live"
+      }
+    },
+    "kai-local": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/bryan/dev/claude-code-config/kai-local"
       }
     }
   },

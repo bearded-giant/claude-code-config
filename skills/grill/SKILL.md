@@ -1,6 +1,6 @@
 ---
 name: grill
-description: Adversarial pre-ship review loop for larger/complex changes. Reviews local branch diff vs base as skeptical staff engineer, scores each finding (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn, --kai/--no-kai. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai-review:review-code or kai:review-adversarial for those).
+description: Adversarial pre-ship review loop for larger/complex changes. Reviews local branch diff vs base as skeptical staff engineer, scores each finding (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn, --kai/--no-kai. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai:review-code or kai:review-adversarial for those).
 ---
 <!-- caveman:compressed -->
 
@@ -11,7 +11,7 @@ NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 ## When to use
 
 - **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened. `--kai` predicts Recharge CI reviewer verdict before push.
-- **kai-review:review-code**: posted GitLab MR exists.
+- **kai:review-code**: posted GitLab MR exists.
 - **kai:review-adversarial**: posted MR, verify claims vs diff.
 - **caveman-review**: posted PR, line-by-line feedback.
 

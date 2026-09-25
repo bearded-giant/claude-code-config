@@ -1,0 +1,13 @@
+{
+  "name": "kai-local",
+  "owner": {
+    "name": "Bryan Grimes"
+  },
+  "plugins": [
+    {
+      "name": "kai",
+      "source": "./plugins/kai",
+      "description": "kai minus CI/pipeline and out-of-domain skills, copied from a master clone. Rebuilt by scripts/sync-kai-local.sh."
+    }
+  ]
+}
