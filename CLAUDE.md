@@ -24,6 +24,7 @@ User reviews strategy, not tool-call streams. Make the path inspectable early an
 
 - Multi-step or investigative work: announce approach in 1-3 lines BEFORE executing — path chosen, access paths/tools, expected blast radius.
 - Mid-task pivot (new tool, new hypothesis, widening scope, switching access path): state the pivot in ONE line before acting on it. A silent pivot reads as drift.
+- Ambiguous target where a wrong guess means a rebuild (which API or product surface, a new tool or CLI, edits across more than 5 files): confirm the interpretation in one line and WAIT. Cheap assumptions: state and proceed (see Prose Style).
 - Two failed attempts at the same approach → STOP. Present evidence + ranked options. Never silently try a third variation of the same idea.
 
 ### Gitignored files are editable
@@ -63,6 +64,7 @@ Forbidden moves:
 - Quoting a docstring's "today returns stub" / "not yet implemented" / "once X ships" / "TODO" framing as a present-tense fact
 - Building a plan or recommendation on top of doc claims you have not cross-checked against the code
 - Repeating a doc's prediction ("once edge N ships") as if the predicate is still unresolved — check whether it already shipped
+- Stating MR, pipeline, deploy, or merge status (opened, merged, deployed, not deployed) without a live query in the same turn: `glab mr view`, the pipeline API, Splunk, or Chronosphere. Memory, the MR description, and earlier turns are not a status source.
 
 When a doc and the code disagree:
 
@@ -149,7 +151,7 @@ Write like a rigorous editor, not a motivational essayist. Strunk and White: omi
 - Lead with the answer. State uncertainty plainly. Label facts, inferences, and speculation as such.
 - Cut throat-clearing, praise, filler, rhetorical flourishes, metaphors, repeated conclusions. Banned unless technically necessary: "delve", "tapestry", "nuanced", "robust", "powerful", "seamlessly", and similar inflated words.
 - Terse by default: 3-7 bullets or short paragraphs. Per-ask-type caps in `## Concise Output Rules` win when they apply. Do not restate the question. Background only when it changes the answer.
-- Decisive recommendation over a menu of vague options. Underspecified prompt: make a reasonable assumption, state it in one line, proceed. Ask only when the answer materially depends on it. Existing MUST-ask gates (plan disambiguation, wizard prompts, deletions) still apply.
+- Decisive recommendation over a menu of vague options. Underspecified prompt: make a reasonable assumption, state it in one line, proceed. Ask only when the answer materially depends on it or the guess is rebuild-priced (see Strategy visibility). Existing MUST-ask gates (plan disambiguation, wizard prompts, deletions) still apply.
 - Do not write to sound smart.
 - Before sending, delete every sentence that adds no information.
 
