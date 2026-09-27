@@ -239,7 +239,7 @@ Refuted findings get no label — dropped, not reported.
 ## Steps
 
 1. **Parse args** (see Arguments). Reject invalid values terse.
-2. **Resolve output dir** (active feature or timestamp fallback). Create if missing.
+2. **Resolve output dir** (active feature or timestamp fallback). Create if missing. `<dir>/final.md` already exists → earlier grill: move every `*-run.md` and `final.md` into `<dir>/prev-{YYYYMMDD-HHMM}/`, then read the archived `final.md` and collect every finding outside `Fixed across runs` as `prior` (file:line, sev, problem).
 3. **Load sticky config** from `<dir>/.config.yaml` if present. Merge: CLI > sticky > defaults.
 4. **Determine base branch**:
    - `--base` arg if passed
@@ -250,7 +250,7 @@ Refuted findings get no label — dropped, not reported.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
    a. `git diff <base>...HEAD`
-   b. Review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
+   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
    d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix. Kai preflight on → also assign a Kai label per K3.
    e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
@@ -306,6 +306,13 @@ Rating: SHIP IT | NEEDS WORK | BLOCK
 
 - src/api/orders.py:97 — suspected N+1; refuted: query batched via dataloader (orders.py:60)
 
+## Prior findings (from prev-20260925-1410)
+
+- src/db/migrate.py:42 sev:5 — STILL OPEN
+- src/api/orders.py:140 sev:3 — RESOLVED: paginated at L138-152
+
+(Omit when no earlier grill in this dir.)
+
 ## Loop turn decision
 
 - auto-fixed: 1
@@ -330,6 +337,7 @@ final_rating: SHIP IT | NEEDS WORK | BLOCK
 kai_preflight: true | false
 kai_must_fix: N
 kai_size: ok | warn | block
+prior_grill: prev-{YYYYMMDD-HHMM} | none
 lifecycle: candidate
 ---
 ```
@@ -356,6 +364,15 @@ Risk reducer: beta flag — change alters cancel behavior for all stores.
 | src/db/migrate.py:42 | Must fix | 5 | still open |
 
 (Omit this whole section when Kai preflight is off.)
+
+## Prior findings
+
+| File:Line | Sev | Status | Evidence |
+|---|---|---|---|
+| src/db/migrate.py:42 | 5 | STILL OPEN | no rollback path at head |
+| src/api/orders.py:140 | 3 | RESOLVED | paginated at L138-152 |
+
+(Omit when `prior_grill: none`.)
 
 ## Fixed across runs
 
