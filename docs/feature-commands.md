@@ -42,7 +42,7 @@ Auto-status: `/new-feature` reads `features.json` for any `in_progress`. If foun
 
 Legacy `features/{name}/spec.md` is a 30-day back-compat symlink → `proposal.md`.
 
-Every `.md`/`.yaml` artifact has YAML frontmatter (`type`, `status`, `feature` or `repo`, `lifecycle`, ...). JSON artifacts use same keys top-level. Templates stamp `lifecycle: durable`. AI-captured discoveries / research land as `candidate` and surface in `/review-memory`. Backfill: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
+Every `.md`/`.yaml` artifact has YAML frontmatter (`type`, `status`, `feature` or `repo`, `lifecycle`, ...). JSON artifacts use same keys top-level. Templates stamp `lifecycle: durable`. AI-captured research lands as `candidate` and surface in `/review-memory`. Backfill: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
 
 See [scoped-memory-overview.md](scoped-memory-overview.md) for the memory model.
 

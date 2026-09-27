@@ -97,9 +97,6 @@ def main() -> None:
             plan_path = feat_plan
     plan_tail = read_tail(plan_path, 80)
 
-    discoveries_path = Path(wt) / ".giantmem" / "context" / "discoveries.md"
-    discoveries_tail = read_tail(discoveries_path, 40)
-
     # active session note from history (if it exists)
     history_path = Path(wt) / ".giantmem" / "history" / "sessions.md"
     history_tail = read_tail(history_path, 10)
@@ -123,8 +120,6 @@ def main() -> None:
     ]
     if plan_tail:
         lines += [f"## plan ({plan_path.name})", "", "```", plan_tail, "```", ""]
-    if discoveries_tail:
-        lines += ["## recent discoveries", "", "```", discoveries_tail, "```", ""]
     if history_tail:
         lines += ["## history tail", "", "```", history_tail, "```", ""]
 

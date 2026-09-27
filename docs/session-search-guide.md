@@ -65,7 +65,6 @@ csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 |---|---|
 | Workspace session index | `.giantmem/history/sessions.md` |
 | Workspace session details | `.giantmem/history/sessions/*.md` |
-| Workspace discoveries | `.giantmem/context/discoveries.md` |
 | JSONL transcripts | `~/.claude/projects/{project}/*.jsonl` |
 | Global history | `~/.claude/history.jsonl` |
 

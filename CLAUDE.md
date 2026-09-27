@@ -83,7 +83,7 @@ Second corollary — shared docs are timeless and machine-neutral. A shared doc 
 Test before writing: would the sentence still be true in a month with no edits, on another dev's machine? If not, it goes in the handoff doc, `.giantmem/`, or the commit message. A repo convention, an existing CHANGELOG, or a template that asks for dates is not permission; ask me. Docs written for me alone (handoffs to my next session, `.giantmem/`, Desktop notes addressed to me) are exempt and keep their paths. Applies to every shared doc in every repo, skeleton and solutions included.
 
 <session_recovery>
-Session-start hooks already inject WORKSPACE.md, the features index, the active plan, and recent discoveries — do not re-read those.
+Session-start hooks already inject WORKSPACE.md, the active plan, the giantmem primer (project, worktree, active feature, recent `.giantmem/` writes), and the doit list — do not re-read those.
 
 Read on resume, IF they exist and the hook output is stale or absent: `.giantmem/artifacts.json` (typed index, `giantmem artifact reindex`), the active feature's `{name}-notes.md` when it has body content past the seed, and the delta-/source-specs (`features/{name}/specs/{domain}/spec.md`, `.giantmem/specs/{domain}/spec.md`) for domains the feature touches. Surface captured commands/identifiers only when resumed work touches them.
 
@@ -101,7 +101,7 @@ Root invariants (apply before skill fires, and as fallback if skill misses):
 - Never write to repo `docs/` unprompted — route to `.giantmem/context/` or the active feature's `research/`
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
-- Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated discoveries / research land as `candidate` and get reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
+- Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated research lands as `candidate` and gets reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.
 
 Doit list convention, three-spec model, feature-dir routing → `feature-management` skill. Scope registry, lifecycle tiers, artifact search, caveman-on-first-write → `workspace-rules` skill.
 

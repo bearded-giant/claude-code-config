@@ -71,7 +71,7 @@ IGNORES=(
   '.git/'
 )
 # NOTE: .giantmem intentionally synced — dclaude on VPS needs session
-# memory (plans, features, artifacts.json, discoveries) to share context
+# memory (plans, features, artifacts.json) to share context
 # with laptop. No sqlite DBs live under .giantmem: live.db and archives.db
 # are in ~/giantmem_archive/ and the scope registry is ~/.giantmem-global/
 # scopes.yaml. Both sit outside $HOME/dev, so neither syncs and

@@ -17,7 +17,7 @@ Output: Workspace context injected into session via stdout.
 Workflow:
 1. Check if .giantmem/ exists in cwd (fallback: scratch/)
 2. If not, bootstrap via workspace-lib.sh
-3. Read WORKSPACE.md and discoveries.md
+3. Read WORKSPACE.md and plans/current.md
 4. Output context for Claude to use
 
 NOTE: Uses only Python standard library (no external dependencies)
@@ -77,10 +77,7 @@ def read_workspace_context(cwd: str) -> dict:
         workspace_dir = Path(cwd) / "scratch"
     context = {
         "workspace_md": None,
-        "discoveries": None,
         "current_plan": None,
-        "recent_sessions": None,
-        "feature_index": None,
         "bootstrapped": False,
     }
 

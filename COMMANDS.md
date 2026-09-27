@@ -41,21 +41,9 @@
 For complex refactors and stack migrations:
 
 ```
-/arch-discover {system}     -> understand existing system
 /arch-brainstorm {decision} -> analyze options, get recommendations
 /scope {project}            -> create phased implementation plan
 ```
-
-### /arch-discover
-
-Map an existing system before refactoring.
-
-```
-/arch-discover foo-service
-/arch-discover bar processing flow
-```
-
-Output: `.giantmem/context/architecture.md`
 
 ### /arch-brainstorm
 

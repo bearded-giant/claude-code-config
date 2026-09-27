@@ -57,7 +57,7 @@ Remove the section once answered.
 
 `tasks.md` vs `plans/current.md`: tasks.md is durable, archived with feature, OpenSpec-style checkbox list with auto-status from checkbox %. `plans/current.md` is transient scratchpad — what you're currently handling, mutates throughout the session, deleted on `/complete-feature`.
 
-`context/discoveries.md` is hook-appended, never hand-authored — `workspace_session_end.py` appends extracted findings, the SessionStart hook replays the last 20 lines. It lands as `candidate` and gets triaged in `/review-memory`. Write `context/patterns.md` for curated architectural patterns.
+Write `context/patterns.md` for curated architectural patterns.
 
 ## Handoff
 
@@ -118,7 +118,7 @@ Notion publish: policy, not questions. Local file is canonical for every class; 
 | Class | Types or kinds | Notion |
 |---|---|---|
 | state | tasks, plan, facts, notes, handoff, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
-| model memory | pattern, discoveries | opt-in `publish: true` |
+| model memory | pattern | opt-in `publish: true` |
 | working prose | proposal, design, research, review, grill-run, grill-final | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
 | deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
 
@@ -130,7 +130,7 @@ JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 
 Lifecycle stage rules:
 - `durable` (default): human-authored, scaffolded by `/new-feature`, accumulated source-specs. Never auto-pruned.
-- `candidate`: AI-captured discoveries / research / mid-session notes. Surface in `/review-memory` for promote → durable / demote → deprecated.
+- `candidate`: AI-captured research / mid-session notes. Surface in `/review-memory` for promote → durable / demote → deprecated.
 - `deprecated`: kept on disk but excluded from stale reports.
 
 Backfill legacy files:

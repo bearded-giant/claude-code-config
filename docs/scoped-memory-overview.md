@@ -47,7 +47,7 @@ New slash: `/review-memory`.
 |---|---|
 | repo-scoped list | `--scope X --repo all` cross-repo |
 | stale = fixed cutoff | `stale --days 0` = per-type retention tier |
-| Discoveries pile up forever | Stamped `lifecycle: candidate`. `/review-memory` walks: approve/reject/skip/quit |
+| AI-captured notes pile up forever | Stamped `lifecycle: candidate`. `/review-memory` walks: approve/reject/skip/quit |
 | Manual reindex per edit | `giantmem watch start` — fsnotify, 2s debounce |
 | FTS-only | `artifact search <q>` blends FTS+vec+recency+access (opt-in) |
 
@@ -112,7 +112,7 @@ Embedder daemon: `workspace/scripts/embed.py` (sentence-transformers, default `B
 | Stage | Used for | Behavior |
 |---|---|---|
 | `durable` | `/new-feature` scaffolds, source-specs after merge | never auto-prunes, in default packs |
-| `candidate` | AI-captured research / discoveries / mid-session notes | `/review-memory` promotes → durable / demotes → deprecated |
+| `candidate` | AI-captured research / mid-session notes | `/review-memory` promotes → durable / demotes → deprecated |
 | `deprecated` | Rejected. Kept on disk. | excluded from default packs + stale reports |
 
 ## Where to read more

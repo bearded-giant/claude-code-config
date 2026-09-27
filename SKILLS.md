@@ -11,7 +11,6 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/arch-discover` | Map existing system before refactoring |
 | `/arch-brainstorm` | Two-phase architecture decision support |
 | `/scope` | Create phased scope documents |
 

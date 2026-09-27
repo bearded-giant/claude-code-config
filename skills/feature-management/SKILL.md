@@ -43,7 +43,7 @@ Every artifact written under `features/{name}/` carries a `lifecycle:` field in 
 | Lifecycle | Used for | Behavior |
 |---|---|---|
 | `durable` | All `/new-feature` scaffolds (proposal, delta-spec, tasks, design, facts). Source-specs after `/complete-feature` merge. | Never auto-pruned. |
-| `candidate` | AI-captured research, discoveries, mid-session notes. | Listed by `/review-memory`. User promotes → durable or demotes → deprecated. |
+| `candidate` | AI-captured research, mid-session notes. | Listed by `/review-memory`. User promotes → durable or demotes → deprecated. |
 | `deprecated` | Previously useful, now rejected. | Kept on disk. Excluded from stale reports. |
 
 `/complete-feature` flips merged delta-specs to `lifecycle: durable` if not already (they should be — they came from a durable template).

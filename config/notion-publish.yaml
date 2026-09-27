@@ -38,7 +38,6 @@ on_request:
 # regex on the .giantmem-relative path. match = never publish.
 exclude:
   - '\.original\.md$'
-  - '^context/discoveries\.md$'
   - '^context/tree\.md$'
   - '^notes\.md$'
   - '^features/[^/]+/[^/]+-notes\.md$'
