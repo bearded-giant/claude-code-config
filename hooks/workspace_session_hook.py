@@ -27,6 +27,7 @@ import sys
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
 
 # path to workspace-lib.sh - local copy in claude-code-config/lib, fallback to giant-tooling
@@ -41,6 +42,57 @@ if not WORKSPACE_LIB.exists():
             os.environ.get("GIANT_TOOLING_DIR", str(Path.home() / "dev/giant-tooling"))
         )
         / "workspace/workspace-lib.sh"
+    )
+
+
+# not the cache dir: its mtime moves without an install
+PLUGIN_PATHS = [Path.home() / ".claude/plugins/installed_plugins.json"]
+
+
+def claude_process_start() -> float | None:
+    pid = os.getpid()
+    for _ in range(10):
+        try:
+            out = subprocess.run(
+                ["ps", "-o", "ppid=,lstart=,comm=", "-p", str(pid)],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            ).stdout.split()
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if len(out) < 7:
+            return None
+        ppid, lstart, comm = int(out[0]), " ".join(out[1:6]), " ".join(out[6:])
+        if Path(comm).name == "claude":
+            try:
+                return time.mktime(time.strptime(lstart, "%a %b %d %H:%M:%S %Y"))
+            except ValueError:
+                return None
+        if ppid <= 1:
+            return None
+        pid = ppid
+    return None
+
+
+def stale_plugins(proc_start: float, paths) -> list[str]:
+    return [str(p) for p in paths if p.exists() and p.stat().st_mtime > proc_start]
+
+
+def restart_notice(source: str) -> str:
+    # /clear keeps the process, so plugins installed since startup are not loaded
+    if source != "clear":
+        return ""
+    start = claude_process_start()
+    if start is None:
+        return ""
+    stale = stale_plugins(start, PLUGIN_PATHS)
+    if not stale:
+        return ""
+    return (
+        "FULL RESTART REQUIRED: plugins changed after this claude process started; "
+        "/clear does not reload them:\n  " + "\n  ".join(stale)
     )
 
 
@@ -147,6 +199,9 @@ def main():
 
         # Format and output
         output = format_context_output(context, cwd, bootstrapped)
+        notice = restart_notice(source)
+        if notice:
+            output = notice + ("\n\n" + output if output else "")
 
         if output:
             print(output)

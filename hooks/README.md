@@ -39,6 +39,8 @@ If `.giantmem/` doesn't exist when the session ends, the hook creates:
 
 On `startup` in a dir without `.giantmem/`, runs `workspace_init` from `workspace-lib.sh` (`lib/workspace/`). Then injects `.giantmem/WORKSPACE.md` and `.giantmem/plans/current.md` as session context.
 
+On `clear`, warns `FULL RESTART REQUIRED` when `~/.claude/plugins/installed_plugins.json` is newer than the running `claude` process, since `/clear` does not reload plugins. Finds the process by walking the parent chain; no `claude` ancestor means no warning.
+
 ## debug_stop_check.py
 
 **Hook:** `Stop`
