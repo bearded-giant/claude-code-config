@@ -71,7 +71,7 @@ csr -f "$(css -q cookie --paths | head -1)" --no-filter | less
 
 ## Tips
 
-- Session files = prompts + files touched + commands + discoveries.
+- Session files = topic, brief, outcomes (haiku summary) + prompts + files touched + commands.
 - JSONL = full conversation including Claude thinking.
 - `css` for Claude's explanations. `.giantmem/history/` for what files were touched.
 - Session IDs are 8-char hex; use full UUID for `claude --resume`.

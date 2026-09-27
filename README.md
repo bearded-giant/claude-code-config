@@ -86,7 +86,7 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 | SessionStart | `memory_ingest.py` | Detached `giantmem db ingest --source memory-md`: harness memory into archives.db (durable, backed up, survives a live.db rebuild) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
 | SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
-| SessionEnd | `workspace_session_end.py` | Extracts session summary, indexes into search DB |
+| SessionEnd | `workspace_session_end.py` | Writes the session file and index line, refreshes WORKSPACE.md tables, spawns the haiku summarizer (see `docs/workspace-hooks.md`) |
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |
 | PostToolUse | `notion_publish_nudge.py` | After a class `auto` `.giantmem/` doc is written (frontmatter `publish: true` or an `auto` kind in `config/notion-publish.yaml`), tells Claude to publish it now via `notion-publish`; no question asked |

@@ -116,9 +116,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
 
     if bootstrapped:
         parts.append(f"[Workspace bootstrapped for {project_name}]")
-        parts.append(
-            "Created .giantmem/ with: context/, plans/, history/, research/, reviews/, filebox/"
-        )
+        parts.append("Created .giantmem/ via workspace_init")
         parts.append("")
 
     if context.get("workspace_md"):
