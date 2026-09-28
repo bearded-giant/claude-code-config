@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
+VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")).expanduser()
+
 CONFIG = Path(
     os.environ.get(
         "NOTION_PUBLISH_CONFIG",
@@ -69,7 +71,10 @@ def parse_frontmatter(text):
 def giantmem_rel(path):
     p = str(Path(path).resolve())
     i = p.find("/.giantmem/")
-    return None if i < 0 else p[i + len("/.giantmem/") :]
+    if i >= 0:
+        return p[i + len("/.giantmem/") :]
+    areas = str(VAULT.resolve() / "areas") + "/"
+    return "areas/" + p[len(areas) :] if p.startswith(areas) else None
 
 
 def classify_type(rel):
@@ -120,7 +125,7 @@ def classify_type(rel):
 def gate(path, cfg, fm=None, ident=None):
     rel = giantmem_rel(path)
     if rel is None:
-        return False, "outside .giantmem", "", "", ""
+        return False, "outside .giantmem and vault areas", "", "", ""
     if not rel.endswith(".md"):
         return False, "not markdown", rel, "", ""
     if any(seg.startswith(".") for seg in rel.split("/")):
@@ -331,9 +336,9 @@ def mark(path, url, now, row=""):
         keep += f"notion_row: {row}\n"
     m = FM_RE.match(text)
     if m:
-        fm_text = re.sub(
-            r"(?m)^notion(_synced|_row)?:.*\n?", "", m.group(1)
-        ).rstrip("\n")
+        fm_text = re.sub(r"(?m)^notion(_synced|_row)?:.*\n?", "", m.group(1)).rstrip(
+            "\n"
+        )
         # a doc that already had a row keeps it when --mark is called without one
         if not row:
             prior = re.search(r"(?m)^notion_row:\s*(\S+)", m.group(1))
@@ -496,6 +501,9 @@ def selftest():
     assert classify_type("features/f/specs/d/spec.md") == "delta-spec"
     assert classify_type("context/x.md") == "pattern"
     assert classify_type("features/f/quickstart.md") == "file"
+    assert classify_type("areas/auth/x.md") == "file"
+    assert giantmem_rel(str(VAULT / "areas" / "auth" / "x.md")) == "areas/auth/x.md"
+    assert giantmem_rel(str(VAULT / "inbox" / "x.md")) is None
     cfg = {
         "auto": ["quickstart"],
         "on_request": ["research"],

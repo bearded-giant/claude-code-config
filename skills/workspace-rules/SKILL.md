@@ -121,8 +121,9 @@ Notion publish: policy, not questions. Local file is canonical for every class; 
 | model memory | pattern | opt-in `publish: true` |
 | working prose | proposal, design, research, review, grill-run, grill-final | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
 | deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
+| vault note | runbook, incident, reference, how-to, decision record NOT tied to a feature or this repo | never auto; lives in `~/Recharge-Notes/areas/<area>/` via `obsidian-note` skill, Notion on explicit ask |
 
-User asks for a deliverable kind → write it at the normal routed path with `publish: true` (or `kind:`), let the hook fire. Notion-side edits do not flow back; republish overwrites the page; the user backports by hand.
+User asks for a deliverable kind → write it at the normal routed path with `publish: true` (or `kind:`), let the hook fire. Same kind but no feature and not about this repo → vault note instead (`obsidian-note`), no `.giantmem/` copy. Notion-side edits do not flow back; republish overwrites the page; the user backports by hand.
 
 Preview: mdlive only when the user asks (preview / render / open). After writing a `.md`, return its path.
 

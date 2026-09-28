@@ -101,6 +101,7 @@ Two skills carry the full rules and auto-fire on triggers:
 Root invariants (apply before skill fires, and as fallback if skill misses):
 - When a feature has status `in_progress`, plans/research/reviews/filebox go inside that feature dir
 - Never write to repo `docs/` unprompted — route to `.giantmem/context/` or the active feature's `research/`
+- Durable knowledge not tied to a feature (runbook, incident writeup, design note, reference, how-to, decision record) → Obsidian vault via the `obsidian-note` skill (`areas/<area>/`, script owns frontmatter). Never `~/Desktop`. Notion only on explicit publish/share.
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write
 - Every `.md` / `.yaml` artifact under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`). JSON artifacts use the same keys at top level. Backfill legacy files via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
 - Every `.md` / `.json` / `.yaml` artifact under `.giantmem/` SHOULD carry `lifecycle: durable | candidate | deprecated`. Defaults to `durable`. AI-generated research lands as `candidate` and gets reviewed via `/review-memory`. Backfill via `python3 ~/dev/giant-tooling/workspace/scripts/backfill_lifecycle.py`.

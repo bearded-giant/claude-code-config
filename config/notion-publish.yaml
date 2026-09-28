@@ -42,3 +42,4 @@ exclude:
   - '^notes\.md$'
   - '^features/[^/]+/[^/]+-notes\.md$'
   - '^features/[^/]+/spec_history\.md$'
+  - '^areas/index\.md$'

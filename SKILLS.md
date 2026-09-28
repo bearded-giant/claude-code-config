@@ -47,6 +47,7 @@
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
 | `/notion-publish [path \| --feature X \| --dirty \| --index \| --dry-run]` | Push .giantmem/ docs into the personal Notion page tree `Claude Artifacts / repo / worktree / feature`; policy in `config/notion-publish.yaml` (auto on write vs on request), never asks; upserts by frontmatter `notion:`; regenerates both index surfaces (catalog page + `Docs catalog` DB rows) after every push, or on `--index` |
+| `obsidian-note` | Write Claude-authored md into the Obsidian vault `~/Recharge-Notes/areas/<area>/` with the vault frontmatter contract plus `created`; `scripts/note.py new` (title, area, tags, project auto from git) and `list` (filter area/project/tag/since). Fires on "note this", "write this up", "save to obsidian", any md deliverable that is not feature state. Never Desktop; Notion only on explicit publish |
 
 ## Code Quality
 

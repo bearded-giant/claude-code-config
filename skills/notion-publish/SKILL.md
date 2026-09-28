@@ -25,7 +25,7 @@ No AskUserQuestion anywhere in this skill. `config/notion-publish.yaml` already 
 
 | Arg | Means |
 |---|---|
-| `path ...` | publish these files |
+| `path ...` | publish these files; `.giantmem/**` or vault notes under `~/Recharge-Notes/areas/**` (class `on_request`, tree page = vault repo name, never auto) |
 | `--feature X` | every publishable `.md` under `.giantmem/features/X/` |
 | `--dirty` | every publishable doc with no `notion:` or edited after `notion_synced` |
 | `--index` | rebuild both index surfaces (catalog page + `Docs catalog` DB rows), push no docs |
