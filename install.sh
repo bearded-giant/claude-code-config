@@ -89,20 +89,29 @@ echo ""
 # -- stow into ~/.claude -------------------------------------------------------
 
 echo "running stow..."
-if [ -d "$HOME/.claude" ] && [ ! -L "$HOME/.claude" ]; then
-    red "  ~/.claude exists and is a real directory (not a symlink)."
-    red "  back it up and remove it, then re-run:"
-    red "    mv ~/.claude ~/.claude.bak"
+if [ -L "$HOME/.claude" ]; then
+    red "  ~/.claude is a symlink; stow needs a real directory to link into."
+    red "  remove the symlink, then re-run:"
+    red "    rm ~/.claude"
     exit 1
 fi
+mkdir -p "$HOME/.claude"
 
 # stow from the parent of the config dir, targeting home
 stow_parent="$(dirname "$CONFIG_DIR")"
 stow_pkg="$(basename "$CONFIG_DIR")"
 
 cd "$stow_parent"
-stow --restow -t "$HOME/.claude" "$stow_pkg" 2>&1 | grep -v "^$" || true
+if ! stow_out="$(stow --restow -t "$HOME/.claude" "$stow_pkg" 2>&1)"; then
+    red "  stow failed; move the conflicting files out of ~/.claude and re-run:"
+    printf '%s\n' "$stow_out"
+    exit 1
+fi
+[ -z "$stow_out" ] || printf '%s\n' "$stow_out"
 green "  stowed: $CONFIG_DIR -> ~/.claude"
+
+# settings.json is ignored by stow; seed or merge the live copy now so verify passes
+python3 "$CONFIG_DIR/hooks/sync_settings.py"
 echo ""
 
 # -- symlink scripts/ccmd into ~/.local/bin -----------------------------------
@@ -149,22 +158,8 @@ if [ "$needs_env" -eq 1 ]; then
     echo "  export GIANT_TOOLING_DIR=\"$TOOLING_DIR\""
     echo "  source \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\""
     echo ""
-    echo "  # search aliases"
-    echo "  alias gmq='\$GIANT_TOOLING_DIR/giantmem-archive/giantmem-search.py'"
-    echo "  alias giantmem-archive='\$GIANT_TOOLING_DIR/giantmem-archive/giantmem-archive.sh'"
-    echo "  alias domains='\$GIANT_TOOLING_DIR/domain-search/domains'"
-    echo ""
 else
     dim "  GIANT_TOOLING_DIR already in $shell_rc"
-fi
-
-# -- initial index build -------------------------------------------------------
-
-echo "building search index..."
-if python3 "$TOOLING_DIR/giantmem-archive/giantmem-search.py" ingest --sessions-only 2>/dev/null; then
-    green "  sessions indexed"
-else
-    dim "  skipped session indexing (no sessions yet, that's fine)"
 fi
 
 # -- verify --------------------------------------------------------------------
@@ -175,11 +170,12 @@ ok=0
 [ -f "$HOME/.claude/CLAUDE.md" ]                     && dim "  ok: ~/.claude/CLAUDE.md" || { red "  missing: ~/.claude/CLAUDE.md"; ok=1; }
 [ -f "$HOME/.claude/settings.json" ]                  && dim "  ok: ~/.claude/settings.json" || { red "  missing: ~/.claude/settings.json"; ok=1; }
 [ -f "$HOME/.claude/lib/workspace/workspace-lib.sh" ] && dim "  ok: ~/.claude/lib/workspace/workspace-lib.sh" || { red "  missing: workspace-lib.sh"; ok=1; }
-[ -f "$TOOLING_DIR/giantmem-archive/giantmem-search.py" ] && dim "  ok: giantmem-search.py" || { red "  missing: giantmem-search.py"; ok=1; }
+[ -x "$HOME/.local/bin/giantmem" ]                    && dim "  ok: ~/.local/bin/giantmem" || { red "  missing: ~/.local/bin/giantmem -- build it with: make -C $TOOLING_DIR bootstrap"; ok=1; }
 
 echo ""
 if [ "$ok" -eq 0 ]; then
     green "done. restart claude code to pick up the new config."
 else
     red "some files are missing -- check the errors above."
+    exit 1
 fi

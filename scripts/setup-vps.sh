@@ -173,7 +173,10 @@ green "  unit installed"
 step "Stow ~/.claude"
 mkdir -p "$HOME/.claude"
 if [ ! -L "$HOME/.claude" ]; then
-  ( cd "$(dirname "$CONFIG_DIR")" && stow --restow -t "$HOME/.claude" "$(basename "$CONFIG_DIR")" ) 2>&1 | grep -v "^$" || true
+  if ! stow_out="$( cd "$(dirname "$CONFIG_DIR")" && stow --restow -t "$HOME/.claude" "$(basename "$CONFIG_DIR")" 2>&1 )"; then
+    red "  stow failed:"; printf '%s\n' "$stow_out"; exit 1
+  fi
+  [ -z "$stow_out" ] || printf '%s\n' "$stow_out"
 fi
 # settings.local.json overlay
 TOKEN=$(grep DAEMON_TOKEN "$STATE_DIR/.env" | cut -d= -f2)

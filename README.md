@@ -32,9 +32,9 @@ The install script handles everything:
 1. Checks prerequisites (git, stow, python3)
 2. Clones [giant-tooling](https://github.com/bearded-giant/giant-tooling) as a sibling directory if missing
 3. Creates symlink: `lib/workspace/` -> `giant-tooling/workspace/`
-4. Runs stow to wire `~/.claude`
-5. Builds the initial search index
-6. Prints any shell env lines you need to add
+4. Runs stow to wire `~/.claude`, then seeds `~/.claude/settings.json` with `sync_settings.py`
+5. Prints any shell env lines you need to add
+6. Verifies the install, including the giantmem CLI from giant-tooling, and exits non-zero if anything is missing
 
 After install, restart Claude Code.
 
@@ -45,14 +45,11 @@ The install script will tell you what to add. Typically:
 ```bash
 export GIANT_TOOLING_DIR="$HOME/dev/giant-tooling"
 source "$GIANT_TOOLING_DIR/workspace/workspace-lib.sh"
-
-alias gmq='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-search.py'
-alias giantmem-archive='$GIANT_TOOLING_DIR/giantmem-archive/giantmem-archive.sh'
 ```
 
 ### Prerequisites
 
-Required: git, stow, python3 (3.10+), Claude Code CLI
+Required: git, stow, python3 (3.10+), Claude Code CLI, and the giantmem CLI (run `make bootstrap` in giant-tooling, which installs it to `~/.local/bin/giantmem`)
 
 Optional: fzf (interactive search picker), bat (search previews)
 
@@ -93,6 +90,8 @@ All hooks are Python (stdlib only) except statusline (Node.js). Configured in `s
 | PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories |
 
 Unlike everything else here, `settings.json` is **not** a stow symlink. Claude Code rewrites that file at runtime (theme, model, plugin toggles, survey state), so a symlink either gets clobbered by the app's atomic save or pollutes the git tree with machine-local state. Instead `sync_settings.py` runs each session start and merges: the repo wins for structural config (hooks, env, statusLine, mcpServers, marketplaces, permission mode); `enabledPlugins`, `permissions.allow` and `permissions.deny` are unioned so runtime additions survive; `permissions.ask` is repo-owned instead, since union is write-once and one "don't ask again" click would pin a rule no repo edit could ever remove; and `model`, `effortLevel`, `theme`, `feedbackSurveyState` stay whatever the live file says. Edit structural config in the repo and it goes live next session — no restow, no manual copy. It only writes the home file, never the repo copy, so `git status` stays clean.
+
+`.stow-local-ignore` is what keeps `settings.json` out of the stow, along with repo-only files like `install.sh`, `package.json`, `node_modules/` and `kai-local/`, plus editor and cache junk. It replaces stow's built-in ignore list, so the defaults (`.git`, `README*`, `LICENSE*`) are repeated at the top. Add a line there before you drop anything into the repo root that shouldn't land in `~/.claude`.
 
 ## Key Commands
 
@@ -136,10 +135,10 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 Unified FTS5 search across workspace archives and session transcripts. See [giant-tooling/docs/search-usage.md](https://github.com/bearded-giant/giant-tooling/blob/main/docs/search-usage.md) for full usage.
 
 ```bash
-gmq search "jwt refresh"                # search everything
-gmq search "jwt refresh" -s session     # sessions only
-gmq search "auth flow" --topic auth     # by session topic
-gmq stats                               # index breakdown
+giantmem find "jwt refresh"               # live docs + archives + sessions
+giantmem find "jwt refresh" -s session    # sessions only
+giantmem find "auth flow" -p my-repo      # one project
+giantmem stats                            # index breakdown
 ```
 
 Also available as MCP tool `search_archive` for agent use.

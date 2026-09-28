@@ -1,0 +1,39 @@
+# this file replaces stow's built-in ignore list, so the defaults are repeated here
+RCS
+.+,v
+CVS
+\.\#.+
+\.cvsignore
+\.svn
+_darcs
+\.hg
+\.git
+\.gitignore
+\.gitmodules
+.+~
+\#.*\#
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# claude code rewrites settings.json at runtime; hooks/sync_settings.py merges it instead
+^/settings\.json$
+settings\.local\.json
+
+# run from the repo only: via ~/.claude it resolves CONFIG_DIR to ~/.claude and stows into itself
+^/install\.sh$
+
+# referenced by repo path, not through ~/.claude
+^/kai-local$
+^/node_modules$
+^/package\.json$
+^/package-lock\.json$
+
+\.DS_Store
+\.ruff_cache
+__pycache__
+.+\.pyc
+.+\.bak
+^/\.mdlive$
+^/\.memory-project\.json$
+^/\.stow-local-ignore$
