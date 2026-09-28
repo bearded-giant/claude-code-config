@@ -106,7 +106,8 @@ def main():
     merged = merge(repo, home)
 
     new_text = json.dumps(merged, indent=2) + "\n"
-    if HOME_SETTINGS.exists() and HOME_SETTINGS.read_text() == new_text:
+    # dict compare: claude code re-saves with its own key order, which is not a change
+    if HOME_SETTINGS.exists() and home == merged:
         return
 
     if HOME_SETTINGS.exists():
