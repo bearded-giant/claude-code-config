@@ -134,6 +134,16 @@ System uses GNU stow. NEVER edit files in `~/.config` or other home locations di
 - Shell: `~/dotfiles/shell/.bashrc`
 - Tmux: `~/dotfiles/tmux/.config/tmux/`
 
+## Repo Map
+
+@config/repos.csv
+
+Names I use for repos, mapped to paths. Source: `config/repos.csv`. `names` holds `|`-separated aliases, `path` is absolute, `notes` is optional.
+
+- I name a repo → use its row's path. No searching `~/dev`, no guessing from dir names.
+- Name not in the file → ask for the path and offer to add the row.
+- Path holds a `.bare` dir (worktree parent) → `git -C <path> worktree list`, pick the worktree on the feature branch. Match by branch, never by dir name. No match → ask.
+
 ## Communication Style
 
 ### Tone

@@ -1,0 +1,26 @@
+names,path,notes
+monolith|customcheckout,/Users/bryan/dev/python/cc-wt,
+auth service,/Users/bryan/dev/python/recharge-auth-wt/main,
+dotfiles,/Users/bryan/dotfiles,all configs incl nvim and tmux
+mas|ma2|merchant analytics,/Users/bryan/dev/python/mas,
+giantmem,/Users/bryan/dev/giant-tooling/giantmem,
+giant-tooling,/Users/bryan/dev/giant-tooling,
+doit.nvim|doit,/Users/bryan/dev/lua/do-it.nvim,
+kai,/Users/bryan/dev/ai/kai,
+kai-live,/Users/bryan/dev/ai/kai-live,pull only - local use of kai is this dir
+watchtower,/Users/bryan/dev/ai/recharge-watchtower,
+frontend,/Users/bryan/dev/javascript/frontend-wt,
+mdlive,/Users/bryan/dev/mdlive,
+gitlab-tools|gitlab-monitor|glmon,/Users/bryan/dev/python/gitlab-tools,gitlab-monitor is in gitlab-tools
+cellar|cellar-db,/Users/bryan/dev/golang/cellar,
+splunk-cli,/Users/bryan/dev/splunk-cli,
+redis-tui,/Users/bryan/dev/redis-tui,
+clay|support-agent,/Users/bryan/dev/ai/support-agent-wt,
+remi,/Users/bryan/dev/ai/remi-wt,
+chat-orchestrator|orchestrator,/Users/bryan/dev/ai/chat-orchestrator-wt,
+cerebro,/Users/bryan/dev/ai/cerebro,
+analytics-agent,/Users/bryan/dev/data-eng/recharge-sidekick-wt,
+chat-api,/Users/bryan/dev/python/chat-api,
+frost,/Users/bryan/dev/skio/frost-wt,
+merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
+mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
