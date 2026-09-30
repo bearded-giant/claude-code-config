@@ -56,6 +56,11 @@ def main():
     # home-owned key survives the write
     assert json.loads(home.read_text())["model"] == "opus"
 
+    # /effort saves per-model pins under modelSettings: must survive a sync
+    pinned = dict(drifted, modelSettings={"claude-opus-5-5": {"effortLevel": "xhigh"}})
+    home, _ = run(json.dumps(pinned))
+    assert json.loads(home.read_text())["modelSettings"] == pinned["modelSettings"]
+
     # no home file: seeded, nothing to back up
     home, backed_up = run(None)
     assert json.loads(home.read_text()) == ss.merge(REPO, {})

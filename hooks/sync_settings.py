@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-HOME_OWNED = {"model", "effortLevel", "theme", "feedbackSurveyState"}
+HOME_OWNED = {"model", "effortLevel", "modelSettings", "theme", "feedbackSurveyState"}
 UNION_DICTS = ["enabledPlugins"]
 UNION_LISTS = [
     ("permissions", "allow"),
