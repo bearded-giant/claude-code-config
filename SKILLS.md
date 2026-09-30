@@ -37,7 +37,7 @@
 
 | Skill | Purpose |
 |-------|---------|
-| `/burn` | Burn down `claude:`-marked doit todos, priority-first (`--list`, `--priority`, `--max`, `--dry-run`) |
+| `/burn` | Burn down `claude:`-marked doit todos, sequence-first then priority (`--list`, `--priority`, `--max`, `--dry-run`) |
 
 ## Workspace
 

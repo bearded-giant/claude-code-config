@@ -1,11 +1,11 @@
 ---
 name: burn
 description: >-
-  Burn down `claude:`-marked todos from a doit list, priority-first. Model claims each via in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
+  Burn down `claude:`-marked todos from a doit list, sequence-first then priority. Model claims each via in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
 ---
 <!-- caveman:compressed -->
 
-Worker queue. User assigns tasks by prefixing a doit todo with `claude:`. `/burn` picks them up by priority and works them down. doit data at `~/.local/share/nvim/doit/lists/` — touch only via doit MCP tools, never raw JSON.
+Worker queue. User assigns tasks by prefixing a doit todo with `claude:`. `/burn` picks them up in sequence order, then by priority, and works them down. doit data at `~/.local/share/nvim/doit/lists/` — touch only via doit MCP tools, never raw JSON.
 
 ## Marker
 
@@ -37,7 +37,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
 
 1. `list_todos list={target} filter=pending`
 2. Keep only items whose text matches `^\s*claude:` (case-insensitive)
-3. Order: critical → urgent → important → none. Within a priority: numbered prefix / `order_index`.
+3. Order: sequenced items first, ascending (`list_todos` shows `[seq N]`, already listed first). Rest: critical → urgent → important → none, within a priority `order_index`. `N.` text prefix = fixed handle for deps, NOT order.
 4. `--priority <level>` → that level and above only (`urgent` = critical+urgent).
 5. `--max <N>` → cap items this run.
 
@@ -89,7 +89,7 @@ NOT stop conditions while `claude:` items stay pending: a summary naming the nex
 
 ## End summary
 
-Table: `# | priority | item | result (done / blocked / skipped) | note`. Blockers listed with what's needed from the user.
+Table: `# | seq | priority | item | result (done / blocked / skipped) | note`. Blockers listed with what's needed from the user.
 
 ## Recurring
 
@@ -101,7 +101,7 @@ When the model proposes a feature-todo batch (`feature-management` → Feature t
 
 ## Burn-down queue (`claude:` marker)
 
-Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, priority-first (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
+Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, sequence-first (`[seq N]` ascending) then priority (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = repo-qualified, worktree-aware (`{repo}-{feature}`, worktree parent `-wt` prepended → `cc-wt-local-dev-runner-{feature}`, no feature → bare `{repo}`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
 
 - Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
 - Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.
