@@ -195,14 +195,7 @@ function modelLabel(data) {
 }
 
 function readEffort(data) {
-  // priority: stdin data > settings.json > env var
-  const fromData = data?.effort_level || data?.effortLevel || data?.model?.effort_level;
-  if (fromData) return String(fromData);
-  try {
-    const s = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude', 'settings.json'), 'utf8'));
-    if (s.effortLevel) return String(s.effortLevel);
-  } catch (e) {}
-  return process.env.CLAUDE_CODE_EFFORT_LEVEL || '';
+  return String(data?.effort?.level || process.env.CLAUDE_CODE_EFFORT_LEVEL || '');
 }
 
 function effortLabel(data) {
