@@ -33,6 +33,14 @@ def main():
         assert out.startswith("CAVEMAN MODE ACTIVE (full)."), out
         assert "SCOPE: stay in lane" in out
 
+        # confirm-and-wait strategy and parent-only doit rules must not reach subagents
+        constraints.write_text(
+            "SCOPE: a\nSTRATEGY: confirm and wait\nDOIT LIST: todos\nTIME: fast"
+        )
+        out = run(flag, constraints)
+        assert "confirm and wait" not in out and "DOIT LIST" not in out, out
+        assert "STRATEGY: no user to confirm with" in out and "TIME: fast" in out, out
+
         # symlinked flag must never be read, same as caveman-config.js readFlag
         flag.unlink()
         (tmp / "secret").write_text("full")

@@ -76,6 +76,8 @@ DONE {timestamp}
 - User interrupt
 - 2 consecutive hard failures → stop, report
 
+NOT stop conditions while `claude:` items stay pending: a summary naming the next item with no tool call; an offer to keep going; a decision list when none blocks the remaining items (blocked item goes to step 5, move on); a finished item or long turn. Status lines ride with the next tool call. Before the End summary, run `list_todos filter=pending` again; any unblocked `claude:` item within `--max` keeps burning. Step 3 gates still hold.
+
 ## Flags
 
 | Flag | Effect |

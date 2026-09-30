@@ -5,7 +5,8 @@ export const meta = {
   phases: [
     { title: 'Parse', detail: 'plan -> work units + dependency groups' },
     { title: 'Implement', detail: 'parallel workers per group' },
-    { title: 'Validate', detail: 'review diff, run tests, fix loop' },
+    { title: 'Validate', detail: 'review diff; targeted tests after fixes, full suite once' },
+    { title: 'Fix', detail: 'one agent per fix, sequential' },
   ],
 }
 
@@ -48,7 +49,7 @@ const WORKER_SCHEMA = {
     unit: { type: 'string' },
     status: { enum: ['complete', 'partial', 'blocked'] },
     files_changed: { type: 'array', items: { type: 'string' } },
-    summary: { type: 'string' },
+    summary: { type: 'string', description: 'max 2 sentences' },
     concerns: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -64,14 +65,16 @@ const VALIDATOR_SCHEMA = {
     issues: { type: 'array', items: { type: 'string' } },
     fix_units: {
       type: 'array',
+      description: 'exactly one fix per unit',
       items: {
         type: 'object',
-        required: ['id', 'title', 'files', 'instructions'],
+        required: ['id', 'title', 'files', 'instructions', 'tests'],
         properties: {
           id: { type: 'string' },
           title: { type: 'string' },
           files: { type: 'array', items: { type: 'string' } },
           instructions: { type: 'string' },
+          tests: { type: 'array', items: { type: 'string' }, description: 'test ids that prove this fix (path::name or -k expr)' },
         },
       },
     },
@@ -84,23 +87,43 @@ function artifactSuffix(file) {
 }
 
 const GIT_RULES = 'HARD RULES: never git commit, never git push, never git merge, never amend, never touch files outside your assigned unit.'
+const WORK_RULES = 'Files over ~500 lines: grep, then Read with offset/limit, never the whole file. Run only the tests you add or touch (path::name or -k), never the full file or suite.'
+
+const brief = rs => rs.map(r =>
+  `${r.unit} | ${r.status} | ${r.files_changed.join(', ')} | ${r.summary}${r.concerns?.length ? ` | concerns: ${r.concerns.join('; ')}` : ''}`
+).join('\n')
 
 phase('Parse')
 const plan = await agent(
   `Parse this plan into independent work units and ordered dependency groups. If the plan is a file path, Read it (and sibling facts.md / spec.md if it lives in a .giantmem feature dir). Ground every file path against the real tree with Glob before emitting it. Units in the same group MUST NOT share files.\n\n## Plan\n${args.plan}` +
   artifactSuffix('plan.json'),
-  { label: 'parse-plan', phase: 'Parse', schema: PLAN_SCHEMA }
+  { label: 'parse-plan', phase: 'Parse', schema: PLAN_SCHEMA, effort: 'low' }
 )
 if (!plan) return { verdict: 'fail', error: 'plan parsing failed' }
 const unitById = Object.fromEntries(plan.work_units.map(u => [u.id, u]))
 log(`${plan.work_units.length} units in ${plan.groups.length} groups`)
 
-async function implement(units, tag) {
-  return (await parallel(units.map(u => () => agent(
-    `You are a swarm implementation worker.\n\n## Goal\n${plan.goal}\n\n## Your unit: ${u.title}\nFiles: ${u.files.join(', ')}\n\n${u.instructions}\n\n${GIT_RULES}\nImplement fully. Match surrounding code style. Run relevant quick checks (lint/typecheck) if cheap.` +
+function worker(u, tag, phaseName) {
+  const tests = u.tests?.length ? `\nTests for this unit: ${u.tests.join(' ')}` : ''
+  return agent(
+    `You are a swarm implementation worker.\n\n## Goal\n${plan.goal}\n\n## Your unit: ${u.title}\nFiles: ${u.files.join(', ')}${tests}\n\n${u.instructions}\n\n${GIT_RULES}\n${WORK_RULES}\nImplement fully. Match surrounding code style. Run relevant quick checks (lint/typecheck) if cheap.` +
     artifactSuffix(`worker-${tag}-${u.id}.json`),
-    { label: `impl:${u.id}`, phase: 'Implement', schema: WORKER_SCHEMA }
-  )))).filter(Boolean)
+    { label: `${phaseName === 'Fix' ? 'fix' : 'impl'}:${u.id}`, phase: phaseName, schema: WORKER_SCHEMA }
+  )
+}
+
+async function implement(units, tag) {
+  return (await parallel(units.map(u => () => worker(u, tag, 'Implement')))).filter(Boolean)
+}
+
+// ponytail: fixes usually share files, so always sequential; parallelize disjoint fixes if fix loops get slow
+async function fixSequential(units, tag) {
+  const out = []
+  for (const u of units) {
+    const r = await worker(u, tag, 'Fix')
+    if (r) out.push(r)
+  }
+  return out
 }
 
 phase('Implement')
@@ -110,20 +133,36 @@ for (let g = 0; g < plan.groups.length; g++) {
   reports.push(...await implement(units, `g${g + 1}`))
 }
 
+const FULL_TESTS = args.testCmd || plan.test_cmd || 'the project test command (detect it)'
+
 phase('Validate')
 let round = 0
+let runs = 0
 let verdict = null
 let fixReports = []
-while (round <= MAX_FIX) {
+let targeted = null
+while (true) {
+  runs++
+  const testStep = targeted
+    ? `Run ONLY these tests, not the full file or suite: ${targeted.join(' ')}`
+    : `Run the full tests once: ${FULL_TESTS}`
   verdict = await agent(
-    `You are the swarm validator.\n\n## Goal\n${plan.goal}\n\n## Worker reports\n${JSON.stringify(reports.concat(fixReports), null, 2)}\n\n## Tasks\n1. Review the actual diff (git diff) against the goal.\n2. Run tests: ${args.testCmd || plan.test_cmd || 'detect the project test command and run the relevant subset'}.\n3. verdict pass = tests green AND changes match goal. If fixable problems remain and this is round ${round} of ${MAX_FIX}, emit fix_units (non-overlapping files).\n${GIT_RULES}` +
-    artifactSuffix(`validator-${round + 1}.json`),
-    { label: `validator-${round + 1}`, phase: 'Validate', schema: VALIDATOR_SCHEMA, effort: 'high' }
+    `You are the swarm validator.\n\n## Goal\n${plan.goal}\n\n## Worker reports (unit | status | files | summary)\n${brief(reports.concat(fixReports))}\n\n## Tasks\n1. Review the actual diff (git diff) against the goal.\n2. ${testStep}\n3. verdict pass = those tests green AND changes match goal. If fixable problems remain and this is fix round ${round} of ${MAX_FIX}, emit fix_units: one fix per unit, each naming the tests that prove it.\n${GIT_RULES}\n${WORK_RULES}` +
+    artifactSuffix(`validator-${runs}.json`),
+    { label: `validator-${runs}${targeted ? '-targeted' : ''}`, phase: 'Validate', schema: VALIDATOR_SCHEMA }
   )
-  if (!verdict || verdict.verdict === 'pass' || !verdict.fix_units || !verdict.fix_units.length || round === MAX_FIX) break
+  if (!verdict) break
+  if (verdict.verdict === 'pass') {
+    if (!targeted) break
+    targeted = null
+    continue
+  }
+  if (!verdict.fix_units?.length || round === MAX_FIX) break
   round++
-  log(`round ${round}: ${verdict.fix_units.length} fix units`)
-  fixReports.push(...await implement(verdict.fix_units, `fix${round}`))
+  log(`round ${round}: ${verdict.fix_units.length} fixes, sequential`)
+  fixReports.push(...await fixSequential(verdict.fix_units, `fix${round}`))
+  targeted = verdict.fix_units.flatMap(u => u.tests || [])
+  if (!targeted.length) targeted = null
 }
 
 return {

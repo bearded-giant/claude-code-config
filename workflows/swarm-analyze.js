@@ -135,7 +135,7 @@ while (iteration < MAX_ITER) {
     `## Worker reports\n${JSON.stringify(workers, null, 2)}\n\n` +
     `## Tasks\n1. Aggregate findings by aspect. 2. Resolve conflicts between workers. 3. Decide converged: true unless a specific aspect has contradictory or clearly incomplete coverage that another focused pass would fix — if so, converged: false and list those aspect names in blocking.` +
     artifactSuffix(`validator-${iteration}.json`),
-    { label: `validator-${iteration}`, phase: 'Validate', schema: VALIDATOR_SCHEMA, effort: 'high' }
+    { label: `validator-${iteration}`, phase: 'Validate', schema: VALIDATOR_SCHEMA }
   )
   if (!synthesis || synthesis.converged) break
   feedback = `Blocking: ${(synthesis.blocking || []).join(', ')}. Issues so far: ${(synthesis.all_issues || []).join('; ')}`

@@ -195,7 +195,7 @@ Hard link between multi-step feature work and the doit MCP. Items the USER must 
 
 ### Trigger — model-initiated ask
 
-During multi-step work — feature OR bare repo — when a cluster of user-actionable follow-ups appears — "review this MR", "run X later", "decide Y", "remember Z before ship" — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below). Show the proposed items (text + bucket) so user edits before write.
+During multi-step work — feature OR bare repo — when a cluster of user-actionable follow-ups appears — "review this MR", "run X later", "decide Y", "remember Z before ship" — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below), at task end or a real blocker, never mid-chain. Keep working everything that does not depend on the answer. Show the proposed items (text + bucket) so user edits before write.
 
 - Ask ONCE per cluster, never per item.
 - Never auto-write todos — the ask is the gate.
@@ -281,17 +281,13 @@ When no feature is `in_progress`, use top-level `.giantmem/` subdirectories.
 
 ## Session start check
 
-Read in order if files exist:
-1. `.giantmem/WORKSPACE.md`
-2. `.giantmem/features/features.json` — find active feature
-3. Active feature's `plans/current.md`, else `.giantmem/plans/current.md`
-4. Active feature's `{name}-notes.md` if non-empty — living cheat sheet, surface relevant commands when resuming related work
-
-If step 1's file is missing, skip steps 2-4.
+SessionStart hooks already inject WORKSPACE.md, top-level `plans/current.md`, and the active feature name; do not re-read them unless the injected block is truncated. When resuming active-feature work, read only:
+1. Active feature's `plans/current.md`
+2. Active feature's `{name}-notes.md` if non-empty — living cheat sheet, surface relevant commands when resuming related work
 
 ## Todos → doit (repo / feature list)
 
-When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE: offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
 
 - List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
 - Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.

@@ -4,7 +4,7 @@ Global behavior for `~/.claude` (stowed from `~/dev/claude-code-config`). Repo i
 
 ## Precedence
 
-Rules in this file are personal invariants. When a project CLAUDE.md / AGENTS.md / INSTRUCTIONS.md conflicts with a rule here, THIS file wins — follow it and flag the conflict in chat in one line. Exception: project build/test/lint commands and code-style conventions — project wins there. Critical subset re-injected every prompt by `hooks/standing_constraints.py` from `config/standing-constraints.md` — keep both in sync when editing scope/execution rules here.
+Rules in this file are personal invariants. When a project CLAUDE.md / AGENTS.md / INSTRUCTIONS.md conflicts with a rule here, THIS file wins — follow it and flag the conflict in chat in one line. Exception: project build/test/lint commands and code-style conventions — project wins there. Critical subset from `config/standing-constraints.md` is re-injected on the first prompt, after each compact, and every 25 prompts by `hooks/standing_constraints.py`, and into every subagent by `hooks/subagent_context.py`. Keep both in sync when editing scope/execution rules here.
 
 ## General Guidelines
 
@@ -22,10 +22,12 @@ Across all rows: never propose edits to a file you have not read in this session
 
 User reviews strategy, not tool-call streams. Make the path inspectable early and cheap to intercept:
 
-- Multi-step or investigative work: announce approach in 1-3 lines BEFORE executing — path chosen, access paths/tools, expected blast radius.
-- Mid-task pivot (new tool, new hypothesis, widening scope, switching access path): state the pivot in ONE line before acting on it. A silent pivot reads as drift.
+- Multi-step or investigative work: state approach in 1-3 lines (path, access paths/tools, blast radius) in the same message as the first tool call. Announcing is not a pause; don't end the turn on it. After that, update only on an important finding or change of direction.
+- Mid-task pivot (new tool, new hypothesis, widening scope, switching access path): state the pivot in ONE line, in the same message as the action. A silent pivot reads as drift.
 - Ambiguous target where a wrong guess means a rebuild (which API or product surface, a new tool or CLI, edits across more than 5 files): confirm the interpretation in one line and WAIT. Cheap assumptions: state and proceed (see Prose Style).
-- Two failed attempts at the same approach → STOP. Present evidence + ranked options. Never silently try a third variation of the same idea.
+- Two failed attempts at the same approach → STOP that approach. Present evidence + ranked options, and keep working whatever doesn't depend on the answer. Never silently try a third variation of the same idea.
+- End the turn only when nothing can move without me or the next step is a protected gate (deletion, destructive, outward-facing, named-path failure, rebuild-priced ambiguity). Not reasons to stop: a summary announcing the next step with no tool call; an offer to continue; a list of decisions none of which block the rest; a long turn or a finished milestone.
+- Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better. Run independent tool calls and subagents in parallel.
 
 ### Gitignored files are editable
 
@@ -270,20 +272,29 @@ snake_case, not kebab-case. Example: `/api/admin/auth/validate_credentials` (cor
 ## Agent Tool Use
 
 <agent_triggers>
-MUST spawn Task agent (Explore subagent) when:
-- An initial grep returns > 5 hits that each need follow-up Reads
-- A trace requires > 3 sequential greps/reads to map
-- Finding all usages of a symbol across the repo
+Spawn Explore subagents in parallel when the work splits into independent searches, or when a trace would flood main context. Work directly when a handful of tool calls finishes it; symbol usages go through LSP findReferences. Never spawn a subagent only to double-check your own work.
 
-MUST spawn Task agent (debugger subagent) when user reports a stack trace, test failure, or unexplained behavior requiring a multi-file trace.
+Spawn a debugger subagent for stack traces, test failures, or unexplained behavior that needs a wide multi-file trace.
 
-MUST spawn Task agent for refactors expected to touch > 5 files (batched edits, consistency check).
+Spawn parallel Task agents for refactors over > 5 files that split into independent chunks.
 
 MUST NOT spawn agents for:
 - Single-file edits with a known path
 - One-shot bash commands
 - Direct Read of a file the user named
 </agent_triggers>
+
+## Workflow Authoring
+
+Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Context size is what makes runs drag, because an agent pays for its prompt and every file it reads on each of its turns. Workflow agents get this file, so the test and read rules bind them directly.
+
+- One agent per fix. Fixes that share files run sequentially, one small agent each. Never hand one agent several fixes. Run in parallel only when files are disjoint.
+- Red/green checks run only the tests the fix adds or touches (`pytest path::test_name`, `-k`). The full file or suite runs once, in the final verify stage.
+- Big files (> ~500 lines, typically test and fixture files): grep, then Read with `offset`/`limit`. No whole-file reads.
+- Downstream prompts get a summary, not raw JSON: one line per item (`id | file:line | claim | status`). Full records go to disk as artifacts.
+- The workflow return value stays small (verdict, counts, summary lines, artifact path), because it lands in the main context.
+- Ultracode means orchestrate, not maximize. Size the fleet to the task (under 10 agents unless asked), use one verify pass, and loop-until-dry only on open-ended discovery. This overrides the built-in authoring skill's "token cost is not a constraint".
+- Set `effort` per stage: `low` for mechanical stages (parse, grep, apply known edits), omit it (inherit) for normal work, and `high` only for a final judge. Never `xhigh`/`max` without a measured reason.
 
 ## Git Rules
 

@@ -25,7 +25,7 @@ If you cannot run the flow (no infra, no credentials, no test data), say so expl
 
 **2. Identify the acceptance criteria:**
 - Read the spec (`.giantmem/features/{name}/spec.md` if active feature)
-- If none, ask user for 2-3 success conditions before proceeding
+- If none, derive 2-3 checkable conditions from the task prompt and diff, mark them ASSUMED at the top of the report, and proceed. Ask only when the diff has no observable behavior to check.
 - Convert vague criteria to checkable assertions ("returns 200 with `order.state=cancelled`")
 
 **3. Pick the closest-to-real environment:**
@@ -72,8 +72,8 @@ Next: investigate webhook emit path (handler returns before queue.publish?)
 
 Refuse to give PASS verdict when:
 - Could not actually run the flow → report UNCHECKED, not PASS
-- Acceptance criteria unclear → ask user, don't guess
-- Branch has uncommitted changes that affect the path → ask user to commit first so verification reflects a real state
+- Criteria were derived, not given → verdict reads `PASS (assumed criteria)`, never bare PASS
+- Uncommitted changes in the exercised path → verify the working tree as-is and list those files under Environment. Do not stop.
 - Feature requires prod access → stop, ask explicitly
 
 ## Style

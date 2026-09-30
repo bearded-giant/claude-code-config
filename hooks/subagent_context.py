@@ -19,6 +19,21 @@ CAVEMAN_MODES = {
     "wenyan-ultra",
 }
 MAX_FLAG_BYTES = 64
+SUBAGENT_STRATEGY = (
+    "STRATEGY: no user to confirm with. State assumptions at the top of your final "
+    "report and proceed. Two failed attempts at one approach: stop it, report "
+    "evidence + options."
+)
+
+
+def for_subagent(text):
+    # subagents cannot wait on the user; confirm-and-wait becomes an early end_turn
+    out = []
+    for line in text.splitlines():
+        if line.startswith("DOIT LIST:"):
+            continue
+        out.append(SUBAGENT_STRATEGY if line.startswith("STRATEGY:") else line)
+    return "\n".join(out)
 
 
 def caveman_mode():
@@ -44,7 +59,7 @@ def main():
             "Applies to your final report to the parent agent."
         )
     try:
-        constraints = CONSTRAINTS.read_text(encoding="utf-8").strip()
+        constraints = for_subagent(CONSTRAINTS.read_text(encoding="utf-8").strip())
     except OSError:
         constraints = ""
     if constraints:

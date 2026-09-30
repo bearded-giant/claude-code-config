@@ -136,7 +136,7 @@ To reset: delete `.config.yaml` or pass `--no-sticky` (skill ignores file for th
 
 Loop runs up to `loops` turns (default 3, configurable). Each turn:
 
-1. `git diff <base>...HEAD` → review
+1. N=1: `git diff <base>...HEAD`; N>1: `git diff` (prior turn's auto-fix edits) → review
 2. Score every finding (sev + conf)
 3. Write `NN-run.md` with all findings + dispositions
 4. Apply `auto-fix` items (edit files only — no stage/commit/push)
@@ -249,7 +249,7 @@ Refuted findings get no label — dropped, not reported.
 5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Kai preflight** if enabled: K1 size gate (block → abort per K1), then K2 reference load.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
-   a. `git diff <base>...HEAD`
+   a. N=1: `git diff <base>...HEAD`. N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
    b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
    d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix. Kai preflight on → also assign a Kai label per K3.
@@ -271,7 +271,7 @@ type: grill-run
 status: complete
 feature: {name or "none"}
 run: N
-loop_turn: "N/3"
+loop_turn: "N/{loops}"
 base_branch: {base}
 lifecycle: candidate
 ---
@@ -423,7 +423,7 @@ Risk reducer: beta flag — change alters cancel behavior for all stores.
 After loop ends, reply ONLY:
 
 ```
-Grill complete. Rating: <rating>. Runs: N/3.
+Grill complete. Rating: <rating>. Runs: N/{loops}.
 Kai: would block — must_fix=N
 final.md: <path>
 ```
