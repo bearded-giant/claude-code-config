@@ -85,6 +85,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime memory_ingest",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ready",
+            "timeout": 5
           }
         ]
       }
@@ -112,6 +117,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py workspace_session_end session_end_ingest",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh off",
+            "timeout": 5
           }
         ]
       }
@@ -123,6 +133,22 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check notify_attention",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ready",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ask",
+            "timeout": 5
           }
         ]
       }
@@ -159,6 +185,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh busy",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -172,6 +207,11 @@
           {
             "type": "command",
             "command": "node ~/.claude/hooks/caveman-mode-tracker.js",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh busy",
             "timeout": 5
           }
         ]

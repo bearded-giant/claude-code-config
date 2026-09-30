@@ -89,6 +89,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | Stop | dispatch: `debug_stop_check`, `notify_attention` | No (JSON decision only) |
+| SessionStart, UserPromptSubmit, PostToolUse, PermissionRequest, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py` detached) | N/A (terminal only) |
 
 Undocumented above but present: `live_index.py` (PostToolUse, indexes `.giantmem/` and memory writes into live.db), the PostToolUse nudges (`caveman_artifact_nudge`, `code_comment_nudge`, `notion_publish_nudge`), the attention trio (`request_attention` writes the marker from `commands/babysit.md`, `notify_attention` consumes it on Stop, `clear_attention` clears it on the next prompt), and `_giantmem_log.py`, a shared logger imported by several of them.
