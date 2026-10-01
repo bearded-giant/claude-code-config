@@ -36,6 +36,7 @@ function loadConfig() {
     lines: true,
     duration: true,
     gmdocs: false,
+    models: true,
   };
   try {
     const cfgPath = path.join(__dirname, 'statusline-config.json');
@@ -404,7 +405,7 @@ function isStale(tool) {
   return Number.isFinite(started) && Date.now() - started > TOOL_STALE_MS;
 }
 
-function usageGauges(compact) {
+function usageGauges(compact, showModels = true) {
   const countdown = compact ? () => '' : fmtCountdown;
   try {
     const cacheFile = path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json');
@@ -459,7 +460,7 @@ function usageGauges(compact) {
         const p = Math.min(100, Math.max(0, sd.used_pct));
         parts.push(`${colorForPct(p)}7d ${pie(p)} ${p}%${countdown(sd.resets_at, now)}${RST}`);
       }
-      for (const [name, m] of Object.entries(org.models || {})) {
+      for (const [name, m] of Object.entries(showModels ? org.models || {} : {})) {
         if (m.used_pct == null) continue;
         const p = Math.min(100, Math.max(0, m.used_pct));
         parts.push(`${colorForPct(p)}${name.toLowerCase()} ${pie(p)} ${p}%${countdown(m.resets_at, now)}${RST}`);
@@ -819,8 +820,8 @@ const renderTick = () => {
       acctPart, modelPart, branchPart, ctx,
       displayPath,
       shortPath: pathParts[pathParts.length - 1] || displayPath,
-      usage: usageGauges(false),
-      usageCompact: usageGauges(true),
+      usage: usageGauges(false, cfg.models),
+      usageCompact: usageGauges(true, cfg.models),
     };
     const fit = fitLine1(width, seg);
     let line1 = fit.line1;

@@ -22,12 +22,13 @@ Statusline config:
 7. lines: on
 8. duration: on
 9. gmdocs: off          (giantmem docs/day counter)
+10. models: on          (per-model usage gauge, e.g. fable)
 
 Enter number to toggle, or "q" to quit:
 ```
 
 3. When user picks a number:
-   - Boolean fields (line2, agents, thinking, messages, lines, duration, gmdocs): flip true/false
+   - Boolean fields (line2, agents, thinking, messages, lines, duration, gmdocs, models): flip true/false
    - `style`: cycle compact -> minimal -> compact
    - `tools`: cycle last -> feed -> off -> last
 

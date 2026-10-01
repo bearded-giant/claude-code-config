@@ -7,5 +7,6 @@
   "messages": false,
   "lines": true,
   "duration": true,
-  "gmdocs": false
+  "gmdocs": false,
+  "models": true
 }
