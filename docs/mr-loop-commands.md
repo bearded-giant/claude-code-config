@@ -15,7 +15,7 @@ Classifies + acts:
 | Class | Action |
 |---|---|
 | `actionable_simple` (rename / typo / nit / null check) | fix |
-| `actionable_complex` (design / ambiguous) | reply `[babysit] needs your input`, skip |
+| `actionable_complex` (design / ambiguous) | defer to chat (no MR note), skip; sign off in chat |
 | `informational` | skip |
 
 Flow: rebase → edit → `py-check`/`ts-check` → commit `review: ...` → push → reply `addressed in <sha>` → resolve. Max 5 threads/run. Skip Draft MRs unless `[babysit-ok]` in description.
