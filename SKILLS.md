@@ -68,6 +68,7 @@
 |-------|---------|
 | `/server-logs <env> [N]` | Tail preprod/prestage server.log |
 | `/review-comment <mr-url>` | Session findings → human-voiced MR/PR comment, approve, post |
+| `/greptile [review [mr] [--force] \| init \| rule <note-url> \| sync [mr-url]]` | `review` posts `@greptile review` on the branch's MR (skips if head already reviewed). Own `.greptile/`: scaffold, invalid suggestion → repo rule (asks), auto-approve risk sync; babysit calls it for `greptile` threads |
 
 ## Development
 

@@ -26,6 +26,8 @@ plugins/synced/
 plugins/.trash/
 plugins/.staging/
 plugins/install-counts-cache.json
+plugins/plugin-directory-cache-v2.json
+plugins/store/
 plugins/.last_inuse_sweep
 
 # system files

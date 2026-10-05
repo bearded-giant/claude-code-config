@@ -1,6 +1,6 @@
 ---
-description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`.
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob
+description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head.
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Skill, ToolSearch, ScheduleWakeup, CronList, CronDelete
 ---
 
 Address open review comments on the MR for **this** worktree's branch.
@@ -33,7 +33,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    ```
    Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it.
 
-   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`. Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → exit clean.
+   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
 
    **Never run the sign-off handshake through MR comments.** No `[babysit]` notes, no asking the user to reply on a thread. Deferrals go to the state file and to chat; the user signs off in chat.
 
@@ -45,6 +45,8 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
      - **ambiguous / open question** (e.g. "is this the right layer?", "should this live elsewhere?") → defer: state file + chat, with the open question and 1–3 options. No thread reply.
    - `informational` — "looks good", "nit just FYI", no requested change. Skip.
    - `contradicts_design` — the ask runs counter to a design decision or known reason established in **this session / branch work**. Do not implement. The thread still gets a one-line decline-with-reason reply (step 6.7). Only use this when a concrete established reason actually exists — never fabricate a rationale to dodge work; absent a real reason, fall back to `actionable_*`.
+
+   Thread author `greptile` that you decline → also run the `greptile` skill's **rule** step; its proposal rides the state file + chat sign-off, never AskUserQuestion. After the final push, run its **sync** step once if the repo has `.greptile/`.
 
 4. **Sync branch first** — once, before any edits:
    ```
@@ -89,13 +91,41 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    ```
    python3 ~/.claude/hooks/request_attention.py "MR !<iid> (<branch>): <n> thread(s) need your sign-off"
    ```
-   Flags the tmux window + sends a desktop notification when the session stops. Threads already in the state file from an earlier run do not re-fire it. If babysit fully handled every thread, do **not** call it — silent success.
+   Flags the tmux window + sends a desktop notification when the session stops. Threads already in the state file from an earlier run do not re-fire it. If babysit fully handled every thread, do **not** call it here; step 9 owns the READY and BLOCKED signals.
 
 8. **Pipeline check** — after final push, query:
    ```
    glab api "projects/<project_id>/pipelines?ref=$BRANCH&order_by=updated_at&per_page=1"
    ```
    If pipeline newly red from this push, report `pipeline red after my fix — <job-url>` in chat, raise attention (step 7), and bail. If pipeline green or unrelated red, nothing to report.
+
+9. **Gate** — every run ends here, including zero-thread runs. Decides whether this babysit instance is finished.
+
+   **Greptile-aware** iff step 2's discussions include a note containing `<!-- greptile_summary -->` (proves Greptile reviews this project; `.greptile/` may not exist). Reviewed sha = the `/commit/<sha>` in that note's "Last reviewed commit" line. Read it from step 2's payload, not a fresh fetch, so a review landing mid-run can't mark READY over threads this run never saw. Re-reviews are manual (`@greptile review`), so every push leaves the review stale and blocks auto-approve.
+
+   Inputs: MR head `sha` and `head_pipeline.status` (`glab api "projects/<project_id>/merge_requests/<iid>"`, fetched after the last push), threads still actionable this run, state file `_greptile`. Green = `success`, `manual`, `skipped`, or no pipeline. Red = `failed`, `canceled`.
+
+   First match wins:
+
+   | State | Condition | Action |
+   |---|---|---|
+   | BLOCKED | pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, or `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
+   | working | actionable threads left past the 5-thread cap | continue |
+   | sign-off | deferred state-file threads remain | continue, slow cadence |
+   | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha` | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
+   | waiting | pipeline neither green nor red, or `requested_sha == head` and not yet reviewed | continue |
+   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | raise attention `MR !<iid> ready: pipeline green, greptile <score>/5[, approved]`, **stop loop** |
+
+   Greptile's new findings arrive as fresh unresolved discussions; the next run handles them through steps 2-8 like any reviewer's. Approved = a note with `<!-- greptile_auto_approval_sha:<head> -->`. A sub-5 score with no open Greptile threads is still READY; report the score.
+
+   "Greptile due" fires while the pipeline runs, so review and CI overlap. A red pipeline from babysit's own push is already BLOCKED via step 8, so that is the only path that wastes a Greptile run.
+
+   **Stop loop** (deferred tools, load via ToolSearch first):
+   - dynamic `/loop /babysit` → `ScheduleWakeup` with `stop: true` instead of the next wakeup.
+   - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is `/babysit`.
+   - one-shot `/babysit` → nothing to stop; report the state.
+
+   Dynamic loop cadence: working/greptile due/waiting → 300s; sign-off → 1800s.
 
 ## Safety rails
 
@@ -111,9 +141,9 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
 
 Single line:
 ```
-MR !1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green
+MR !1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
 ```
-Drop any zero-count segment (`declined`, `needs sign-off`).
+Drop any zero-count segment (`declined`, `needs sign-off`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
 Below it, one numbered entry per deferred thread: URL, why it was deferred, the plan or open question with options. The user signs off in chat by number (`signed off 1`, or plan edits); the next run picks it up as `signed_off`.
 
 ## Failure modes — exit clean, never error
