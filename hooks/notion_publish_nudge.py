@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "md_to_notion.py"
-# ponytail: the publish skill edits frontmatter right after a push; that write must not re-nudge
+# the publish skill edits frontmatter right after a push; that write must not re-nudge
 JUST_SYNCED_S = 300
 
 

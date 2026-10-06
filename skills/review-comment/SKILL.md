@@ -24,28 +24,24 @@ Findings must already exist in session (from `/kai:review-adversarial`, `/grill`
 
 ## Voice
 
-The review skills emit scaffolding — severity tags, triage summaries, claim tables, citation chains. None of that belongs in a comment. Rewrite, don't paste.
+Bryan's voice per `~/.claude/config/voice.md`. Read it before drafting; `voice_gate.py` blocks the post if it drifts. Review scaffolding (severity tags, triage summaries, claim tables, citation chains) never reaches the comment. Rewrite, don't paste.
 
 Do:
 
 - Lead each finding with what breaks for a person (merchant can't save, customer gets wrong copy), then the mechanism.
-- One paragraph per blocker. Prose, contractions, normal sentences.
-- Bullets ONLY for the short tail of smaller items.
-- One citation per claim — `file.py:1031`, basename only, no repo path. The chain of five files that proved it stays in your head.
-- Name what a reviewer would want to know unasked: why the pipeline is green, whether the MR's own QA steps still hold, blast radius on real stores.
-- Close with one line on what IS right. True, and it buys goodwill for the blocker.
+- Two or three sentences per blocker. `- ` bullets, one line each, for the smaller items.
+- One citation per claim, backticked: `file.py:1031`, basename only. The chain of five files that proved it stays in your head.
 - One small code snippet, only when the fix isn't obvious from prose. Zero is usually right.
 
 Don't:
 
-- `**CRITICAL —**` / `**WARNING —**` label runs. Severity comes from "this is a blocker before it goes out", said once.
-- Section headers per finding. At most `## Blocking` / `## Non-blocking`, and often neither.
-- Tables, verdict matrices, "Applied checks", "Skipped N checks", emojis.
+- Severity labels, headers, tables, verdict matrices, bold, emojis.
+- First person (`I'd fix`, `my review`), praise, or a closing line about what's right.
 - Restating the MR description back at the author.
-- Hedging ("might possibly", "you may want to consider"), or padding ("great work overall!").
+- Hedging ("might possibly", "you may want to consider").
 - Findings outside the diff's scope unless the diff is wrong without them.
 
-Length: a blocker plus 3-4 smaller items fits in ~25 lines. Over 40 lines means you kept scaffolding.
+Length: 150 words for the whole comment. A blocker plus 3 smaller items fits; over that means scaffolding survived.
 
 ## Posting
 

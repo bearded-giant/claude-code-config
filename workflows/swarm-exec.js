@@ -116,7 +116,7 @@ async function implement(units, tag) {
   return (await parallel(units.map(u => () => worker(u, tag, 'Implement')))).filter(Boolean)
 }
 
-// ponytail: fixes usually share files, so always sequential; parallelize disjoint fixes if fix loops get slow
+// fixes usually share files, so always sequential; parallelize disjoint fixes if fix loops get slow
 async function fixSequential(units, tag) {
   const out = []
   for (const u of units) {

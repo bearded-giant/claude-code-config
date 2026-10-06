@@ -24,3 +24,5 @@ chat-api,/Users/bryan/dev/python/chat-api,
 frost,/Users/bryan/dev/skio/frost-wt,
 merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
 mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
+monitor,/Users/bryan/dev/ai/monitor,ai-tooling/monitor; greptile auto-approves here
+inspector|inspector-agent,/Users/bryan/dev/ai/investigator-agent,

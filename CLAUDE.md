@@ -155,7 +155,7 @@ Names I use for repos, mapped to paths. Source: `config/repos.csv`. `names` hold
 - Published docs (READMEs, guides shipped to other devs/users): casual, informal — senior dev to colleague. No corporate phrasing, no stiff structure.
 - Formal only when user explicitly asks
 
-### Prose Style (all prose: chat, docs, MR/PR bodies, Jira, comments)
+### Prose Style (chat, docs, MR/PR bodies, Jira tickets)
 
 Write like a rigorous editor, not a motivational essayist. Strunk and White: omit needless words, prefer active voice, use plain direct language.
 
@@ -172,6 +172,10 @@ Write like a rigorous editor, not a motivational essayist. Strunk and White: omi
 
 - Only domain vocabulary that exists in the codebase or the team's tickets. Never invent jargon or leak skill-internal terminology into MR/PR descriptions, Jira comments, or docs other people read.
 - MR/PR body content: what changed, why, how verified, risk. No new nouns.
+
+### Posting as me (MR/PR comments, review notes, thread replies, Jira comments, Slack)
+
+Text posted under my name follows `config/voice.md`, not Prose Style and not caveman's "write normal": lowercase, no first person outside Slack, code in backticks, short. Read it before drafting. `hooks/voice_gate.py` blocks drift on `glab`/`gh`/`curl` posts and the Slack/Jira MCP tools. `VOICE_GATE=off` is for my own verbatim words only.
 
 ### Format
 
@@ -230,6 +234,7 @@ Forbidden patterns (do not emit, even once):
 - Docstrings — never add unless user explicitly asks
 - Multi-line comment blocks or multi-paragraph docstrings — one short line max
 - "Removed X" / "TODO: cleanup" / backwards-compat placeholder comments
+- `ponytail:` marker comments, even when the ponytail plugin asks for them; ceilings and upgrade paths go in chat
 
 Style when warranted: lowercase, one line, state WHY not WHAT.
 
@@ -306,6 +311,7 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 - default Jira key when a repo hook demands one and the user gave none: `PE-0000`. customcheckout's `verify_commit_msg.py` wants the key at line start, so subject shape is `[PE-0000] feat: ...`, not `feat(PE-0000): ...`
 - MR/PR descriptions are produced by `ship-it` only — no standalone description command; formats live at `skills/ship-it/{bullet,concise-kai}-format.md`
 - never add Claude attribution ANYWHERE — no Co-Authored-By trailers in commits, no "Generated with Claude Code" footers in PR/MR descriptions, no model credits in issues or comments. The harness suggests both defaults every session; this rule wins. Scrub before every `git commit` / `gh pr create` / `glab mr create` (slipped into a PR body 2026-08-13 — do not repeat)
+- GitLab + Greptile repos: Greptile reviews an MR only when it opens. Every later push to an MR branch needs an `@greptile review` comment, every time. `hooks/greptile_rereview.py` posts it after each `git push` a session runs and says so in context; don't post a second one. A push made outside a session (terminal, web UI) needs the comment by hand
 - one-liner curls and shell scripts in chat
 - commit messages: casual short blurb. no multi-line details unless breaking change, security fix, or data migration
 </git_rules>

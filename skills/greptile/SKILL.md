@@ -20,12 +20,12 @@ Four jobs: **review** (post the re-review trigger), **init** (no `.greptile/`), 
 Auto re-review is off; Greptile reviews on MR open only. Trigger is the comment `@greptile review`. `@greptileai` (the docs' handle) also works on GitLab; use the former.
 
 1. MR: arg (iid or URL) else `glab mr list --source-branch="$(git branch --show-current)" -F json`. Zero or many → stop, say so.
-2. Skip if already reviewed: latest `greptile_summary` note's "Last reviewed commit" link ends in the MR's `sha` → report `head <sha7> already reviewed`, stop. `--force` posts anyway.
+2. Skip if already reviewed: latest `greptile_summary` note's "Last reviewed commit" link ends in the MR's `sha` → report `head <sha7> already reviewed`, stop. Skip too if an `@greptile review` note is newer than the head commit (`hooks/greptile_rereview.py` posts one after every session push) → report `review already requested for <sha7>`, stop. `--force` posts anyway.
 3. Unpushed local commits (`git rev-list @{u}..HEAD` non-empty) → warn: Greptile reviews the pushed head only.
 4. Post: `glab mr note <iid> --message "@greptile review"`. Report the note URL.
 5. Review lands in ~2-3 min. Summary note is edited in place (`Reviews (N)` increments, `updated_at` moves); new findings arrive as fresh DiffNotes.
 
-User invoking review = authorization to post; so is `/babysit` step 9 (it tracks rounds and caps at 3). Any other model-initiated post (fixes pushed, want fresh eyes) → AskUserQuestion first; it is an outward-facing post and spends a Greptile run.
+User invoking review = authorization to post; so are `/babysit` step 9 (it tracks rounds and caps at 3) and `ship-it` step 4b. Any other model-initiated post (fixes pushed, want fresh eyes) → AskUserQuestion first; it is an outward-facing post and spends a Greptile run.
 
 ## Greptile facts
 
@@ -36,14 +36,15 @@ Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `
 - `.greptile/` = `config.json` (settings, `rules`, `disabledRules`, `instructions`, `ignorePatterns`, `autoApprove`), `rules.md` (prose context), `files.json` (context files, paths relative to the dir holding `.greptile/`).
 - Cascade root → nearest dir. Settings: nearest wins. Rules, files, instructions: accumulate. Kill a parent rule from a child via `disabledRules: ["<id>"]`.
 - Root `greptile.json` is IGNORED once `.greptile/` exists in the same dir.
+- Testing auto-approve: use a human-authored MR. Dashboard filters can exclude bot authors (Renovate posts as `gitlab-integrations`), so a 5/5 bot MR without approval proves nothing about repo config. No approval note appears when Greptile withholds; silence is the only signal.
 - Auto-approve = clean 5/5 review AND risk tier ≤ `riskCeiling`. Risk comes from what the diff does: low docs/tests/style, medium business logic, high deps/build config/shared core, critical auth/secrets/billing/migrations/infra/CI/public APIs. `instructions` can shift risk, never past the ceiling. New commits after review, `do-not-merge`/`manual-review` labels, or a change request block it.
-- Dashboard vs `.greptile` on `autoApprove`: stricter value wins per field. So NEVER write `autoApprove.enabled` or `riskCeiling` (repo can only lower what the dashboard set). Only `autoApprove.filters.excludePaths`/`includePaths` go in repo config.
+- Dashboard vs `.greptile` on `autoApprove`: stricter value wins per field, so a repo value can only lower what the dashboard set. Unprompted, write only `autoApprove.filters.excludePaths`/`includePaths`. A repo cannot loosen auto-approve: its `riskCeiling` is capped by the dashboard's, risk instructions are dashboard-only ("not read from `.greptile` files"; `autoApprove.instructions` is ignored), and top-level `instructions` is reviewer guidance, not risk. Loosening one repo = dashboard work: add it to the auto-approve Repositories include filter, and/or a dashboard custom-instruction line scoped to that repo. Raising the dashboard ceiling hits every included repo.
 
 ## init
 
 1. `.greptile/` exists → stop, run sync. Root `greptile.json` exists → carry every field into `.greptile/config.json` (same names), list `greptile.json` for deletion, delete only on confirm.
 2. Seed from repo evidence only, never placeholders. Read CLAUDE.md / AGENTS.md / ARCHITECTURE.md / README / Makefile first.
-   - `config.json`: `strictness: 2`, `commentTypes: ["logic","syntax"]`, `autoReview: ["open","push"]`, `ignorePatterns` (generated, vendored, fixtures, `.giantmem/`), `instructions` (one line: docs to review against + the gate command; "linters own style"), `rules` from hard invariants the docs state AND the code confirms (`id` kebab, `rule`, `scope` globs, `severity`). `autoApprove.filters.excludePaths` = repo's High-Risk Files list, if one exists.
+   - `config.json`: `strictness: 2`, `commentTypes: ["logic","syntax"]`, `ignorePatterns` (generated, vendored, fixtures, `.giantmem/`), `instructions` (one line: docs to review against + the gate command; "linters own style"), `rules` from hard invariants the docs state AND the code confirms (`id` kebab, `rule`, `scope` globs, `severity`). `autoApprove.filters.excludePaths` = repo's High-Risk Files list, if one exists.
    - `rules.md`: `# Review notes for <repo>`, one stack paragraph, numbered "What matters in a review here", closing "Things that look wrong but are not:" line.
    - `files.json`: the convention docs above, one-line `description` each.
 3. `ignorePatterns`: match an existing file's form. New file: newline-separated string (docs type it `string`).
@@ -84,4 +85,4 @@ Run after reading Greptile's summary for the MR and after pushing review fixes. 
 ## Edges
 
 - `.greptile/` edits are build-config-shaped. Adding them to an MR that is otherwise auto-approve-eligible may raise its risk tier. MR near approval → offer a separate MR off the base branch instead.
-- Whether Greptile reads `.greptile/` from the MR head or the target branch is undocumented. Count a rule as live only after merge.
+- Greptile reads auto-approve policy from the MR's base branch ("a PR that edits its own config cannot loosen it"). Assume the same for rules: a `.greptile/` change is live only after merge.

@@ -31,7 +31,7 @@ def slug(title):
 
 
 def git_project(cwd):
-    # ponytail: worktree layouts like ~/dev/python/cc-wt/stage resolve to "cc"; pass --project when that is too terse
+    # worktree layouts like ~/dev/python/cc-wt/stage resolve to "cc"; pass --project when that is too terse
     try:
         common = subprocess.run(
             [

@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain — commit + push + write MR description + open MR; in Greptile repos also triggers a re-review on an existing MR and starts `/loop 5m /babysit`. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -75,6 +75,11 @@ Title: use the most recent commit subject (or the branch's primary commit subjec
 
 If the MR/PR already exists for this branch: skip creation, capture the existing URL.
 
+### Step 4b — Review handoff (GitLab repos with `.greptile/` or `greptile.json` at root; else skip)
+
+1. MR existed before this run (step 4 skipped creation) and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
+2. No `/babysit` job in `CronList` → invoke the `loop` skill with `5m /babysit`. Babysit stops its own loop at READY or BLOCKED.
+
 ### Step 5 — Final output
 
 Print to chat in EXACTLY this order, nothing else:
@@ -108,5 +113,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → greptile repos: `@greptile review` if MR existed + `/loop 5m /babysit` → print desc + URL
 ```

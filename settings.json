@@ -173,6 +173,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Bash|mcp__plugin_slack_slack__slack_send_message|mcp__plugin_slack_slack__slack_send_message_draft|mcp__plugin_slack_slack__slack_schedule_message|mcp__plugin_kai_atlassian__addCommentToJiraIssue",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "in=$(cat); case $in in *glab*|*gh\\ *|*curl*|*mcp__*) printf %s \"$in\" | python3 ~/.claude/hooks/voice_gate.py;; esac",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "PostToolUse": [

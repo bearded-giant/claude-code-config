@@ -12,7 +12,7 @@
 set -uo pipefail
 
 CEREBRO_DIR="${CEREBRO_DIR:-$HOME/dev/ai/cerebro}"
-# ponytail: a CEREBRO_PROJECTS_DIR set only in cerebro's .env is invisible here; export it too
+# a CEREBRO_PROJECTS_DIR set only in cerebro's .env is invisible here; export it too
 PROJECTS_DIR="${CEREBRO_PROJECTS_DIR:-$CEREBRO_DIR/projects}"
 DEFAULT_MODEL="opus"
 

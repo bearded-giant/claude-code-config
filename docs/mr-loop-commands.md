@@ -6,7 +6,7 @@ Worktree-scoped command for GitLab MR lifecycle. One MR per session — matches 
 
 ## `/babysit`
 
-Address open review threads on this worktree's MR. Loop: `/loop 5m /babysit` while review active.
+Address open review threads on this worktree's MR. Loop: `/loop 5m /babysit`; it stops itself at READY (pipeline green, and on Greptile MRs, Greptile has reviewed the head, posting `@greptile review` itself, max 3 rounds) or BLOCKED (red pipeline, conflict, round cap, Greptile silent 15 min).
 
 Resolves MR via `glab --source-branch=$BRANCH --state=opened`. Fetches unresolved discussions (`resolved=false`, author != self).
 
@@ -33,7 +33,7 @@ claude -p "/babysit"                          # one-shot, observe
 
 ## Composes with
 
-`kai:glab` (glab syntax), `kai:gitlab-inline-comments` (DiffNote replies), `kai:debugging-pipelines` (red pipeline escalation), `kai:open-mr` (MR creation), `py-check`/`ts-check`, `caveman-commit`, `ship-it` (MR desc + open), `loop`.
+`kai:glab` (glab syntax), `kai:gitlab-inline-comments` (DiffNote replies), `kai:debugging-pipelines` (red pipeline escalation), `kai:open-mr` (MR creation), `py-check`/`ts-check`, `caveman-commit`, `ship-it` (MR desc + open; in Greptile repos starts `/loop 5m /babysit`), `greptile` (`@greptile review` trigger, `.greptile/` rules), `loop`.
 
 ## Files
 

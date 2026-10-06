@@ -16,7 +16,7 @@ CONFIG = Path(
         Path(__file__).resolve().parent.parent / "config" / "notion-publish.yaml",
     )
 )
-# ponytail: skill write-back bumps mtime after sync; grace keeps that from reading as dirty
+# skill write-back bumps mtime after sync; grace keeps that from reading as dirty
 DIRTY_GRACE_S = 120
 
 FM_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n?", re.S)

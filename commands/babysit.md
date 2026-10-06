@@ -31,7 +31,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    ```
    glab api "projects/<project_id>/merge_requests/<iid>/discussions" --paginate
    ```
-   Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it.
+   Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
 
    **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
 
@@ -70,15 +70,15 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    2. Run `py-check` / `ts-check` skill on touched files.
    3. Commit using caveman-commit format. Subject prefix `review:` (e.g., `review: rename foo to bar`). If the repo's commit-msg hook needs a JIRA key, prefix it (derive from branch name or sibling commits). If push is then rejected **by the commit-msg / pre-push policy hook only** (not a non-fast-forward), retry once with `git push --no-verify` — py-check already ran in 6.2.
    4. Push: `git push`
-   5. Reply on thread with a **casual confirmation** — write like a teammate dropping a quick note, not an LLM summary:
+   5. Reply on thread in Bryan's voice (`~/.claude/config/voice.md`; `voice_gate.py` blocks drift):
       - One short, plain sentence per item you actually addressed in this thread. Reviewer note bundles N findings → N bullets; single finding → one sentence, no bullet.
       - Style: `` `foo` handled in tests now ``, `` `_hello_world` guard added ``. One line per item, ~15 words. No preamble ("I have addressed…"), no restating the finding verbatim, no file/doc-path citations (`CLAUDE.md → …`), no justification the reviewer didn't ask for, no sha dump, no blanket paragraph.
       - **Omit** any item you didn't touch (out of scope, silently skipped) — never mention it.
-      - For an item you deliberately did **not** do (contradicts a design decision / known reason from this session, or you're keeping as-is), add one bullet stating the decision + one reason, nothing more. Examples: `` `app.logger` is the repo standard — leaving as-is, will revisit in a follow-up ``, `` email-in-logs intentional for rollout; TODO already flags it for revisit ``, `schema migration not needed: already handled`.
+      - For an item you deliberately did **not** do (contradicts a design decision / known reason from this session, or you're keeping as-is), add one bullet stating the decision + one reason, nothing more. Examples: `` `app.logger` is the repo standard, leaving as-is for now ``, `` email-in-logs intentional for rollout; TODO already flags it for revisit ``, `schema migration not needed: already handled`.
 
-      Build the body (newline-separated bullets) in `$REPLY`, then:
+      Write the body (newline-separated bullets) to `<scratchpad>/reply-<discussion_id>.md`, then:
       ```
-      glab api -X POST "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>/notes" -f body="$REPLY"
+      glab api -X POST "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>/notes" -F body=@<scratchpad>/reply-<discussion_id>.md
       ```
    6. Resolve thread if `resolvable=true`:
       ```
@@ -101,20 +101,20 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
 
 9. **Gate** — every run ends here, including zero-thread runs. Decides whether this babysit instance is finished.
 
-   **Greptile-aware** iff step 2's discussions include a note containing `<!-- greptile_summary -->` (proves Greptile reviews this project; `.greptile/` may not exist). Reviewed sha = the `/commit/<sha>` in that note's "Last reviewed commit" line. Read it from step 2's payload, not a fresh fetch, so a review landing mid-run can't mark READY over threads this run never saw. Re-reviews are manual (`@greptile review`), so every push leaves the review stale and blocks auto-approve.
+   **Greptile-aware** iff step 2's discussions include a note containing `<!-- greptile_summary -->`, or the repo root has `.greptile/` or `greptile.json` (covers a new MR Greptile has not reached yet). Reviewed sha = the `/commit/<sha>` in that note's "Last reviewed commit" line. Read it from step 2's payload, not a fresh fetch, so a review landing mid-run can't mark READY over threads this run never saw. Re-reviews are manual (`@greptile review`), so every push leaves the review stale and blocks auto-approve.
 
-   Inputs: MR head `sha` and `head_pipeline.status` (`glab api "projects/<project_id>/merge_requests/<iid>"`, fetched after the last push), threads still actionable this run, state file `_greptile`. Green = `success`, `manual`, `skipped`, or no pipeline. Red = `failed`, `canceled`.
+   Inputs: MR head `sha` and `head_pipeline.status` (`glab api "projects/<project_id>/merge_requests/<iid>"`, fetched after the last push), threads still actionable this run, state file `_greptile`. Green = `success`, `manual`, `skipped`, or no pipeline in a repo without `.gitlab-ci.yml`. No pipeline with `.gitlab-ci.yml` = not created yet, so neither. Red = `failed`, `canceled`.
 
    First match wins:
 
    | State | Condition | Action |
    |---|---|---|
-   | BLOCKED | pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, or `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
+   | BLOCKED | MR is Draft without `[babysit-ok]`, pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, or `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
    | working | actionable threads left past the 5-thread cap | continue |
    | sign-off | deferred state-file threads remain | continue, slow cadence |
-   | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha` | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
-   | waiting | pipeline neither green nor red, or `requested_sha == head` and not yet reviewed | continue |
-   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | raise attention `MR !<iid> ready: pipeline green, greptile <score>/5[, approved]`, **stop loop** |
+   | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha`, and a summary note exists or the MR is 15+ min old | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
+   | waiting | pipeline neither green nor red, `requested_sha == head` and not yet reviewed, or greptile-aware with no summary note on an MR under 15 min old (Greptile reviews on open) | continue |
+   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | raise attention `MR !<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]`, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
 
    Greptile's new findings arrive as fresh unresolved discussions; the next run handles them through steps 2-8 like any reviewer's. Approved = a note with `<!-- greptile_auto_approval_sha:<head> -->`. A sub-5 score with no open Greptile threads is still READY; report the score.
 
@@ -135,7 +135,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
 - **Never check out a different branch.** Stay on `$BRANCH` for the whole run.
 - **Cap**: max 5 threads addressed per run. Leave the rest untouched (no note, no state entry) for the next run, and name them in chat.
 - **MR comments are for reviewers only**: the 6.5 fix confirmation and the 6.7 decline reply. Nothing else gets posted.
-- **Skip if MR is Draft** unless MR description contains `[babysit-ok]`.
+- **Skip if MR is Draft** unless MR description contains `[babysit-ok]`: go straight to step 9, which stops the loop.
 
 ## Output
 

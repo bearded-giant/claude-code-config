@@ -61,6 +61,20 @@ Matching is on the resolved path, anchored to those roots — an earlier version
 
 Bash is not in the matcher, so this guards tool-driven edits only. A `sed -i` or heredoc into a protected path goes through.
 
+## greptile_rereview.py
+
+PostToolUse on Bash. Greptile reviews a GitLab MR only when it opens, so every later push needs an `@greptile review` comment. After a session runs `git push`, this posts that comment and tells the session it did. It acts only when the repo root has `.greptile/` or `greptile.json`, origin is GitLab, the branch is not `main`/`master`/`stage`, the push was a branch push (not a tag, `--tags`, or `--delete`), `HEAD` matches `@{u}`, and exactly one open MR has that source branch. It waits up to about 16s for GitLab to register the new head, then skips when Greptile already reviewed that head or an `@greptile review` note is newer than the head commit. The `settings.json` command runs a shell `case` first, so python starts only when the payload mentions `git` and `push`. Tests: `python3 hooks/test_greptile_rereview.py`.
+
+## voice_gate.py
+
+**Hook:** `PreToolUse` (matcher: Bash, the Slack send/draft/schedule MCP tools, Jira `addCommentToJiraIssue`)
+
+Lints text posted under the user's name against `config/voice.md`. That covers MR/PR notes and thread replies (`glab mr note`, `gh pr comment|review`, and `glab api`/`gh api`/`curl` posts to notes, discussions, comments), Slack messages, and Jira comments. MR descriptions are out of scope. It blocks on capitalized sentence starts, first person (except on Slack), a lowercase `i`, em/en dashes, code outside backticks, markdown headers/tables/bold, unicode emoji, filler, Claude attribution, and length over the surface cap (reply 80 words, comment 150, Slack 80, Jira 150). The block reason lists each violation, so the model rewrites and retries.
+
+The body is read from `-m`, `--body`, `--body-file`, `--input`, `-F body=@file`, `$(cat file)`, `--data @file`, and heredocs written earlier in the same command. A body it can't read (a shell variable, JSON built by a script) blocks with instructions to post from a file. `VOICE_GATE=off` in the command skips the check and is for the user's own verbatim words only; MCP calls have no bypass.
+
+A capitalized sentence start is flagged only when the word is common English (a starter list plus `/usr/share/dict/words`), so names and product names pass. It returns the legacy top-level `decision: block` for the same reason as `guard_protected_paths.py`. The hook command in `settings.json` runs a shell `case` first and only starts python when the payload mentions `glab`, `gh`, `curl`, or `mcp__`, so an ordinary Bash call costs about 10ms instead of a pyenv-shimmed interpreter start. Tests: `python3 hooks/test_voice_gate.py`.
+
 ## standing_constraints.py
 
 **Hook:** `UserPromptSubmit`
@@ -88,6 +102,8 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
+| PreToolUse | `voice_gate.py` (Bash, Slack send/draft/schedule, Jira comment) | No (JSON decision only) |
+| PostToolUse | `greptile_rereview.py` (Bash, `git push` only) | Yes (one line after it posts) |
 | Stop | dispatch: `debug_stop_check`, `notify_attention` | No (JSON decision only) |
 | SessionStart, UserPromptSubmit, PostToolUse, PermissionRequest, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py` detached) | N/A (terminal only) |
