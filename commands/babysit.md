@@ -31,7 +31,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    ```
    glab api "projects/<project_id>/merge_requests/<iid>/discussions" --paginate
    ```
-   Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
+   Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Exception: Greptile edits its `<!-- greptile_outside_diff -->` note in place on each re-review, so keep a thread whose first note is by `greptile` and has `updated_at` later than the `created_at` of your last note in that thread. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
 
    **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
 
