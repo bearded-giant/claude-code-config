@@ -209,6 +209,7 @@ Any LLM-generated doc with unresolved questions for the user MUST put them at th
 - Format: numbered list, each item marked `[BLOCKING]` or `[non-blocking]`
 - Remove the section once all items resolved (don't leave empty stub)
 - If a template scaffolds the section by default, leave it in until populated/resolved — buried questions get missed
+- In `.giantmem/` docs, each item mirrors 1:1 to a doit `decision` item; the doc stays the source of truth (`feature-management` → `### Decision mirror`)
 
 ```markdown
 ## Open Questions for User

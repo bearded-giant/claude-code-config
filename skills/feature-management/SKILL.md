@@ -1,6 +1,6 @@
 ---
 name: feature-management
-description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /abandon-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces user-actionable follow-ups to park in the feature's doit list.
+description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /abandon-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces code follow-ups to park in the feature's doit list.
 ---
 
 Feature system for `.giantmem/features/`. Persistent capabilities that span sessions.
@@ -191,17 +191,33 @@ Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user
 
 ## Feature todos → doit sync
 
-Hard link between multi-step feature work and the doit MCP. Items the USER must act on (not the model) get parked in a per-feature doit list so they survive the session. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
+Hard link between multi-step feature work and the doit MCP. Code work found but not done this session, and decisions mirrored from doc Open Questions, get parked in a per-feature doit list. Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
 
 ### Trigger — model-initiated ask
 
-During multi-step work — feature OR bare repo — when a cluster of user-actionable follow-ups appears — "review this MR", "run X later", "decide Y", "remember Z before ship" — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below), at task end or a real blocker, never mid-chain. Keep working everything that does not depend on the answer. Show the proposed items (text + bucket) so user edits before write.
+During multi-step work — feature OR bare repo — when code follow-ups appear that this session will not do (deferred refactor, bug found in passing, test gap, a split-out MR) — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below), at task end or a real blocker, never mid-chain. Keep working everything that does not depend on the answer. Show the proposed items (text + bucket) so user edits before write.
 
 - Ask ONCE per cluster, never per item.
-- Never auto-write todos — the ask is the gate.
+- Never auto-write todos — the ask is the gate. Only exception: decision mirrors (below).
+- Two item kinds only:
+  - code work: a repo, a file or symbol, a change. `claude:` when the model can do it; no prefix when the user keeps it.
+  - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
+- NOT todos — put these in the chat report's open edges instead: comms (ping, share, announce), review / approve / merge an MR (the MR tracks itself), console / admin / DNS / cert / vault / beta-admin settings, manual confirm / verify, ops runbook steps, pointers to another list or doc.
+- Mixed item → only the code half becomes the item. A decision half goes into the doc's Open Questions and mirrors from there.
 - Model-only next-steps (things the model does this turn) are NOT todos — skip them.
 - No active feature → use the bare `{repo}` list, still offer. User works outside features often — do NOT skip. Touch `daily` only on explicit user request.
 - Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
+
+### Decision mirror — doc Open Questions ↔ doit, 1:1
+
+The doc is the source of truth; the item is the reminder. Every `## Open Questions for User` entry in a `.giantmem/` doc has exactly one `decision` item, and every `decision` item points at exactly one entry.
+
+- Write in the same turn the doc gains or rewords an entry. No ask. Say `mirrored N decisions to <list>` in chat.
+- List: the doc's feature list (`--feature <name>` derivation below), or the bare `{repo}` list for a repo-level doc.
+- Item: `type: decision`, text = the question (≤ 80 chars), description first line `ref: <doc abs path>`. `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`.
+- Resolve doc first: the answer lands in the doc and the entry leaves Open Questions, then `complete_todo` + `add_note` append `DONE {ts} resolved in <doc path>: <one-line answer>`. Same order when the user answers in chat or in the doit note.
+- Match items to entries on question text; entry numbers shift as others resolve.
+- Drift either way (orphan item, unmirrored entry) → `/doit-prune` repairs it.
 
 ### List resolution — repo-qualified, worktree-aware
 
@@ -248,12 +264,16 @@ Prefix every item text with `N.` = do-order / critical-path sequence across the 
 
 ### Description — more than a post-it
 
-Set `add_todo` `description` (or `add_note` after) ONLY when the item carries:
+Every item gets a `description`: the `ref:` line below, then whatever it carries of:
 - doc link — repo path or URL
 - script / command to run — exact, fenced or backticked
 - identifier — MR URL, Jira ticket, `shop_id`, `job_id`, dashboard link
 
-Preserve commands / paths / URLs EXACTLY (no caveman inside them). Redact secrets per the notes rules above (`<REDACTED:token>` etc.). Plain reminders get no description.
+Preserve commands / paths / URLs EXACTLY (no caveman inside them). Redact secrets per the notes rules above (`<REDACTED:token>` etc.).
+
+First description line is always `ref: <repo abs path> [branch <name>] [mr <url>]` (`decision` items: `ref: <doc abs path>`). `/doit-prune` and `/babysit` match staleness on it, and the session-prime hook prints it.
+
+Notes are not a status log. When scope shrinks or names change, rewrite the text with `update_todo`; don't append dated status paragraphs.
 
 ### Create vs update (idempotent)
 
@@ -266,7 +286,7 @@ Never silently renumber the whole list — append-extend. Reorder only on explic
 
 ### Model-assignable items (`claude:` prefix)
 
-When a proposed item is something the model can execute (not just a user reminder), prefix its text with `claude:` so a later `/burn` picks it up. User-only items get no prefix. In the AskUserQuestion batch, mark which items are `claude:`-assigned so the user sees the hand-off. Full burn-down loop → `burn` skill.
+Code items the model can execute carry `claude:` so a later `/burn` picks them up. Code items the user keeps and `decision` mirrors carry no prefix; `/burn` skips them. Full burn-down loop → `burn` skill. Cleanup of stale or non-code items → `doit-prune` skill.
 
 ## Always global — NEVER feature-scoped
 
@@ -287,12 +307,12 @@ SessionStart hooks already inject WORKSPACE.md, top-level `plans/current.md`, an
 
 ## Todos → doit (repo / feature list)
 
-When multi-step work surfaces items the USER must act on outside the current turn (review an MR/doc, run a script later, follow up, decide), MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+When multi-step work surfaces code follow-ups this session will not do, MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Items are code work or doc-mirrored `decision`s, never comms, review/merge asks, settings, or manual confirms; full rule → `### Trigger — model-initiated ask` and `### Decision mirror` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
 
 - List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
 - Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
 - Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
-- Item gets a `description` only when it carries a doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets. Plain post-it items get none.
+- Item `description` opens with `ref: <repo abs path> [branch <name>] [mr <url>]`, then any doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets.
 - Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
 - Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then). ALWAYS pass `list=` explicitly on every doit call — the MCP's active-list default is the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this name.
 

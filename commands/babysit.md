@@ -23,7 +23,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    BRANCH="$(git branch --show-current)"
    glab mr list --source-branch="$BRANCH" -F json   # opened is the default state
    ```
-   - Zero results → exit clean: `no open MR for branch <BRANCH>`
+   - Zero results → `glab mr list --source-branch="$BRANCH" --merged -F json`. Merged MR found → run the `doit-prune` skill with `--mr <iid> --auto`, stop the loop (step 9 **Stop loop**), exit: `MR !<iid> merged, doit <n> closed`. None → exit clean: `no open MR for branch <BRANCH>`
    - Multiple results → exit clean: `ambiguous: <n> MRs from this branch — manual triage needed`
    - One result → proceed. Capture `iid`, `project_id`, `web_url`.
 
@@ -114,7 +114,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
    | sign-off | deferred state-file threads remain | continue, slow cadence |
    | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha`, and a summary note exists or the MR is 15+ min old | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
    | waiting | pipeline neither green nor red, `requested_sha == head` and not yet reviewed, or greptile-aware with no summary note on an MR under 15 min old (Greptile reviews on open) | continue |
-   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | raise attention `MR !<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]`, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
+   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | run the `doit-prune` skill with `--mr <iid> --auto`, then raise attention `MR !<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]`, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
 
    Greptile's new findings arrive as fresh unresolved discussions; the next run handles them through steps 2-8 like any reviewer's. Approved = a note with `<!-- greptile_auto_approval_sha:<head> -->`. A sub-5 score with no open Greptile threads is still READY; report the score.
 
@@ -143,7 +143,7 @@ Single line:
 ```
 MR !1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
 ```
-Drop any zero-count segment (`declined`, `needs sign-off`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
+Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
 Below it, one numbered entry per deferred thread: URL, why it was deferred, the plan or open question with options. The user signs off in chat by number (`signed off 1`, or plan edits); the next run picks it up as `signed_off`.
 
 ## Failure modes — exit clean, never error

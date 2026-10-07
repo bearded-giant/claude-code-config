@@ -97,7 +97,7 @@ Table: `# | seq | priority | item | result (done / blocked / skipped) | note`. B
 
 ## Ties to feature-todos
 
-When the model proposes a feature-todo batch (`feature-management` → Feature todos → doit), items it can execute itself get the `claude:` prefix so a later `/burn` picks them up. User-only items get no prefix.
+When the model proposes a feature-todo batch (`feature-management` → Feature todos → doit), code items the model can execute get the `claude:` prefix so a later `/burn` picks them up. User-kept code items and `decision` mirrors carry no prefix, so `/burn` skips them. Stale or noise items → `doit-prune` skill.
 
 ## Burn-down queue (`claude:` marker)
 
@@ -106,6 +106,6 @@ Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drai
 - Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
 - Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.
 - Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for human.
-- When the model proposes a feature-todo batch, items it can execute get the `claude:` prefix; user-only items don't.
+- Model-proposed code items get `claude:` when the model can execute them; `decision` items mirror doc Open Questions and never burn.
 
 Full procedure → `burn` skill.

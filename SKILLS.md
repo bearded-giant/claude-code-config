@@ -38,6 +38,7 @@
 | Skill | Purpose |
 |-------|---------|
 | `/burn` | Burn down `claude:`-marked doit todos, sequence-first then priority (`--list`, `--priority`, `--max`, `--dry-run`) |
+| `/doit-prune` | Verify a doit list against live code, MR state, and its docs: complete landed items and resolved decisions, keep `decision` items 1:1 with doc Open Questions, delete stale items and noise, rewrite drifted ones, offer to delete an emptied list (`--list`, `--all`, `--mr`, `--auto`, `--dry-run`) |
 
 ## Workspace
 

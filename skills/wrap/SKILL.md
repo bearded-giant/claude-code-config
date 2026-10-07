@@ -26,10 +26,10 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - open MRs: state, pipeline, unresolved threads
    - Uncommitted or unpushed work is a gap. Offer commit, or commit and push, in the batched ask.
 2. **doit** (always pass `list=`):
-   - Items that landed this session: `complete_todo` plus a DONE note. No ask needed.
-   - New user follow-ups go in the batched ask.
-   - Every `claude:` item must be burnable cold: paths, commands, and identifiers in its text or description. Fill thin ones in.
-   - An open item for a merged MR is stale; offer to complete it.
+   - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
+   - New items: code follow-ups in the batched ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. Comms, review/merge asks, settings, and manual confirms go in the handoff's `Open edges`, never doit.
+   - Every `claude:` item must be burnable cold: `ref:` line, paths, commands, and identifiers in its text or description. Fill thin ones in.
+   - `feature` mode: list would end with 0 pending → offer `delete_list` in the batched ask.
 3. **Docs:**
    - Feature: `tasks.md` checkboxes match reality, and `{name}-notes.md` / `facts.md` hold this session's new identifiers, commands, gotchas, and decisions.
    - Bare repo: route per workspace-rules (`context/`, `plans/current.md`).

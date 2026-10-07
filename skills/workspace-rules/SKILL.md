@@ -25,6 +25,8 @@ Format: numbered list, mark blocking vs non-blocking.
 
 Remove the section once answered.
 
+Each entry mirrors 1:1 to a doit `decision` item, written with the doc and closed once the doc resolves it → `feature-management` → `### Decision mirror`.
+
 ## Global directories — always at `.giantmem/` level
 
 | Directory | Format | Verbosity | Example |

@@ -201,8 +201,11 @@ def main() -> None:
         "if the user's ask matches one, say so and work it as that item",
         "  - work in this session that lands a listed item -> start_todo when "
         "you pick it up, complete_todo + DONE note when it lands",
-        "  - new user-actionable follow-ups this session -> batch ONE "
-        "AskUserQuestion to add them to this list",
+        "  - new items: code work (`ref:` first description line, `claude:` "
+        "if model work) in ONE batched AskUserQuestion, or a `decision` "
+        "mirroring one doc Open Question 1:1. Never comms, review/merge an "
+        "MR, settings, manual confirms",
+        "  - stale or non-code items here -> /doit-prune",
         "  - `claude:` items are model-assigned; /burn drains them. Do not "
         "auto-burn and do not quiz the user about the list at startup",
         "</system-reminder>",
