@@ -8,5 +8,5 @@
   "lines": true,
   "duration": true,
   "gmdocs": false,
-  "models": false
+  "models": true
 }
