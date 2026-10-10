@@ -87,11 +87,15 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
       MR-level notes (`resolvable=false`) can't be resolved via API — reply only.
    7. **`contradicts_design` threads** — no edit, no commit, no resolve. Skip 6.1–6.4 and 6.6. Post only the decline-with-reason bullet (6.5 decline branch) and leave the thread **unresolved**, so the human can accept or contest the rationale.
 
-7. **Raise attention if anything was left for you** — once, at end of run. If anything was newly deferred this run (NEEDS-SIGN-OFF, `actionable_complex` ambiguous, push rejected, pipeline red, rebase conflict):
+7. **Raise or clear attention** — once, at end of every run. If anything is still left for you (NEEDS-SIGN-OFF threads still unresolved, including ones from earlier runs, `actionable_complex` ambiguous, push rejected, pipeline red, rebase conflict), raise it with the total pending count:
    ```
    python3 ~/.claude/hooks/request_attention.py "MR !<iid> (<branch>): <n> thread(s) need your sign-off"
    ```
-   Flags the tmux window + sends a desktop notification when the session stops. Threads already in the state file from an earlier run do not re-fire it. If babysit fully handled every thread, do **not** call it here; step 9 owns the READY and BLOCKED signals.
+   Otherwise clear it:
+   ```
+   python3 ~/.claude/hooks/request_attention.py --clear
+   ```
+   Raise every run while something is pending: each `/loop` tick clears the flag on submit, and an unchanged reason does not re-notify. Step 9 owns the READY and BLOCKED signals and runs after this.
 
 8. **Pipeline check** — after final push, query:
    ```

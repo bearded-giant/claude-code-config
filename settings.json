@@ -131,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check notify_attention",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check",
             "timeout": 10
           },
           {
@@ -153,7 +153,29 @@
         ]
       }
     ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|elicitation_dialog|agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ask",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion|ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ask",
+            "timeout": 5
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
@@ -221,7 +243,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall clear_attention",
+            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall",
             "timeout": 10
           },
           {
@@ -231,7 +253,7 @@
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/claude_tmux_state.sh busy",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh submit",
             "timeout": 5
           }
         ]

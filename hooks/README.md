@@ -98,17 +98,17 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
 | SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `memory_ingest` | Yes (one-time, ~4.9KB) |
-| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `clear_attention`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above) |
+| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above) |
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | PreToolUse | `voice_gate.py` (Bash, Slack send/draft/schedule, Jira comment) | No (JSON decision only) |
 | PostToolUse | `greptile_rereview.py` (Bash, `git push` only) | Yes (one line after it posts) |
-| Stop | dispatch: `debug_stop_check`, `notify_attention` | No (JSON decision only) |
-| SessionStart, UserPromptSubmit, PostToolUse, PermissionRequest, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
+| Stop | dispatch: `debug_stop_check` | No (JSON decision only) |
+| SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py` detached) | N/A (terminal only) |
 
-Undocumented above but present: `live_index.py` (PostToolUse, indexes `.giantmem/` and memory writes into live.db), the PostToolUse nudges (`caveman_artifact_nudge`, `code_comment_nudge`, `notion_publish_nudge`), the attention trio (`request_attention` writes the marker from `commands/babysit.md`, `notify_attention` consumes it on Stop, `clear_attention` clears it on the next prompt), and `_giantmem_log.py`, a shared logger imported by several of them.
+Undocumented above but present: `live_index.py` (PostToolUse, indexes `.giantmem/` and memory writes into live.db), the PostToolUse nudges (`caveman_artifact_nudge`, `code_comment_nudge`, `notion_publish_nudge`), `request_attention.py` (not a hook: `commands/babysit.md` calls it to set or `--clear` the pane option `@claude_attention`; a new reason sends a desktop notification, and `claude_tmux_state.sh submit` drops the flag on the next prompt), and `_giantmem_log.py`, a shared logger imported by several of them.
 
 Run the statusline unit tests with `npm test` from this directory.
 
