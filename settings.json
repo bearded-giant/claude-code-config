@@ -70,7 +70,9 @@
     ],
     "ask": [],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": ["/Users/bryan/"]
+    "additionalDirectories": [
+      "/Users/bryan/"
+    ]
   },
   "hooks": {
     "SessionStart": [
@@ -276,6 +278,22 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/dispatch.py --event SubagentStart subagent_context",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh agent+",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/claude_tmux_state.sh agent-",
+            "timeout": 5
           }
         ]
       }
@@ -341,12 +359,19 @@
   "mcpServers": {
     "giantmem-search": {
       "command": "/Users/bryan/.local/bin/giantmem",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     },
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": ["/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"],
-      "env": { "DOIT_ACTIVE_LIST": "" }
+      "args": [
+        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
+      ],
+      "env": {
+        "DOIT_ACTIVE_LIST": ""
+      }
     },
     "snowflake": {
       "type": "http",

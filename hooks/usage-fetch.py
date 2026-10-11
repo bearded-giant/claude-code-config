@@ -15,6 +15,7 @@ import urllib.request
 CACHE_DIR = os.path.expanduser("~/.cache/claude-usage")
 CACHE_FILE = os.path.join(CACHE_DIR, "cache.json")
 CONFIG_FILE = os.path.join(CACHE_DIR, "config.json")
+USAGE_TMUX = os.path.join(CACHE_DIR, "usage.tmux")
 LOCK_FILE = os.path.join(CACHE_DIR, ".lock")
 COOKIE_DB = os.path.expanduser(
     "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Cookies"
@@ -230,6 +231,44 @@ def write_cache(cache):
         os.fsync(f.fileno())
     os.chmod(tmp, 0o600)
     os.rename(tmp, CACHE_FILE)
+    try:
+        write_tmux(cache)
+    except OSError:
+        pass
+
+
+def tmux_color(pct):
+    if pct < 50:
+        return "green"
+    if pct < 70:
+        return "yellow"
+    if pct < 85:
+        return "colour208"
+    return "red"
+
+
+def write_tmux(cache):
+    # tmux status cannot render the statusline's ANSI, so the strip gets its own markup
+    visible = load_config().get("visible")
+    chunks = []
+    for org in cache.get("orgs", []):
+        if visible is not None and org.get("label") not in visible:
+            continue
+        parts = []
+        for key, name in (("five_hour", "5h"), ("seven_day", "7d")):
+            pct = (org.get(key) or {}).get("used_pct")
+            if pct is None:
+                continue
+            parts.append(f"#[fg={tmux_color(pct)}]{name} {pct}%#[default]")
+        if parts:
+            chunks.append(" ".join(parts))
+    line = " #[fg=colour244]·#[default] ".join(chunks)
+    if line and cache.get("failed_at") is not None:
+        line += " #[fg=colour244]!#[default]"
+    tmp = USAGE_TMUX + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(line)
+    os.rename(tmp, USAGE_TMUX)
 
 
 def record_failure(exc):

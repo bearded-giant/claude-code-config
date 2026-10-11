@@ -501,6 +501,34 @@ function saveState(sessionId, state) {
   } catch (e) {}
 }
 
+// mirror ctx and api errors onto the tmux pane so the status strip can read them
+function syncPaneState(data, state) {
+  const pane = process.env.TMUX_PANE;
+  if (!pane || !data.session_id) return;
+  let remaining = data.context_window?.remaining_percentage;
+  if (remaining == null && data.context_window?.used_percentage != null) {
+    remaining = 100 - data.context_window.used_percentage;
+  }
+  const pct = remaining == null ? null : Math.round(remaining);
+  const err = state.apiError || null;
+  const prevCtx = state.paneCtx ?? null;
+  const prevErr = state.paneErr ?? null;
+  if (pct === prevCtx && err === prevErr) return;
+  const hook = path.join(__dirname, 'claude_tmux_state.sh');
+  try {
+    if (pct !== prevCtx && pct != null) {
+      execFileSync('tmux', ['set-option', '-p', '-t', pane, '@claude_ctx', String(pct)], { timeout: 120 });
+    }
+    if (err !== prevErr) {
+      execFileSync('bash', err ? [hook, 'err', err] : [hook, 'errclear'], { input: '', timeout: 500 });
+    }
+    state.paneCtx = pct;
+    state.paneErr = err;
+    if (state.offset == null) state.offset = 0;
+    saveState(data.session_id, state);
+  } catch (e) {}
+}
+
 function toolTarget(name, input) {
   if (!input) return '';
   switch (name) {
@@ -564,6 +592,14 @@ function parseTranscript(transcriptPath, sessionId) {
     if (!msg?.content) continue;
 
     if (entry.type === 'assistant') {
+      if (entry.isApiErrorMessage) {
+        const t = Array.isArray(msg.content)
+          ? (msg.content.find(b => b.type === 'text')?.text || 'api error')
+          : String(msg.content);
+        state.apiError = t.replace(/\s+/g, ' ').slice(0, 60);
+      } else if (state.apiError) {
+        state.apiError = null;
+      }
       for (const block of msg.content) {
         if (block.type === 'tool_use' && !toolIds.has(block.id)) {
           toolIds.add(block.id);
@@ -827,6 +863,9 @@ const renderTick = () => {
     let line1 = fit.line1;
     const spilled = fit.spilled;
 
+    const transcript = parseTranscript(data.transcript_path, data.session_id);
+    syncPaneState(data, transcript);
+
     // minimal: one line only \u2014 keep usage on it, nothing else can carry it
     if (cfg.style === 'minimal' || !cfg.line2) {
       process.stdout.write(fitSolo(width, seg, fit));
@@ -835,7 +874,6 @@ const renderTick = () => {
 
     // line 2
     const cost = data.cost || {};
-    const transcript = parseTranscript(data.transcript_path, data.session_id);
     const parts = [];
 
     if (cfg.duration && cost.total_duration_ms) {
