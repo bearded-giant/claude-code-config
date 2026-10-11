@@ -177,6 +177,16 @@
         ]
       },
       {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/artifact_gate.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
@@ -213,7 +223,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge notion_publish_nudge",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge",
             "timeout": 10
           }
         ]

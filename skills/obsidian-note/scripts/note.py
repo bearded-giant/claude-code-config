@@ -52,6 +52,16 @@ def git_project(cwd):
     return re.sub(r"(-wt)?(--bare)?$", "", name)
 
 
+DOMAIN_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+LINK_KEYS = ("artifact", "artifact_rev")
+
+
+def domain_arg(v):
+    if not DOMAIN_RE.match(v):
+        raise argparse.ArgumentTypeError(f"domain must be lowercase-hyphenated: {v!r}")
+    return v
+
+
 def now_iso():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -76,7 +86,7 @@ def cmd_new(a):
     )
     body = body.strip()
     created = a.created or now_iso()
-    area_dir = vault() / "areas" / a.area
+    area_dir = vault() / "areas" / a.area / a.domain
     area_dir.mkdir(parents=True, exist_ok=True)
     path = unique_path(area_dir, slug(a.title), created)
     tags = ["claude"] + [t.strip() for t in (a.tags or "").split(",") if t.strip()]
@@ -126,6 +136,46 @@ def parse_fm(path):
     return fm
 
 
+def domain_of(p):
+    parts = p.relative_to(vault() / "areas").parts
+    return parts[1] if len(parts) > 2 else ""
+
+
+def cmd_domains(a):
+    counts = {}
+    for p in (vault() / "areas").rglob("*.md"):
+        if p.stem == "index":
+            continue
+        key = (p.relative_to(vault() / "areas").parts[0], domain_of(p))
+        counts[key] = counts.get(key, 0) + 1
+    rows = sorted(k for k in counts if not a.area or k[0] == a.area)
+    for area, dom in rows:
+        print(f"{area}/{dom or '(none)'} | {counts[(area, dom)]}")
+    return rows
+
+
+def cmd_link(a):
+    path = Path(a.note).expanduser()
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n") or text.find("\n---", 4) < 0:
+        sys.exit(f"no frontmatter: {path}")
+    end = text.find("\n---", 4)
+    fm = [
+        l
+        for l in text[4:end].splitlines()
+        if l.split(":", 1)[0].strip() not in LINK_KEYS
+    ]
+    fm += [f"artifact: {a.url}", f"artifact_rev: {a.rev}"]
+    body = text[end + 4 :].rstrip("\n")
+    if a.log:
+        if "\n## Artifact revisions" not in body:
+            body += "\n\n## Artifact revisions\n"
+        body += f"\n- rev {a.rev} · {now_iso()} · {a.log}"
+    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    print(path)
+    return path
+
+
 def cmd_list(a):
     cutoff = ""
     if a.since:
@@ -143,6 +193,8 @@ def cmd_list(a):
 
         if a.area and first("area") != a.area:
             continue
+        if a.domain and domain_of(p) != a.domain:
+            continue
         if a.project and first("project") != a.project:
             continue
         if a.tag and a.tag not in fm.get("tags", []):
@@ -153,6 +205,7 @@ def cmd_list(a):
             (
                 first("created"),
                 first("area"),
+                domain_of(p),
                 first("project"),
                 str(p.relative_to(vault())),
                 first("title"),
@@ -175,8 +228,23 @@ def self_test():
                     "created": None,
                     "tags": None,
                     "project": "proj",
+                    "domain": "sessions",
                     **kw,
                 }
+            )
+
+        def lst(**kw):
+            return cmd_list(
+                argparse.Namespace(
+                    **{
+                        "area": None,
+                        "domain": None,
+                        "project": None,
+                        "tag": None,
+                        "since": None,
+                        **kw,
+                    }
+                )
             )
 
         sys.stdin = io.StringIO("")
@@ -188,7 +256,7 @@ def self_test():
                 created="2026-09-01T10:00:00-07:00",
             )
         )
-        assert p1.name == "redis-keys-ttls.md", p1
+        assert p1 == Path(d) / "areas/auth/sessions/redis-keys-ttls.md", p1
         text = p1.read_text()
         assert text.startswith(
             "---\nid: redis-keys-ttls\naliases: []\ntags: [claude, redis, ttl]\narea: auth\nproject: proj\ncreated: 2026-09-01T10:00:00-07:00\n---\n\n# Redis Keys & TTLs\n"
@@ -209,27 +277,54 @@ def self_test():
             )
         )
         assert p3.name == "redis-keys-ttls-2026-09-02-2.md", p3
+        other = cmd_new(
+            ns(
+                title="Redis Keys & TTLs",
+                area="auth",
+                domain="tokens",
+                created="2026-09-02T12:00:00-07:00",
+            )
+        )
+        assert other == Path(d) / "areas/auth/tokens/redis-keys-ttls.md", other
         blk = Path(d) / "areas" / "infra" / "block.md"
         blk.parent.mkdir(parents=True)
         blk.write_text(
             encoding="utf-8",
             data='---\nid: block\naliases: []\ntags:\n  - claude\n  - es\narea: infra\nproject: ""\ncreated: 2026-09-03T00:00:00-07:00\n---\n\n# Block Form\n',
         )
-        rows = cmd_list(
-            argparse.Namespace(area=None, project=None, tag="es", since=None)
-        )
-        assert [r[4] for r in rows] == ["Block Form"], rows
-        rows = cmd_list(
-            argparse.Namespace(area="auth", project=None, tag=None, since=None)
-        )
+        rows = lst(tag="es")
+        assert [(r[2], r[5]) for r in rows] == [("", "Block Form")], rows
+        rows = lst(area="auth", domain="sessions")
         assert (
             len(rows) == 3
-            and rows[0][3] == "areas/auth/redis-keys-ttls-2026-09-02-2.md"
+            and rows[0][4] == "areas/auth/sessions/redis-keys-ttls-2026-09-02-2.md"
         ), rows
-        rows = cmd_list(
-            argparse.Namespace(area=None, project="proj", tag="ttl", since=None)
+        rows = lst(project="proj", tag="ttl")
+        assert [r[4] for r in rows] == ["areas/auth/sessions/redis-keys-ttls.md"], rows
+        doms = cmd_domains(argparse.Namespace(area=None))
+        assert doms == [("auth", "sessions"), ("auth", "tokens"), ("infra", "")], doms
+
+        cmd_link(
+            argparse.Namespace(
+                note=str(p1), url="https://claude.ai/artifact/A", rev=1, log=None
+            )
         )
-        assert [r[3] for r in rows] == ["areas/auth/redis-keys-ttls.md"], rows
+        cmd_link(
+            argparse.Namespace(
+                note=str(p1),
+                url="https://claude.ai/artifact/A",
+                rev=2,
+                log="split tokens out",
+            )
+        )
+        text = p1.read_text()
+        assert text.count("artifact: https://claude.ai/artifact/A\n") == 1, text
+        assert "artifact_rev: 2\n---\n\n# Redis Keys & TTLs" in text, text
+        assert (
+            text.rstrip().endswith("· split tokens out")
+            and "## Artifact revisions\n\n- rev 2 · " in text
+        ), text
+        assert parse_fm(p1)["artifact_rev"] == ["2"], parse_fm(p1)
     print("ok")
 
 
@@ -240,15 +335,24 @@ def main(argv=None):
     n = sub.add_parser("new")
     n.add_argument("--title", required=True)
     n.add_argument("--area", required=True, choices=AREAS)
+    n.add_argument("--domain", required=True, type=domain_arg)
     n.add_argument("--project")
     n.add_argument("--tags", help="comma separated")
     n.add_argument("--created", help="ISO 8601, default now")
     n.add_argument("--body-file", help="default stdin")
     l = sub.add_parser("list")
     l.add_argument("--area", choices=AREAS)
+    l.add_argument("--domain")
     l.add_argument("--project")
     l.add_argument("--tag")
     l.add_argument("--since", type=int, help="days")
+    d = sub.add_parser("domains")
+    d.add_argument("--area", choices=AREAS)
+    k = sub.add_parser("link")
+    k.add_argument("note")
+    k.add_argument("--url", required=True)
+    k.add_argument("--rev", required=True, type=int)
+    k.add_argument("--log", help="one line for the note's revision log")
     a = ap.parse_args(argv)
     if a.test:
         return self_test()
@@ -256,6 +360,10 @@ def main(argv=None):
         return cmd_new(a)
     if a.cmd == "list":
         return cmd_list(a)
+    if a.cmd == "domains":
+        return cmd_domains(a)
+    if a.cmd == "link":
+        return cmd_link(a)
     ap.print_help()
 
 

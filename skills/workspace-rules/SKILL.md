@@ -87,7 +87,7 @@ Sections in fixed order; omit empty ones:
 - running: process, how it was started, port/pid, left up or torn down, restart command
 - doit: list name, pending count, next 3 by do-order
 ## Decisions                 non-obvious choices, one line of why each
-## External docs             absolute paths / URLs of docs outside this dir (Desktop, other repos, Notion)
+## External docs             absolute paths / URLs of docs outside this dir (vault notes, other repos, claude.ai artifacts)
 ## Paste prompt              fenced block: the complete prompt for the new session
 ```
 
@@ -108,24 +108,10 @@ scope: {scope_id}            # optional; overrides repo→scope membership
 domain: {name}               # optional
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-publish: true | false        # optional; true = deliverable, publishes on write; false = never
-kind: {quickstart | cheatsheet | overview | arch | runbook | guide | explainer | report}  # optional; any `auto` kind publishes on write
-notion: {page url}           # written by notion-publish after first push; presence = upsert
-notion_synced: {iso ts}      # written by notion-publish; do not hand-edit
 ---
 ```
 
-Notion publish: policy, not questions. Local file is canonical for every class; Notion is a mirror in the page tree `Claude Artifacts / repo / worktree? / feature? / doc`. Never ask whether to publish.
-
-| Class | Types or kinds | Notion |
-|---|---|---|
-| state | tasks, plan, facts, notes, handoff, delta-spec, source-spec, history, precompact, workspace, filebox, prompt, domain, machine indexes | never |
-| model memory | pattern | opt-in `publish: true` |
-| working prose | proposal, design, research, review, grill-run, grill-final | on explicit user ask (`on_request` in `config/notion-publish.yaml`) |
-| deliverable | quickstart, cheatsheet, overview, arch, runbook, guide, explainer, report | on write (`auto` list); hook `notion_publish_nudge.py` emits `publish now`, model runs `notion-publish` same turn |
-| vault note | runbook, incident, reference, how-to, decision record NOT tied to a feature or this repo | never auto; lives in `~/Recharge-Notes/areas/<area>/` via `obsidian-note` skill, Notion on explicit ask |
-
-User asks for a deliverable kind → write it at the normal routed path with `publish: true` (or `kind:`), let the hook fire. Same kind but no feature and not about this repo → vault note instead (`obsidian-note`), no `.giantmem/` copy. Notion-side edits do not flow back; republish overwrites the page; the user backports by hand.
+`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, handoff, grill runs) never leaves `.giantmem/` unless the user names it.
 
 Preview: mdlive only when the user asks (preview / render / open). After writing a `.md`, return its path.
 
@@ -293,7 +279,7 @@ Any human-readable doc I generate MUST be written in caveman style on the FIRST 
 **Mermaid sidecar (`.mmd`):**
 - Whenever a `.md` doc contains a mermaid diagram, ALSO write a sibling `.mmd` file with just the mermaid source (no fences, no frontmatter). Same basename, same directory.
 - Example: `multi-tool-synthesis-explainer.md` (with ```` ```mermaid ```` block) ships alongside `multi-tool-synthesis-explainer.mmd` (raw flowchart source).
-- Why: Google Docs / Confluence don't render mermaid inline. User runs `mmdc -i file.mmd -o file.png` to produce an image for paste. Sidecar removes the manual extraction step. Notion renders mermaid fences natively; `notion-publish` passes them through untouched.
+- Why: Google Docs / Confluence don't render mermaid inline. User runs `mmdc -i file.mmd -o file.png` to produce an image for paste. Sidecar removes the manual extraction step. Obsidian renders mermaid fences natively.
 - If a doc has multiple diagrams, write `<basename>-1.mmd`, `<basename>-2.mmd`, etc., in source order.
 - Keep `.md` mermaid block AND `.mmd` file in sync — edits to one must update the other in the same write batch.
 

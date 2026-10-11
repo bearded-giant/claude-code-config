@@ -33,7 +33,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
 3. **Docs:**
    - Feature: `tasks.md` checkboxes match reality, and `{name}-notes.md` / `facts.md` hold this session's new identifiers, commands, gotchas, and decisions.
    - Bare repo: route per workspace-rules (`context/`, `plans/current.md`).
-   - Docs created this session outside the scope dir (Desktop, other repos, Notion): collect absolute paths and URLs for the handoff's `External docs`.
+   - Docs created this session outside the scope dir (vault notes, other repos, claude.ai artifacts): collect absolute paths and URLs for the handoff's `External docs`.
    - Shared docs touched this session: recheck the shared-docs rule (no dates, changelogs, or local paths).
 4. **Running processes** started this session (tunnels, dev servers, background shells, watchers): name, how started, port/pid. If the next session can reuse one, leave it up; otherwise offer teardown in the batched ask. Record each one in the handoff either way.
 5. **Handoff:** write or overwrite it per workspace-rules `## Handoff`. Skip it with `--no-handoff`. If nothing is left open, skip it and set any existing handoff to `status: done`.

@@ -21,4 +21,3 @@ After it runs, only if warranted (the CLI leaves these to you):
 1. Clean up facts.md (final commands, key files, drop placeholders).
 2. Mark `## Acceptance Criteria` items `[x]`; if some are unmet and there were no delta-specs, flag to the user.
 
-Always, last: `python3 ~/.claude/scripts/md_to_notion.py --scan .giantmem/features/{feature}`. Rows with `class: on_request` and `dirty: true` → one line `unpublished: <sources> (say "publish" to push)`. No question. Class `auto` rows were published on write by the hook. Nothing dirty → say nothing.
