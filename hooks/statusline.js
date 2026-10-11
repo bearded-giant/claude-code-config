@@ -195,6 +195,13 @@ function modelLabel(data) {
   return s;
 }
 
+// one letter for the tmux strip: h s o f, so an idle fable/opus pane is visible before its cache goes cold
+function modelLetter(data) {
+  const raw = ((data.model || {}).id || (data.model || {}).display_name || '').toLowerCase();
+  const m = raw.match(/haiku|sonnet|opus|fable/);
+  return m ? m[0][0] : '';
+}
+
 function readEffort(data) {
   return String(data?.effort?.level || process.env.CLAUDE_CODE_EFFORT_LEVEL || '');
 }
@@ -511,9 +518,11 @@ function syncPaneState(data, state) {
   }
   const pct = remaining == null ? null : Math.round(remaining);
   const err = state.apiError || null;
+  const model = modelLetter(data);
   const prevCtx = state.paneCtx ?? null;
   const prevErr = state.paneErr ?? null;
-  if (pct === prevCtx && err === prevErr) return;
+  const prevModel = state.paneModel ?? '';
+  if (pct === prevCtx && err === prevErr && model === prevModel) return;
   const hook = path.join(__dirname, 'claude_tmux_state.sh');
   try {
     if (pct !== prevCtx && pct != null) {
@@ -522,8 +531,12 @@ function syncPaneState(data, state) {
     if (err !== prevErr) {
       execFileSync('bash', err ? [hook, 'err', err] : [hook, 'errclear'], { input: '', timeout: 500 });
     }
+    if (model !== prevModel && model) {
+      execFileSync('tmux', ['set-option', '-p', '-t', pane, '@claude_model', model], { timeout: 120 });
+    }
     state.paneCtx = pct;
     state.paneErr = err;
+    state.paneModel = model;
     if (state.offset == null) state.offset = 0;
     saveState(data.session_id, state);
   } catch (e) {}
