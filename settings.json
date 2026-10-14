@@ -133,13 +133,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check",
+            "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
             "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/claude_tmux_state.sh ready",
-            "timeout": 5
           }
         ]
       }
