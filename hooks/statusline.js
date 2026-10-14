@@ -37,6 +37,8 @@ function loadConfig() {
     duration: true,
     gmdocs: false,
     models: true,
+    preflight: true,
+    mr: true,
   };
   try {
     const cfgPath = path.join(__dirname, 'statusline-config.json');
@@ -328,6 +330,7 @@ function getGitInfo(dir) {
           ? content.slice(16)
           : content.slice(0, 7);
         gitDir = current;
+        info.root = gitDir;
         break;
       }
       headPath = null;
@@ -774,6 +777,68 @@ function giantmemStatus(dir) {
   return cached;
 }
 
+// --- preflight auth + branch MR (detached python fetchers, cached) ---
+
+const PREFLIGHT_OK_TTL_MS = 5 * 60 * 1000;
+// a red check re-polls fast so a fresh login clears it without a hook
+const PREFLIGHT_RED_TTL_MS = 30 * 1000;
+const PREFLIGHT_MAX_AGE_MS = 30 * 60 * 1000;
+const MR_TTL_MS = 60 * 1000;
+const MR_MAX_AGE_MS = 10 * 60 * 1000;
+const BASE_BRANCHES = new Set(['main', 'master', 'stage']);
+const MR_COLORS = { ok: GREEN, wait: YELLOW, bad: RED };
+
+function readCache(cachePath) {
+  try {
+    const data = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+    return { data, age: Date.now() - fs.statSync(cachePath).mtimeMs };
+  } catch (e) { return { data: null, age: Infinity }; }
+}
+
+function spawnFetcher(cachePath, args) {
+  try {
+    const marker = `${cachePath}.refreshing`;
+    try { if (Date.now() - fs.statSync(marker).mtimeMs < 30000) return; } catch (e) {}
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    fs.writeFileSync(marker, '');
+    const child = require('child_process').spawn('python3', args, { detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+  } catch (e) {}
+}
+
+function preflightStatus() {
+  const cachePath = path.join(STATE_DIR, 'preflight.json');
+  const { data, age } = readCache(cachePath);
+  const healthy = data && Object.values(data).every(c => c.ok === true);
+  if (age > (healthy ? PREFLIGHT_OK_TTL_MS : PREFLIGHT_RED_TTL_MS)) {
+    spawnFetcher(cachePath, [path.join(__dirname, 'preflight_check.py'), cachePath]);
+  }
+  return age < PREFLIGHT_MAX_AGE_MS ? data : null;
+}
+
+function mrStatus(root, branch) {
+  if (!root || !branch || BASE_BRANCHES.has(branch)) return null;
+  const key = require('crypto').createHash('md5').update(`${root}\0${branch}`).digest('hex').slice(0, 8);
+  const cachePath = path.join(STATE_DIR, `mr-${key}.json`);
+  const { data, age } = readCache(cachePath);
+  if (age > MR_TTL_MS) spawnFetcher(cachePath, [path.join(__dirname, 'mr_status.py'), root, branch, cachePath]);
+  return age < MR_MAX_AGE_MS ? data : null;
+}
+
+function fmtPreflight(checks) {
+  if (!checks) return '';
+  return Object.entries(checks)
+    .filter(([, c]) => c.ok !== true)
+    .map(([id, c]) => (c.ok === false ? `${RED}✗${id}${RST}` : `${DIM}~${id}${RST}`))
+    .join(' ');
+}
+
+function fmtMr(mr) {
+  if (!mr || !mr.iid) return '';
+  return `${MR_COLORS[mr.level] || DIM}!${mr.iid} ${mr.tag}${RST}`;
+}
+
 // --- line fitting (pure: width + prebuilt segments in, strings out) ---
 
 function buildLine1(seg, p, u, bare) {
@@ -931,6 +996,16 @@ const renderTick = () => {
       if (segs.length) parts.push(segs.join(`${DIM} ${RST}`));
     }
 
+    // last on line 2: packLine2 sheds from the front, so alerts survive narrow panes
+    if (cfg.mr) {
+      const mrStr = fmtMr(mrStatus(git.root, git.branch));
+      if (mrStr) parts.push(mrStr);
+    }
+    if (cfg.preflight) {
+      const authStr = fmtPreflight(preflightStatus());
+      if (authStr) parts.push(authStr);
+    }
+
     const sep = ` ${DIM}\u2502${RST} `;
     let line2 = parts.join(sep);
 
@@ -977,4 +1052,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
+  fmtPreflight, fmtMr,
 };

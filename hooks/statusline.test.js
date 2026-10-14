@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
-  fitLine1, fitSolo, packLine2, charWidth,
+  fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -158,4 +158,25 @@ test('fit ladder holds with wide characters in the path', () => {
   for (const w of [200, 120, 100, 80, 60, 40, 20]) {
     assert.ok(visLen(fitLine1(w, wide).line1) <= w, `width ${w}`);
   }
+});
+
+test('fmtPreflight: silent when every check is ok or cache missing', () => {
+  assert.equal(fmtPreflight(null), '');
+  assert.equal(fmtPreflight({ gcloud: { ok: true }, glab: { ok: true } }), '');
+});
+
+test('fmtPreflight: expired is red x, unreachable is dim ~, ok is hidden', () => {
+  const out = fmtPreflight({ gcloud: { ok: false }, glab: { ok: true }, vault: { ok: null } });
+  assert.ok(out.includes('✗gcloud'));
+  assert.ok(out.includes('~vault'));
+  assert.ok(!out.includes('glab'));
+  assert.equal(visLen(out), visLen('✗gcloud ~vault'));
+});
+
+test('fmtMr: renders iid + tag, empty when no MR', () => {
+  assert.equal(fmtMr(null), '');
+  assert.equal(fmtMr({}), '');
+  const out = fmtMr({ iid: 1234, tag: 'GREEN', level: 'ok' });
+  assert.ok(out.startsWith(GREEN));
+  assert.ok(out.includes('!1234 GREEN'));
 });

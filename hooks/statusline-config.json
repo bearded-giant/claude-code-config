@@ -8,5 +8,7 @@
   "lines": true,
   "duration": true,
   "gmdocs": false,
-  "models": true
+  "models": true,
+  "preflight": true,
+  "mr": true
 }

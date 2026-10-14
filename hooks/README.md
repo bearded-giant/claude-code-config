@@ -106,11 +106,11 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | PostToolUse | `greptile_rereview.py` (Bash, `git push` only) | Yes (one line after it posts) |
 | Stop | dispatch: `debug_stop_check` | No (JSON decision only) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
-| statusLine | `statusline.js` (spawns `usage-fetch.py` detached) | N/A (terminal only) |
+| statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |
 
 Undocumented above but present: `live_index.py` (PostToolUse, indexes `.giantmem/` and memory writes into live.db), the PostToolUse nudges (`caveman_artifact_nudge`, `code_comment_nudge`), `artifact_gate.py` (PreToolUse on `Artifact`, blocks a publish with no `Rev N · timestamp` stamp or a changelog heading; tests: `python3 hooks/test_artifact_gate.py`), `request_attention.py` (not a hook: `commands/babysit.md` calls it to set or `--clear` the pane option `@claude_attention`; a new reason sends a desktop notification, and `claude_tmux_state.sh submit` drops the flag on the next prompt), and `_giantmem_log.py`, a shared logger imported by several of them.
 
-Run the statusline unit tests with `npm test` from this directory.
+Run the statusline unit tests with `npm test` from this directory, and the fetcher tests with `python3 hooks/test_statusline_fetchers.py`.
 
 Recall and workspace hooks all run on one local backend: giantmem (SQLite FTS5 + sqlite-vec). `giantmem_recall.py` reads it for cross-project recall; `session_prime.py`, `session_end_ingest.py`, `live_index.py`, and `precompact_capture.py` write sessions, `.giantmem/` artifacts, and harness memory files (`~/.claude/projects/<slug>/memory/*.md`, tagged `dir_type=memory`) into it.
 
