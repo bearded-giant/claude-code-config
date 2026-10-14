@@ -78,9 +78,16 @@ try:
     attention("MR !1 ready: pipeline green")
     assert notified() == 2
 
+    # tmux's claude-ack.sh acks the reason on focus; a babysit re-raise of it keeps the ack
+    tmux("set-option", "-p", "-t", pane, "@claude_attention_ack", "MR !1 ready: pipeline green")
+    state("submit")
+    attention("MR !1 ready: pipeline green")
+    assert opt("@claude_attention_ack") == opt("@claude_attention")
+
     # nothing pending: clear forgets the reason, so the same reason notifies again later
     attention("--clear")
     assert opt("@claude_attention") == "" and opt("@claude_attention_sent") == ""
+    assert opt("@claude_attention_ack") == ""
     attention("MR !1 ready: pipeline green")
     assert notified() == 3
 
@@ -91,6 +98,7 @@ try:
         opt("@claude_state") == ""
         and opt("@claude_attention") == ""
         and opt("@claude_attention_sent") == ""
+        and opt("@claude_attention_ack") == ""
     )
 finally:
     tmux("kill-server")

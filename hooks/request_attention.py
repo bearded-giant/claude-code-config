@@ -74,6 +74,13 @@ def main() -> None:
             pane,
             "-u",
             "@claude_attention_sent",
+            ";",
+            "set-option",
+            "-p",
+            "-t",
+            pane,
+            "-u",
+            "@claude_attention_ack",
         )
         return
     reason = " ".join(sys.argv[1:]).strip() or "session paused, needs input"
