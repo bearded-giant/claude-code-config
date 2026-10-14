@@ -7,6 +7,12 @@ import subprocess
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 PRIORITY_RANK = {"critical": 0, "urgent": 1, "important": 2}
 MAX_ITEMS = 15
+# do-it.nvim's create_list / rename_list reject longer names
+MAX_LIST_NAME = 24
+REPO_MAX = 14
+ORG_PREFIX = "recharge-"
+DEFAULT_LEAVES = {"main", "master", "develop"}
+SEG_PREFIXES = ("feat-", "fix-", "chore-")
 
 
 def git_root(cwd: str) -> str:
@@ -143,10 +149,20 @@ def ready_handoff(root: str, feat):
 def list_name(root: str, feat) -> str:
     leaf = os.path.basename(root)
     parent = os.path.basename(os.path.dirname(root))
-    # parent ending -wt is the worktree container; fold it into the name so
-    # parallel worktrees of the same repo don't collide on one list
-    base = f"{parent}-{leaf}" if parent.endswith("-wt") else leaf
-    return f"{base}-{feat}" if feat else base
+    # parent ending -wt is the worktree container: it names the repo, the leaf names the worktree
+    in_wt = parent.endswith("-wt")
+    repo = (parent[:-3] if in_wt else leaf).removeprefix(ORG_PREFIX)
+    if len(repo) > REPO_MAX:
+        repo = repo.split("-")[0]
+    seg = feat or (leaf if in_wt and leaf not in DEFAULT_LEAVES else "")
+    for prefix in SEG_PREFIXES:
+        seg = seg.removeprefix(prefix)
+    words = seg.split("-") if seg else []
+    # the tmux chip shows the whole name, so shed trailing words rather than cut mid-word
+    while len(words) > 1 and len(repo) + 1 + len("-".join(words)) > MAX_LIST_NAME:
+        words.pop()
+    name = f"{repo}-{'-'.join(words)}" if words else repo
+    return name[:MAX_LIST_NAME].rstrip("-")
 
 
 def main() -> None:

@@ -234,12 +234,15 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 
 | cwd | active feature | list name |
 |---|---|---|
-| `~/dev/claude-code-config` | `oauth-ttl` | `claude-code-config-oauth-ttl` |
-| `~/dev/claude-code-config` | none | `claude-code-config` |
-| `~/dev/python/cc-wt/local-dev-runner` | `retry-loop` | `cc-wt-local-dev-runner-retry-loop` |
-| `~/dev/python/cc-wt/local-dev-runner` | none | `cc-wt-local-dev-runner` |
+| `~/dev/claude-code-config` | `oauth-ttl` | `claude-oauth-ttl` |
+| `~/dev/claude-code-config` | none | `claude` |
+| `~/dev/python/cc-wt/local-dev-runner` | `retry-loop` | `cc-retry-loop` |
+| `~/dev/python/cc-wt/local-dev-runner` | none | `cc-local-dev-runner` |
+| `~/dev/python/cc-wt/main` | none | `cc` |
 
-- Worktree = parent dir ends `-wt` → prepend it (`{parent}-{leaf}`). Else `{leaf}`.
+- Repo = worktree parent minus `-wt` (parent ends `-wt`), else `{leaf}`; `recharge-` dropped; over 14 chars → first word.
+- Then `-{feature}`, else `-{worktree}` unless it is `main`/`master`/`develop`. `feat-`/`fix-`/`chore-` dropped.
+- Capped at 24 chars (the MCP rejects longer): trailing words shed, never cut mid-word.
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
 - Todos belong to the feature the work is for, not the one SessionStart primed. Work on a `pending` feature while another is `in_progress` → that feature's list (`--feature <name>`), never the primed list.
@@ -309,7 +312,7 @@ SessionStart hooks already inject WORKSPACE.md, top-level `plans/current.md`, an
 
 When multi-step work surfaces code follow-ups this session will not do, MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Items are code work or doc-mirrored `decision`s, never comms, review/merge asks, settings, or manual confirms; full rule → `### Trigger — model-initiated ask` and `### Decision mirror` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
 
-- List = repo-qualified name: `{repo}-{feature}` (e.g. `claude-code-config-oauth-ttl`); worktree parent dir ending `-wt` prepends → `cc-wt-local-dev-runner-{feature}`; no feature → bare `{repo}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
+- List = `{repo}-{feature}` capped at 24 chars (e.g. `claude-oauth-ttl`, `cc-retry-loop`); no feature → `{repo}` or `{repo}-{worktree}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
 - Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
 - Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
 - Item `description` opens with `ref: <repo abs path> [branch <name>] [mr <url>]`, then any doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets.
