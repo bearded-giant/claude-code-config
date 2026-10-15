@@ -251,6 +251,7 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
   resume:
   tmux: <session>
   cd <worktree abs path> && claude --resume <session id>
+  giantmem://session/<session id>
   ```
 
   The SessionStart `doit session list` block prints the session id, the tmux session, and the ready-made resume line. Link every vault note, artifact, and `.giantmem` doc this session wrote that the action touches.

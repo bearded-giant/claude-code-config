@@ -282,6 +282,11 @@ def main() -> None:
         f"  list: {name}   {feat_note}",
         f"  session: {session_id or '?'}  tmux: {tmux_session() or 'none'}",
         f"  resume line for owed items: cd {root} && {resume}",
+        (
+            f"  giantmem link: giantmem://session/{session_id}"
+            if session_id
+            else "  giantmem link: (no session id)"
+        ),
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
         "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
     ]

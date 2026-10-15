@@ -130,6 +130,8 @@ def session_entry(ctx):
     line = f"- {now} {ctx['list']}{tmux} · `cd {ctx['root']} && {resume}`"
     if ctx["sid"] and ctx["slug"]:
         line += f" · [bundle](file://{BUNDLES / ctx['slug'] / ctx['sid']})"
+    if ctx["sid"]:
+        line += f" · [giantmem](giantmem://session/{ctx['sid']})"
     return (SESSIONS, ctx["sid"] or line, line)
 
 

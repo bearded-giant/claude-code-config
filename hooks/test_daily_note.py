@@ -112,6 +112,7 @@ def main() -> None:
         assert text.count("claude --resume abcdef1234567890") == 1
         assert f"cd {repo} &&" in text and "proj" in mod.section(text, mod.SESSIONS)
         assert f"[bundle](file://{mod.BUNDLES}/-slug-proj/abcdef1234567890)" in text
+        assert "[giantmem](giantmem://session/abcdef1234567890)" in text
 
         # artifact publish logs title + url once
         html = Path(d) / "page.html"
