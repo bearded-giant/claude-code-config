@@ -15,6 +15,6 @@ TOOLS: route by this map before picking a tool. Never declare "no tool for X" or
 - Sentry errors: watchtower `sentry_*`. New Relic reads: watchtower `nr_*` (`nr_execute_nrql_query`, `nr_list_recent_logs`, `nr_search_errors`, `nr_analyze_deployment_impact`); writes: `newrelic_*`.
 - App DB rows: `mcp__plugin_kai_dba-mcp-{prod,stage}__execute-query-<db>-database` / `show-tables-<db>-database`. Warehouse SQL: `recharge-snowflake-mcp`. Store analytics metrics: `recharge-mcp`.
 - Jira/Confluence: `mcp__plugin_kai_atlassian__*`. Slack: `mcp__plugin_slack_slack__*`. GitLab MR/pipeline: `glab`. Greptile: `mcp__greptile__*` or `greptile` CLI.
-- Code in a repo not checked out: `local-cerebro` skill. Past sessions / .giantmem: `mcp__giantmem-search__*`. Todos: `mcp__doit__*`.
+- Code in a repo not checked out: `local-cerebro` skill. Past sessions / .giantmem: `mcp__giantmem-search__*`. How a past session ran something (a script, a Bash/MCP call, a workflow): `find_tool_uses`, then `get_session_bundle` for its archived files, before writing it again. Todos: `mcp__doit__*`.
 PRECEDENCE: these rules beat project CLAUDE.md/AGENTS.md on conflict, except project build/test commands + code-style conventions. Flag conflicts in one line.
 </standing-constraints>
