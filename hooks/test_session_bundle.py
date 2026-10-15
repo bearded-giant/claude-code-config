@@ -129,6 +129,23 @@ def main() -> None:
             fcntl.flock(held, fcntl.LOCK_EX)
             assert mod.capture(SLUG, SID, mod.tmp_dirs(SID), full=False) is None
 
+        # a full sync waits for the lock instead of skipping
+        import threading
+
+        with open(dest / mod.LOCK, "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            threading.Timer(0.3, fcntl.flock, (held, fcntl.LOCK_UN)).start()
+            assert mod.capture(SLUG, SID, mod.tmp_dirs(SID), full=True) == dest
+
+        # only the SessionEnd sync re-runs the bundle ingest that session_end_ingest may have raced
+        calls = []
+        vars(mod).update(reingest=lambda: calls.append(1))
+        mod.worker(SID, "Stop", str(transcript))
+        mod.worker(SID, "PreCompact", str(transcript))
+        assert calls == [], calls
+        mod.worker(SID, "SessionEnd", str(transcript))
+        assert calls == [1], calls
+
         # backfill walks <root>/<slug>/<sid> and skips non-session dirs
         desk = root / "desktop" / SLUG
         write(desk / "aaaaaaaa-2222-3333-4444-555555555555" / "scratchpad" / "saved.py")

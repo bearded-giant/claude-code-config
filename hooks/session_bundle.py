@@ -179,8 +179,9 @@ def capture(slug, sid, srcs, full, transcript=None):
     dest = BUNDLES / slug / sid
     dest.mkdir(parents=True, exist_ok=True)
     with open(dest / LOCK, "w", encoding="utf-8") as lock:
+        # a full sync is the only copy of subagents and the transcript: wait out a Stop sync, never skip
         try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(lock, fcntl.LOCK_EX if full else fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             return None
         for src in srcs:
@@ -210,9 +211,27 @@ def worker(sid, event, transcript):
     )
     if not slug:
         return
-    capture(
+    dest = capture(
         slug, sid, srcs, event in FULL_EVENTS, Path(transcript) if transcript else None
     )
+    # session_end_ingest runs beside this worker and can index the bundle before the final sync lands
+    if dest and event == "SessionEnd":
+        reingest()
+
+
+def reingest():
+    binary = shutil.which("giantmem") or os.path.expanduser("~/.local/bin/giantmem")
+    try:
+        subprocess.run(
+            [binary, "db", "ingest", "-s", "session-bundle"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def backfill(roots):
