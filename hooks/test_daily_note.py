@@ -94,7 +94,11 @@ def main() -> None:
         grown = mod.insert_under(old, mod.SESSIONS, "- s")
         assert grown.index("mine") < grown.index(mod.SESSIONS)
 
-        base = {"cwd": str(repo), "session_id": "abcdef1234567890"}
+        base = {
+            "cwd": str(repo),
+            "session_id": "abcdef1234567890",
+            "transcript_path": "/x/projects/-slug-proj/abcdef1234567890.jsonl",
+        }
 
         # interactive session start writes one session line; headless does not
         run(
@@ -107,6 +111,7 @@ def main() -> None:
         text = today_text()
         assert text.count("claude --resume abcdef1234567890") == 1
         assert f"cd {repo} &&" in text and "proj" in mod.section(text, mod.SESSIONS)
+        assert f"[bundle](file://{mod.BUNDLES}/-slug-proj/abcdef1234567890)" in text
 
         # artifact publish logs title + url once
         html = Path(d) / "page.html"

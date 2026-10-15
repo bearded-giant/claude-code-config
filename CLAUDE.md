@@ -118,6 +118,8 @@ Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for hu
 
 Anything only I can do (run/confirm, review/merge, ping, settings, decide, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
 
+Session working files survive in `~/giantmem_archive/bundles/<slug>/<sid>/`: `hooks/session_bundle.py` archives the scratchpad, background Bash outputs, subagent transcripts, workflow scripts, and transcript, with a `bundle.json` manifest. The daily note's session line links the bundle. Look there for a past session's scripts before rewriting them.
+
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
 - Renamed/removed/added a slash command, skill, agent, or hook

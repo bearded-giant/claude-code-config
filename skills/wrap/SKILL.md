@@ -33,7 +33,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
 3. **Docs:**
    - Feature: `tasks.md` checkboxes match reality, and `{name}-notes.md` / `facts.md` hold this session's new identifiers, commands, gotchas, and decisions.
    - Bare repo: route per workspace-rules (`context/`, `plans/current.md`).
-   - Docs created this session outside the scope dir (vault notes, other repos, claude.ai artifacts): collect absolute paths and URLs for the handoff's `External docs`.
+   - Docs created this session outside the scope dir (vault notes, other repos, claude.ai artifacts): collect absolute paths and URLs for the handoff's `External docs`, plus this session's bundle dir `~/giantmem_archive/bundles/<slug>/<session id>/` (scripts and drafts from the scratchpad land there).
    - Shared docs touched this session: recheck the shared-docs rule (no dates, changelogs, or local paths).
 4. **Running processes** started this session (tunnels, dev servers, background shells, watchers): name, how started, port/pid. If the next session can reuse one, leave it up; otherwise offer teardown in the batched ask. Record each one in the handoff either way.
 5. **Handoff:** write or overwrite it per workspace-rules `## Handoff`. Skip it with `--no-handoff`. If nothing is left open, skip it and set any existing handoff to `status: done`. A written handoff gets one owed `resume` item: `add_todo owe=true type=resume`, text `resume <feature or repo>: <Start here step 1, short>`, description links the handoff and carries the `resume:` line from the SessionStart doit block. Dedupe: an open `resume` twin for this list → update it instead. The `daily_note` hook logs the handoff in the vault daily note on its own.

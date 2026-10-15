@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")).expanduser()
+BUNDLES = (
+    Path(os.environ.get("GIANTMEM_ARCHIVE_BASE", "~/giantmem_archive")).expanduser()
+    / "bundles"
+)
 DAILY_DIR = "daily"
 TEMPLATE = "templates/dailytemplate.md"
 SESSIONS = "## CLAUDE SESSIONS"
@@ -115,6 +119,7 @@ def context(data):
         "root": root,
         "list": mod.list_name(root, mod.active_feature(root)),
         "tmux": mod.tmux_session(),
+        "slug": Path(data.get("transcript_path") or "").parent.name,
     }
 
 
@@ -123,6 +128,8 @@ def session_entry(ctx):
     resume = f"claude --resume {ctx['sid']}" if ctx["sid"] else "claude --continue"
     tmux = f" · tmux {ctx['tmux']}" if ctx["tmux"] else ""
     line = f"- {now} {ctx['list']}{tmux} · `cd {ctx['root']} && {resume}`"
+    if ctx["sid"] and ctx["slug"]:
+        line += f" · [bundle](file://{BUNDLES / ctx['slug'] / ctx['sid']})"
     return (SESSIONS, ctx["sid"] or line, line)
 
 

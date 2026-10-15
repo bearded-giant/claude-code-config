@@ -108,6 +108,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/precompact_capture.py",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session_bundle.py",
+            "timeout": 10
           }
         ]
       }
@@ -117,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py workspace_session_end session_end_ingest",
+            "command": "python3 ~/.claude/hooks/dispatch.py workspace_session_end session_end_ingest session_bundle",
             "timeout": 30
           },
           {
@@ -134,6 +139,11 @@
           {
             "type": "command",
             "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session_bundle.py",
             "timeout": 10
           }
         ]
