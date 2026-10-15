@@ -33,7 +33,7 @@ Evidence is live, this run: `glab mr view` / `gh pr view` for any MR or PR named
 | open | target exists, text accurate | keep |
 | unknown | evidence unreachable (glab auth, repo not on disk, network) | keep; name what is missing |
 
-User-authored items (no `[type]` tag and no `claude:`) take only `landed` or `moot`, never `owe` or `noise`. They are the user's call.
+User-authored items (the nvim/tmux `Mine` block: `source` set to anything but `mcp`, or no `source`, no `twin`, and text not starting with `claude:`, a `[type]` tag, or an `N.` rank) take only `landed` or `moot`, never `owe` or `noise`. They are the user's call.
 
 **Unmirrored scan** (skipped with `--mr`): read `## Open Questions for User` in every `.md` under the list's scope dir: the feature dir for a feature list, or `.giantmem/` minus `features/` for a bare repo list. An entry with no matching `decision` item (match on question text) → add the mirror per `### Decision mirror`.
 
