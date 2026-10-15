@@ -1,10 +1,10 @@
 ---
 name: grill
-description: Adversarial pre-ship review loop for larger/complex changes. Reviews local branch diff vs base as skeptical staff engineer, scores each finding (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn, --kai/--no-kai. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai:review-code or kai:review-adversarial for those).
+description: Adversarial pre-ship review loop for larger/complex changes. Runs `greptile review --json` on local branch committed diff vs base, triages each finding as skeptical staff engineer, scores it (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn, --kai/--no-kai. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Pre-MR safety net for local branch — not for posted MRs (use kai:review-code or kai:review-adversarial for those).
 ---
 <!-- caveman:compressed -->
 
-Adversarial pre-ship review LOOP. Skeptical staff engineer reviews diff, scores findings, auto-fixes confident items, surfaces uncertain/fatal items, re-runs. Max 3 turns.
+Adversarial pre-ship review LOOP. Greptile CLI reviews committed diff (turn 1). Skeptical staff engineer refutes + scores each finding, auto-fixes confident items, surfaces uncertain/fatal items, re-checks own fixes. Max 3 turns.
 
 NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 
@@ -31,6 +31,42 @@ grill/
   03-run.md    (only if loop continues)
   final.md     (always, end of last run)
 ```
+
+## Greptile review
+
+Turn 1 finding source is the Greptile CLI (`greptile-cli` skill has command + output details). Grill triages, scores, fixes, and tests. Greptile does not run code, so the Generated-output rule, Kai K2/K4 checks, and Refusal cases stay grill's own.
+
+### Preflight (step 5)
+
+- `command -v greptile` empty → stop, report broken install or `PATH`.
+- `greptile whoami | grep -q '^Not signed in'` → stop, tell user to run `greptile login` (interactive browser flow, never run it). `whoami` exits 0 when signed out; gate on text.
+- No fallback. Greptile unavailable → stop and report. NEVER substitute a Claude-only review.
+
+### Run (turn 1)
+
+`greptile review -b <base> --json`. Base unqualified (`main`, not `origin/main`). Read stdout directly; NEVER redirect into the worktree (dirty tree trips the uncommitted-changes refusal on re-run). Takes about a minute: no short timeout, never start a second review while one runs.
+
+Exit 0 is normal whatever the findings. Non-zero = review did not finish. Recover first: `greptile review status --json` (exit 3 → wait 30s, retry), then `greptile review show <runId> --json`. Recovery fails → abort with stub `01-run.md` (`status: refused`, stderr line as reason). `every committed change was held back` → same abort; `--include` only when user asks.
+
+### Map comments to findings
+
+| Greptile field | Grill field |
+|---|---|
+| `path` + `startLine` | file:line. `side: "old"` → anchors base version, read `git show <base>:<path>` |
+| `body` | problem |
+| `suggestion` | proposed fix. Check it fits surrounding code; never apply blind |
+| `severity` | seed sev: P0 → 4-5, P1 → 3-4, P2 → 1-3. Final sev from own read |
+| `securityIssue: true` | triage first, seed sev ≥ 4 |
+| `id` | `source: greptile <id> <severity>` in run.md |
+| `category`, `verifiedEvidence` | ignore (always `"comment"` / `null`) |
+
+Confidence is grill's own, per evidence gate + Verification pass. Greptile asserts; grill refutes. Advisory comment (no concrete failure: style, naming, "consider adding X", doc request) → sev 1, report-only. Findings from grill's own checks carry `source: generated-output | kai-k4 | self-review`.
+
+Review-level `confidence` (1-5) goes in run.md and final.md, never drives disposition. Exception: `confidence` ≤ 3 with zero surviving findings → read `summary` + `confidenceReasoning`; concrete failure the comments never raised → triage it as a finding.
+
+### Turns 2+
+
+Greptile excludes uncommitted changes, so it cannot see auto-fix edits. Turn N>1 = self-review of fix hunks (Loop control). Greptile re-checks fixes when user commits and re-runs `/grill`; prior-finding status (step 7b) covers them.
 
 ## Scoring rubric
 
@@ -136,7 +172,7 @@ To reset: delete `.config.yaml` or pass `--no-sticky` (skill ignores file for th
 
 Loop runs up to `loops` turns (default 3, configurable). Each turn:
 
-1. N=1: `git diff <base>...HEAD`; N>1: `git diff` (prior turn's auto-fix edits) → review
+1. N=1: `greptile review -b <base> --json` + `git diff <base>...HEAD` for context → triage (see Greptile review); N>1: `git diff` (prior turn's auto-fix edits) → self-review
 2. Score every finding (sev + conf)
 3. Write `NN-run.md` with all findings + dispositions
 4. Apply `auto-fix` items (edit files only — no stage/commit/push)
@@ -153,6 +189,8 @@ Loop runs up to `loops` turns (default 3, configurable). Each turn:
 Sev-5 items do NOT block the loop — they're flagged in `final.md` and execution continues fixing other items.
 
 ## Review categories
+
+Greptile `category` carries no signal; assign one from this table during triage. Also the checklist for turn N>1 self-review.
 
 | Category | Look for |
 |---|---|
@@ -246,11 +284,11 @@ Refuted findings get no label — dropped, not reported.
    - Else project CLAUDE.md `mr_base_branch: <branch>`
    - Else git remote default
    - Else ask (main / master / stage / develop)
-5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Kai preflight** if enabled: K1 size gate (block → abort per K1), then K2 reference load.
+5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Greptile preflight** (see Greptile review); fails → stop and report. Then **Kai preflight** if enabled: K1 size gate (block → abort per K1), then K2 reference load.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
-   a. N=1: `git diff <base>...HEAD`. N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
-   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then review each change as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
+   a. N=1: run `greptile review -b <base> --json` (see Greptile review); read `git diff <base>...HEAD` for context. N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
+   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then map every Greptile comment to a candidate finding (see Greptile review); N>1: self-review the fix hunks as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Kai preflight on → also apply the K2 references and the K4 checks.
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
    d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix. Kai preflight on → also assign a Kai label per K3.
    e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
@@ -283,21 +321,25 @@ lifecycle: candidate
 # Grill Run 0N
 
 Rating: SHIP IT | NEEDS WORK | BLOCK
+Greptile: confidence 4/5, 3 comments (run 01 only)
 
 ## Findings
 
 ### 1. [sev:4 conf:0.92] src/auth/jwt.py:88 — token expiry uses `<` not `<=`
+- source: greptile comment-7312 P1
 - category: logic
 - disposition: auto-fix
 - evidence: read jwt.py:80-95 + caller session.py:41; expiry compared exclusive, boundary second rejected
 - fix: change `<` to `<=` on L88
 
 ### 2. [sev:5 conf:0.98] src/db/migrate.py:42 — no rollback path
+- source: greptile comment-7315 P0
 - category: data
 - disposition: FLAG-HUMAN
 - fix: write down migration
 
 ### 3. [sev:3 conf:0.72] src/api/orders.py:140 — unbounded list returned
+- source: greptile comment-7318 P2
 - category: performance
 - disposition: skip (conf<0.85)
 - fix: cap at 1000 or paginate
@@ -334,6 +376,7 @@ feature: {name or "none"}
 runs_completed: N
 termination: all-clear | loop-limit | refusal | kai-size-block
 final_rating: SHIP IT | NEEDS WORK | BLOCK
+greptile_confidence: 1-5 | n/a
 kai_preflight: true | false
 kai_must_fix: N
 kai_size: ok | warn | block
@@ -350,6 +393,7 @@ lifecycle: candidate
 Rating: NEEDS WORK
 Runs: 2/3
 Termination: all-clear
+Greptile: confidence 4/5. Auto-fixes not Greptile-checked; commit, re-run `/grill`.
 
 ## Kai preflight
 
@@ -425,10 +469,11 @@ After loop ends, reply ONLY:
 ```
 Grill complete. Rating: <rating>. Runs: N/{loops}.
 Kai: would block — must_fix=N
+Greptile re-check: commit fixes, re-run /grill
 final.md: <path>
 ```
 
-Omit the `Kai:` line when preflight is off.
+Omit the `Kai:` line when preflight is off. Omit the `Greptile re-check:` line when zero auto-fixes applied.
 
 No additional summary in chat. User reads `final.md`.
 
@@ -457,3 +502,6 @@ State refusal reason terse, write a stub `NN-run.md` with `status: refused` + re
 - Kai preflight on → NEVER emit a finding without a Kai label. Unlabeled is what trips kai's gate.
 - NEVER auto-fix an unrelated-change finding — splitting the branch is the user's call.
 - NEVER continue past a K1 size block. A review at that size is wasted work; kai will not run one either.
+- Turn 1 findings come from `greptile review --json`. Greptile unavailable → stop and report, NEVER substitute a Claude-only review.
+- NEVER write Greptile output into the worktree.
+- NEVER apply a Greptile `suggestion` without checking it fits the surrounding code.
