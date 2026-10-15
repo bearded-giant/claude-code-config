@@ -198,14 +198,14 @@ Hard link between multi-step feature work and the doit MCP. Code work found but 
 During multi-step work — feature OR bare repo — when code follow-ups appear that this session will not do (deferred refactor, bug found in passing, test gap, a split-out MR) — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below), at task end or a real blocker, never mid-chain. Keep working everything that does not depend on the answer. Show the proposed items (text + bucket) so user edits before write.
 
 - Ask ONCE per cluster, never per item.
-- Never auto-write todos — the ask is the gate. Only exception: decision mirrors (below).
-- Two item kinds only:
+- Never auto-write code todos — the ask is the gate. Exceptions, no ask: decision mirrors and owed items (both below).
+- Three item kinds only:
   - code work: a repo, a file or symbol, a change. `claude:` when the model can do it; no prefix when the user keeps it.
   - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
-- NOT todos — put these in the chat report's open edges instead: comms (ping, share, announce), review / approve / merge an MR (the MR tracks itself), console / admin / DNS / cert / vault / beta-admin settings, manual confirm / verify, ops runbook steps, pointers to another list or doc.
-- Mixed item → only the code half becomes the item. A decision half goes into the doc's Open Questions and mirrors from there.
+  - owed: an action only the user can do, per `### Owed items → daily twin`.
+- Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item.
 - Model-only next-steps (things the model does this turn) are NOT todos — skip them.
-- No active feature → use the bare `{repo}` list, still offer. User works outside features often — do NOT skip. Touch `daily` only on explicit user request.
+- No active feature → use the bare `{repo}` list, still offer. User works outside features often — do NOT skip. `daily` is written only through `owe=true` twins or on explicit user request.
 - Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
 
 ### Decision mirror — doc Open Questions ↔ doit, 1:1
@@ -214,10 +214,48 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
 
 - Write in the same turn the doc gains or rewords an entry. No ask. Say `mirrored N decisions to <list>` in chat.
 - List: the doc's feature list (`--feature <name>` derivation below), or the bare `{repo}` list for a repo-level doc.
-- Item: `type: decision`, text = the question (≤ 80 chars), description first line `ref: <doc abs path>`. `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`.
-- Resolve doc first: the answer lands in the doc and the entry leaves Open Questions, then `complete_todo` + `add_note` append `DONE {ts} resolved in <doc path>: <one-line answer>`. Same order when the user answers in chat or in the doit note.
+- Item: `add_todo owe=true type=decision`, text = the question (≤ 80 chars), description opens `ref: <doc abs path>` then the owed sections (`links` / `resume`). `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`. The twin puts the question in `daily`.
+- Resolve doc first: the answer lands in the doc and the entry leaves Open Questions, then `complete_todo` (closes both twins) + `add_note` append `DONE {ts} resolved in <doc path>: <one-line answer>`. Same order when the user answers in chat or in the doit note.
 - Match items to entries on question text; entry numbers shift as others resolve.
-- Drift either way (orphan item, unmirrored entry) → `/doit-prune` repairs it.
+- Drift either way (orphan item, unmirrored entry, missing twin) → `/doit-prune` repairs it.
+
+### Owed items → daily twin
+
+`daily` is the user's one inbox for everything they owe across 4-6 parallel projects. The project list keeps the work record; `daily` holds its twin, so the user never has to remember which list holds their next action.
+
+- What: anything only the user can do that the work waits on. Run / confirm / verify (stage check, manual login, eval run), review / approve / merge an MR, comms (ping, share, announce), console / admin / DNS / cert / vault / beta-admin settings, `decision` mirrors, BLOCKED `/burn` items, READY MRs from `/babysit`, and resuming work `/wrap` paused.
+- Not: model next-steps, code work the model can do (`claude:` code item), FYIs or suggestions that block nothing.
+- How: `add_todo owe=true list=<project list>`, one call. The MCP writes `[type] N. owed in daily #M: <action>` in the project list and `[type] M. <project list>: <action>` in `daily`. Each carries a `twin` field and a first description line naming the other. Never write the twin by hand, never `claude:`.
+- Gate: none. Write when the need appears, then name it in the chat report's open edges as `daily #M`. Dedupe first: `search_todos` on the action's key noun; an open twin for the same action → update it instead.
+- Type: `gate` (run / confirm / verify), `review`, `merge`, `ping`, `setting`, `decision`, `unblock`, `resume`.
+- Priority: blocks the critical path or a `[BLOCKING]` decision → `urgent`; else none. `due` only for a real date.
+- Text: the action as an imperative the user can do cold, ≤ 80 chars. Name the thing (`merge !812 auth0 callback fix`), not the activity (`check MR`).
+- Description, for the user reading it days later. Labeled sections, blank line between, empty rows omitted:
+
+  ```
+  why:
+  <one line: what is waiting on this>
+
+  do:
+  <exact command / URL / click path>
+  expect: <what success looks like>
+
+  links:
+  - repo: <worktree abs path> [branch <name>]
+  - mr: <url>
+  - handoff: <abs path>
+  - doc: <abs path of the .giantmem doc>
+  - vault: <abs path of the vault note>
+  - artifact: <claude.ai url>
+
+  resume:
+  tmux: <session>
+  cd <worktree abs path> && claude --resume <session id>
+  ```
+
+  The SessionStart `doit session list` block prints the session id, the tmux session, and the ready-made resume line. Link every vault note, artifact, and `.giantmem` doc this session wrote that the action touches.
+- Close: action done (user says so, MR merged, doc resolved) → `complete_todo` on either twin; both close. Moot → `delete_todo` on either twin; both go. `update_todo` done / priority / due also follow.
+- Drift: a twin checked off or deleted in the tmux or nvim UI does not sync. SessionStart prints `DRIFT` lines for the session list; fix those first. `/doit-prune` repairs the rest.
 
 ### List resolution — repo-qualified, worktree-aware
 
@@ -246,9 +284,9 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
 - Todos belong to the feature the work is for, not the one SessionStart primed. Work on a `pending` feature while another is `in_progress` → that feature's list (`--feature <name>`), never the primed list.
-- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default follows the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this derivation.
+- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default is `daily` (or a `DOIT_ACTIVE_LIST` export), not this derivation; tmux session links steer only the user's views.
 - Pending items are the feature's open work. Land one this session → `start_todo` on pickup, `complete_todo` + DONE record when it lands. Never leave a landed item open.
-- `daily` stays the manual cross-repo priority sweep — qualified lists never auto-dump into it.
+- `daily` is the user's cross-repo inbox. Qualified lists reach it only through `owe=true` twins, never by copying items.
 
 ### Bucket → doit priority
 
@@ -259,7 +297,7 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 | important | `important` | matters, not time-boxed |
 | default | omit (none) | nice-to-have / someday |
 
-No mirroring to `daily` — feature list is the only home (user choice).
+Code and `claude:` items live only in the feature list. Only owed items twin into `daily`.
 
 ### Numbering
 
@@ -310,14 +348,14 @@ SessionStart hooks already inject WORKSPACE.md, top-level `plans/current.md`, an
 
 ## Todos → doit (repo / feature list)
 
-When multi-step work surfaces code follow-ups this session will not do, MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Items are code work or doc-mirrored `decision`s, never comms, review/merge asks, settings, or manual confirms; full rule → `### Trigger — model-initiated ask` and `### Decision mirror` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+When multi-step work surfaces code follow-ups this session will not do, MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Code items go through that ask. Doc-mirrored `decision`s and owed user actions (run / confirm, review / merge, comms, settings, resume) are written without an ask as `owe=true` twins; full rule → `### Trigger — model-initiated ask`, `### Decision mirror`, `### Owed items → daily twin` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write code todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
 
-- List = `{repo}-{feature}` capped at 24 chars (e.g. `claude-oauth-ttl`, `cc-retry-loop`); no feature → `{repo}` or `{repo}-{worktree}`. Reuse if exists, else `create_list`. `daily` only on explicit request. Derivation → `feature-management` skill.
+- List = `{repo}-{feature}` capped at 24 chars (e.g. `claude-oauth-ttl`, `cc-retry-loop`); no feature → `{repo}` or `{repo}-{worktree}`. Reuse if exists, else `create_list`. `daily` only via `owe=true` twins or explicit request. Derivation → `feature-management` skill.
 - Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.
 - Number each item in text (`1. …`, `2. …`) = do-order / critical-path sequence — the visible priority signal (doit has no ordinal field user sees).
 - Item `description` opens with `ref: <repo abs path> [branch <name>] [mr <url>]`, then any doc link, exact script/command, or identifier (MR URL, ticket, shop_id) — preserve those EXACTLY, redact secrets.
-- Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. No daily mirror.
-- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then). ALWAYS pass `list=` explicitly on every doit call — the MCP's active-list default is the tmux session link (or a `DOIT_ACTIVE_LIST` export), not this name.
+- Update existing list: `list_todos` first, dedupe vs current items, append new, continue numbering from max. Only owed items twin into `daily`.
+- Session start: `doit_session_prime` hook injects the list name AND every pending item (priority bucket → do-order, first description line, `in_progress` claim marker, truncated past 15 with a count). Items are already in context — no `list_todos` needed to see them; call it only to refresh after a write, to see past the truncation, or when cwd / worktree / feature changed mid-session (re-derive the name then). ALWAYS pass `list=` explicitly on every doit call — the MCP's active-list default is `daily` (or a `DOIT_ACTIVE_LIST` export), not this name.
 
 ## Three-Spec Model (per-feature → repo-truth)
 

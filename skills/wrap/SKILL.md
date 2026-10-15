@@ -27,7 +27,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Uncommitted or unpushed work is a gap. Offer commit, or commit and push, in the batched ask.
 2. **doit** (always pass `list=`):
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
-   - New items: code follow-ups in the batched ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. Comms, review/merge asks, settings, and manual confirms go in the handoff's `Open edges`, never doit.
+   - New items: code follow-ups in the batched ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. Comms, review/merge asks, settings, and manual confirms become owed items (`add_todo owe=true`, `feature-management` → `### Owed items → daily twin`), no ask; the handoff's `Open edges` lists them by `daily #N`.
    - Every `claude:` item must be burnable cold: `ref:` line, paths, commands, and identifiers in its text or description. Fill thin ones in.
    - `feature` mode: list would end with 0 pending → offer `delete_list` in the batched ask.
 3. **Docs:**
@@ -36,7 +36,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Docs created this session outside the scope dir (vault notes, other repos, claude.ai artifacts): collect absolute paths and URLs for the handoff's `External docs`.
    - Shared docs touched this session: recheck the shared-docs rule (no dates, changelogs, or local paths).
 4. **Running processes** started this session (tunnels, dev servers, background shells, watchers): name, how started, port/pid. If the next session can reuse one, leave it up; otherwise offer teardown in the batched ask. Record each one in the handoff either way.
-5. **Handoff:** write or overwrite it per workspace-rules `## Handoff`. Skip it with `--no-handoff`. If nothing is left open, skip it and set any existing handoff to `status: done`.
+5. **Handoff:** write or overwrite it per workspace-rules `## Handoff`. Skip it with `--no-handoff`. If nothing is left open, skip it and set any existing handoff to `status: done`. A written handoff gets one owed `resume` item: `add_todo owe=true type=resume`, text `resume <feature or repo>: <Start here step 1, short>`, description links the handoff and carries the `resume:` line from the SessionStart doit block. Dedupe: an open `resume` twin for this list → update it instead. The `daily_note` hook logs the handoff in the vault daily note on its own.
 6. **Batched ask**, then the verdict.
 
 ## Output

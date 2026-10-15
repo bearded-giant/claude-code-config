@@ -4,7 +4,7 @@ description: Rules for team-shared claude.ai Artifacts (the `Artifact` tool) - s
 ---
 <!-- caveman:compressed -->
 
-Vault note = working source, for the user. Artifact = distilled team view.
+Vault note = working source, for the user. Artifact = distilled team view. Each publish is logged to the vault daily note by the `daily_note` hook; don't log it by hand.
 
 ## Route
 

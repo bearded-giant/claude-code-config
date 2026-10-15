@@ -85,7 +85,7 @@
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime memory_ingest",
+            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime daily_note memory_ingest",
             "timeout": 20
           },
           {
@@ -220,7 +220,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge daily_note",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/daily_note.py",
             "timeout": 10
           }
         ]
@@ -230,7 +240,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "in=$(cat); case $in in *git*push*) printf %s \"$in\" | python3 ~/.claude/hooks/greptile_rereview.py;; esac",
+            "command": "in=$(cat); case $in in *git*push*) printf %s \"$in\" | python3 ~/.claude/hooks/greptile_rereview.py;; esac; case $in in *note.py*new*) printf %s \"$in\" | python3 ~/.claude/hooks/daily_note.py;; esac",
             "timeout": 40
           }
         ]

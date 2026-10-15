@@ -50,7 +50,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
    - destructive / irreversible / outward-facing NOT named in the todo → pause, surface, don't execute.
    - sev-5 (data loss, security, prod mutation) → stop, flag for human.
 4. **Close (success)** — `complete_todo` (mark done) + `add_note` mode=`append` with the completion record (below). `append` keeps the user's original note (doc / script / context) intact.
-5. **Blocked** (missing info / needs decision / external dep) → `add_note` (append) `BLOCKED {ts} — {what's needed}`, `revert_todo` (→ pending, re-queueable), collect for end summary, continue.
+5. **Blocked** (missing info / needs decision / external dep) → `add_note` (append) `BLOCKED {ts} — {what's needed}`, `revert_todo` (→ pending, re-queueable), then `add_todo owe=true type=unblock` on the same list (text: what the user must supply, `deps` = the blocked rank) so the ask lands in `daily`. Collect for end summary, continue.
 6. Next item.
 
 ## Completion record (appended on done)

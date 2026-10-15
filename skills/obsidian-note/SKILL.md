@@ -84,6 +84,7 @@ One line per note: `created | area | domain | project | path | title`. Read the 
 
 - Vault pushes to GitHub every 5 min. No secrets, tokens, connection strings with passwords, query dumps, or customer PII. Redact `<REDACTED:token>`. Raw dumps stay in the scratchpad.
 - Notes are for the user: paths, dates, changelogs allowed. Anything for others goes out as a `claude-artifact`, not a note.
+- The `daily_note` hook logs every vault note write (Write/Edit or `note.py new`) and every artifact publish under `## CLAUDE LINKS` in `daily/<YYYY-MM-DD>.md`, creating the day's note from `templates/dailytemplate.md` when missing. Never hand-edit those sections or log twice.
 - Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, handoff, reviews, research tied to an in_progress feature. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
 - Do not write `areas/index.md`; it is a Dataview page.
 - Wiki links `[[note]]` resolve vault-wide; link existing notes by stem when relevant.

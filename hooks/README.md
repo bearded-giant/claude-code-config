@@ -97,13 +97,15 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `memory_ingest` | Yes (one-time, ~4.9KB) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest` | Yes (one-time, ~4.9KB) |
 | UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above) |
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
 | PreToolUse | `voice_gate.py` (Bash, Slack send/draft/schedule, Jira comment) | No (JSON decision only) |
 | PostToolUse | `greptile_rereview.py` (Bash, `git push` only) | Yes (one line after it posts) |
+| SessionStart, PostToolUse | `daily_note.py` (Artifact, Write/Edit/MultiEdit, Bash `note.py new`): appends to the vault daily note `daily/<date>.md`, creating it from `templates/dailytemplate.md`. One `## CLAUDE SESSIONS` line per interactive session (repo list, tmux, `claude --resume <id>`; headless `sdk-cli` runs skipped), one `## CLAUDE LINKS` line per artifact publish, vault note write, or `.giantmem/**/handoff.md` write. flock-guarded, section-scoped dedupe. Tests: `python3 hooks/test_daily_note.py` | No (file write only) |
+| SessionStart | `doit_session_prime.py` also prints the session id + tmux session + `resume` line, the owed count, and `DRIFT` lines for owed twins out of sync with `daily`. Tests: `python3 hooks/test_doit_session_prime.py` | Yes |
 | Stop | dispatch: `debug_stop_check` | No (JSON decision only) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |

@@ -114,6 +114,10 @@ Doit list convention, three-spec model, feature-dir routing → `feature-managem
 
 Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for human. Full procedure → `burn` skill.
 
+### What I owe (`daily` list + vault daily note)
+
+Anything only I can do (run/confirm, review/merge, ping, settings, decide, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
+
 <doc_sync>
 Triggers (any → MUST run sync in same edit batch):
 - Renamed/removed/added a slash command, skill, agent, or hook

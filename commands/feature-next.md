@@ -57,6 +57,6 @@ Artifacts
 <feature.py next output, verbatim>
 ```
 
-- Next merges the doit order (`N.` prefix, priority bucket) with MR state. An MR waiting on review or merge is a user item. A failing pipeline or an unresolved thread claude can fix is a claude item.
+- Next merges the doit order (`N.` prefix, priority bucket) with MR state. Owed items (`owed in daily #M`) and an MR waiting on review or merge are user items; name the `daily #M` handle. A failing pipeline or an unresolved thread claude can fix is a claude item.
 - Done covers merged MRs and completed doit items for this feature. Cap it at 5.
 - When sources disagree (tasks.md says done but the MR is open, or a doit item is open for a merged MR), list it under Blocked as stale and name both sources. Don't fix it. After the report, offer `/doit-prune` in one batched AskUserQuestion.

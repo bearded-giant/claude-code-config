@@ -3,10 +3,12 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 PRIORITY_RANK = {"critical": 0, "urgent": 1, "important": 2}
 MAX_ITEMS = 15
+MAX_DRIFT = 10
 # do-it.nvim's create_list / rename_list reject longer names
 MAX_LIST_NAME = 24
 REPO_MAX = 14
@@ -28,6 +30,33 @@ def git_root(cwd: str) -> str:
     except Exception:
         pass
     return cwd
+
+
+def tmux_session():
+    if not os.environ.get("TMUX"):
+        return None
+    pane = os.environ.get("TMUX_PANE")
+    target = ["-t", pane] if pane else []
+    try:
+        out = subprocess.run(
+            ["tmux", "display-message", "-p", *target, "#S"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def hook_input():
+    try:
+        data = json.loads(sys.stdin.read() or "null")
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def current_branch(root: str):
@@ -69,14 +98,19 @@ def active_feature(root: str):
     return active[0][0]
 
 
-def load_pending(path: str):
+def load_todos(path: str):
     try:
         with open(path) as fh:
             data = json.load(fh)
     except Exception:
-        return None, []
+        return None
     todos = data.get("todos") if isinstance(data, dict) else None
-    if not isinstance(todos, list):
+    return todos if isinstance(todos, list) else None
+
+
+def load_pending(path: str):
+    todos = load_todos(path)
+    if todos is None:
         return None, []
     pending = [t for t in todos if isinstance(t, dict) and not t.get("done")]
     pending.sort(
@@ -86,6 +120,70 @@ def load_pending(path: str):
         )
     )
     return len(todos), pending
+
+
+def twin_of(todo: dict):
+    twin = todo.get("twin")
+    if isinstance(twin, dict) and twin.get("list") and twin.get("id"):
+        return twin
+    return None
+
+
+def load_index(list_name: str, cache: dict):
+    if list_name not in cache:
+        path = os.path.join(LISTS_DIR, f"{list_name}.json")
+        # a deleted list means its twins are gone; an unreadable one proves nothing
+        todos = load_todos(path) if os.path.isfile(path) else []
+        cache[list_name] = (
+            None
+            if todos is None
+            else {t.get("id"): t for t in todos if isinstance(t, dict)}
+        )
+    return cache[list_name]
+
+
+def twin_drift(name: str) -> list:
+    cache = {}
+    own = load_index(name, cache)
+    if own is None:
+        return []
+    found = []
+    for todo in own.values():
+        twin = twin_of(todo)
+        if todo.get("done") or not twin:
+            continue
+        other = load_index(twin["list"], cache)
+        if other is None:
+            continue
+        text = todo.get("text", "").strip()[:70]
+        match = other.get(twin["id"])
+        if match is None:
+            found.append(
+                f"drift: {text} -> twin gone from {twin['list']}; "
+                f"delete_todo id={todo.get('id')} or re-owe it"
+            )
+        elif match.get("done"):
+            found.append(
+                f"drift: {text} -> done in {twin['list']}; "
+                f"complete_todo id={todo.get('id')}"
+            )
+    for todo in (load_index("daily", cache) or {}).values():
+        twin = twin_of(todo)
+        if todo.get("done") or not twin or twin["list"] != name:
+            continue
+        text = todo.get("text", "").strip()[:70]
+        match = own.get(twin["id"])
+        if match is None:
+            found.append(
+                f'drift: daily "{text}" -> its {name} item is gone; '
+                f"delete_todo id={todo.get('id')}"
+            )
+        elif match.get("done"):
+            found.append(
+                f'drift: daily "{text}" -> done in {name}; '
+                f"complete_todo id={todo.get('id')}"
+            )
+    return found
 
 
 def note_line(todo: dict) -> str:
@@ -166,6 +264,8 @@ def list_name(root: str, feat) -> str:
 
 
 def main() -> None:
+    hook = hook_input()
+    session_id = hook.get("session_id") if hook else None
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     root = git_root(cwd)
     feat = active_feature(root)
@@ -175,12 +275,15 @@ def main() -> None:
     exists = os.path.isfile(path)
 
     feat_note = f"feature: {feat}" if feat else "(no active feature)"
+    resume = f"claude --resume {session_id}" if session_id else "claude --continue"
     lines = [
         "<system-reminder>",
         "doit session list (repo-qualified, worktree-aware):",
         f"  list: {name}   {feat_note}",
+        f"  session: {session_id or '?'}  tmux: {tmux_session() or 'none'}",
+        f"  resume line for owed items: cd {root} && {resume}",
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
-        "list) follows the tmux link / DOIT_ACTIVE_LIST env, not this derivation",
+        "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
     ]
     handoff = ready_handoff(root, feat)
     if handoff:
@@ -194,6 +297,11 @@ def main() -> None:
             f'  exists: no — create_list name="{name}" on first todo for this '
             "repo/feature",
             "Assign model work: prefix a doit todo `claude:`. Drain it: /burn.",
+            (
+                "Owe the user an action (run/confirm, review/merge, ping, settings, "
+                f'decide, resume): create_list name="{name}" first, then add_todo '
+                "owe=true on it; the twin lands in `daily`."
+            ),
             "</system-reminder>",
         ]
         print("\n".join(lines))
@@ -201,9 +309,17 @@ def main() -> None:
 
     total, pending = load_pending(path)
     claude_n = sum(1 for t in pending if t.get("text", "").startswith("claude:"))
+    owed_n = sum(1 for t in pending if (twin_of(t) or {}).get("list") == "daily")
     lines.append(
-        f"  exists: yes — {len(pending)} pending of {total} ({claude_n} claude:)"
+        f"  exists: yes — {len(pending)} pending of {total} "
+        f"({claude_n} claude:, {owed_n} owed in daily)"
     )
+    drift = twin_drift(name) if name != "daily" else []
+    if drift:
+        lines.append("DRIFT (twins out of sync, fix with the doit MCP first):")
+        lines += [f"  {d}" for d in drift[:MAX_DRIFT]]
+        if len(drift) > MAX_DRIFT:
+            lines.append(f"  ... {len(drift) - MAX_DRIFT} more")
     if pending:
         lines.append("PENDING TODOS (priority bucket, then do-order):")
         lines += render_items(pending)
@@ -217,10 +333,21 @@ def main() -> None:
         "if the user's ask matches one, say so and work it as that item",
         "  - work in this session that lands a listed item -> start_todo when "
         "you pick it up, complete_todo + DONE note when it lands",
-        "  - new items: code work (`ref:` first description line, `claude:` "
-        "if model work) in ONE batched AskUserQuestion, or a `decision` "
-        "mirroring one doc Open Question 1:1. Never comms, review/merge an "
-        "MR, settings, manual confirms",
+        (
+            "  - new items: code work (`ref:` first description line, `claude:` "
+            "if model work) in ONE batched AskUserQuestion, or a `decision` "
+            "mirroring one doc Open Question 1:1 (decisions also pass owe=true)"
+        ),
+        (
+            "  - anything the USER must do (run/confirm/verify, review/merge an MR, "
+            "ping, console/settings, decide, resume) -> add_todo owe=true on this "
+            "list; it twins into `daily`. No ask. search_todos first to dedupe. "
+            "Name it `daily #N` in your report"
+        ),
+        (
+            "  - complete or revert either twin through the MCP and both follow; "
+            "fix DRIFT lines first"
+        ),
         "  - stale or non-code items here -> /doit-prune",
         "  - `claude:` items are model-assigned; /burn drains them. Do not "
         "auto-burn and do not quiz the user about the list at startup",
