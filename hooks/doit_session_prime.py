@@ -339,9 +339,13 @@ def main() -> None:
         "  - work in this session that lands a listed item -> start_todo when "
         "you pick it up, complete_todo + DONE note when it lands",
         (
-            "  - new items: code work (`ref:` first description line, `claude:` "
-            "if model work) in ONE batched AskUserQuestion, or a `decision` "
-            "mirroring one doc Open Question 1:1 (decisions also pass owe=true)"
+            "  - follow-ups found during the work get done this session: no "
+            "item, no ask. New items only for work blocked on the user "
+            "(operator detail, or a dangerous change: one-way door, data "
+            "corruption/loss, security, outward-facing): code work (`ref:` "
+            "first description line, `claude:` if model work) deps on its "
+            "owed or `decision` item; a `decision` mirrors one doc Open "
+            "Question 1:1 (decisions also pass owe=true)"
         ),
         (
             "  - anything the USER must do (run/confirm/verify, review/merge an MR, "

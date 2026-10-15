@@ -1,6 +1,6 @@
 ---
 name: feature-management
-description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /abandon-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step feature work surfaces code follow-ups to park in the feature's doit list.
+description: Feature folder lifecycle, scoping, and feature-scoped output routing for .giantmem/features/. Auto-fires when user says "create a plan", "draft a plan", "plan this out", "new feature", or invokes /new-feature, /plan-feature, /start-feature, /pause-feature, /complete-feature, /abandon-feature, /reopen-feature, /list-features, /feature-facts, /feature-report. Also fires before writing to .giantmem/features/** or when checking which feature is active, when user says "feature todos" / "add to the feature todo list" / "sync feature todos", or when multi-step work hits code that must wait on the user (operator detail or a dangerous change) and needs a doit item.
 ---
 
 Feature system for `.giantmem/features/`. Persistent capabilities that span sessions.
@@ -191,21 +191,24 @@ Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user
 
 ## Feature todos → doit sync
 
-Hard link between multi-step feature work and the doit MCP. Code work found but not done this session, and decisions mirrored from doc Open Questions, get parked in a per-feature doit list. Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
+Hard link between multi-step feature work and the doit MCP. Code work blocked on the user (operator detail, or approval of a dangerous change), and decisions mirrored from doc Open Questions, get parked in a per-feature doit list. Everything else found during the work gets done this session (CLAUDE.md `### Proactive execution`). Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
 
-### Trigger — model-initiated ask
+### Trigger — when a code item is written
 
-During multi-step work — feature OR bare repo — when code follow-ups appear that this session will not do (deferred refactor, bug found in passing, test gap, a split-out MR) — emit ONE `AskUserQuestion` offering to create/update the session's doit list (name from List resolution below), at task end or a real blocker, never mid-chain. Keep working everything that does not depend on the answer. Show the proposed items (text + bucket) so user edits before write.
+Default is proactive (CLAUDE.md `### Proactive execution`). Code follow-ups found during the work, feature OR bare repo (bug found in passing, parity gap, stale doc or comment, test gap, split-out fix), get done this session. They never become doit items and never get an ask.
 
-- Ask ONCE per cluster, never per item.
-- Never auto-write code todos — the ask is the gate. Exceptions, no ask: decision mirrors and owed items (both below).
+A code item is written only when the work waits on the user, or on explicit request:
+- needs detail only the user has (product or design choice, credentials, access): the question goes in the doc's Open Questions (decision mirror) or an owed item, and the code item deps on it.
+- dangerous (one-way door, data corruption or loss, security, outward-facing): an owed item to approve or decide, and the code item deps on it.
+
+No ask; the owed or decision item is the gate. Name each in the open edges.
 - Three item kinds only:
   - code work: a repo, a file or symbol, a change. `claude:` when the model can do it; no prefix when the user keeps it.
   - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
   - owed: an action only the user can do, per `### Owed items → daily twin`.
 - Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item.
 - Model-only next-steps (things the model does this turn) are NOT todos — skip them.
-- No active feature → use the bare `{repo}` list, still offer. User works outside features often — do NOT skip. `daily` is written only through `owe=true` twins or on explicit user request.
+- No active feature → use the bare `{repo}` list. User works outside features often — do NOT skip. `daily` is written only through `owe=true` twins or on explicit user request.
 - Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
 
 ### Decision mirror — doc Open Questions ↔ doit, 1:1
@@ -349,7 +352,7 @@ SessionStart hooks already inject WORKSPACE.md, top-level `plans/current.md`, an
 
 ## Todos → doit (repo / feature list)
 
-When multi-step work surfaces code follow-ups this session will not do, MUST `AskUserQuestion` ONCE, at task end or a real blocker (never mid-chain): offer to create/update the session's doit list. Code items go through that ask. Doc-mirrored `decision`s and owed user actions (run / confirm, review / merge, comms, settings, resume) are written without an ask as `owe=true` twins; full rule → `### Trigger — model-initiated ask`, `### Decision mirror`, `### Owed items → daily twin` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often). Never auto-write code todos. Never ask per-item — batch the cluster into one ask showing proposed items + buckets so user can edit first.
+Code follow-ups found during multi-step work get done this session (CLAUDE.md `### Proactive execution`); no ask, no item. Code items exist only for work blocked on the user (operator detail or a dangerous change) or on explicit request, written without an ask next to the owed or decision item they dep on. Doc-mirrored `decision`s and owed user actions (run / confirm, review / merge, comms, settings, resume) are written without an ask as `owe=true` twins; full rule → `### Trigger — when a code item is written`, `### Decision mirror`, `### Owed items → daily twin` above. Fires in OR out of a feature — bare-repo work counts (you work outside features often).
 
 - List = `{repo}-{feature}` capped at 24 chars (e.g. `claude-oauth-ttl`, `cc-retry-loop`); no feature → `{repo}` or `{repo}-{worktree}`. Reuse if exists, else `create_list`. `daily` only via `owe=true` twins or explicit request. Derivation → `feature-management` skill.
 - Bucket → doit `priority`: critical→`critical`, urgent→`urgent`, important→`important`, default→omit. Classify by urgency + critical-path.

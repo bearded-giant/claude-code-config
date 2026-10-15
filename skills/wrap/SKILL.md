@@ -27,7 +27,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Uncommitted or unpushed work is a gap. Offer commit, or commit and push, in the batched ask.
 2. **doit** (always pass `list=`):
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
-   - New items: code follow-ups in the batched ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. Comms, review/merge asks, settings, and manual confirms become owed items (`add_todo owe=true`, `feature-management` → `### Owed items → daily twin`), no ask; the handoff's `Open edges` lists them by `daily #N`.
+   - New items: code follow-ups should already be done (CLAUDE.md `### Proactive execution`). Work the session could do but did not finish goes in the handoff's `Start here`, not doit. Code blocked on me (operator detail, dangerous change) gets a code item that deps on its owed or decision item, no ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. Comms, review/merge asks, settings, and manual confirms become owed items (`add_todo owe=true`, `feature-management` → `### Owed items → daily twin`), no ask; the handoff's `Open edges` lists them by `daily #N`.
    - Every `claude:` item must be burnable cold: `ref:` line, paths, commands, and identifiers in its text or description. Fill thin ones in.
    - `feature` mode: list would end with 0 pending → offer `delete_list` in the batched ask.
 3. **Docs:**

@@ -29,15 +29,28 @@ User reviews strategy, not tool-call streams. Make the path inspectable early an
 - End the turn only when nothing can move without me or the next step is a protected gate (deletion, destructive, outward-facing, named-path failure, rebuild-priced ambiguity). Not reasons to stop: a summary announcing the next step with no tool call; an offer to continue; a list of decisions none of which block the rest; a long turn or a finished milestone.
 - Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better. Run independent tool calls and subagents in parallel.
 
+### Proactive execution
+
+Own the feature or work being handled, not only the literal ask. Pieces found along the way get done this session, not parked.
+
+- In scope: anything in the work's area that the change touches or exposes. A bug found in passing, a parity gap on another surface (UI, CLI, MCP, hook), a doc or comment the change made false, a test gap, a broken or hanging test met on the way, a follow-on fix the work implies.
+- How: state the pivot in one line (Strategy visibility), fix it, test it (red/green for fixes), keep it in its own commit when the session commits, report it under work performed. Keep going until nothing in the area is left that you can do.
+- Never an AskUserQuestion offering to park follow-ups. Never a `claude:` doit item for work this session can do.
+- Defer only two kinds, as an owed item or an Open Question with its `decision` mirror, and name each in the open edges:
+  1. Needs detail only I have: a product or design choice the code can't settle, credentials or access, an answer no file or system can give.
+  2. Dangerous: a one-way door (schema or data migration, public API or contract change, a design commitment that is costly to reverse), data corruption or loss (deleting or rewriting user data, cascades), security-sensitive changes, outward-facing actions.
+- Existing gates still hold: deletions confirm first, team-shared agent config, outward-facing and protected gates, rebuild-priced ambiguity.
+- Outside the work's area (a subsystem the task never touched): mention it in one line; no fix, no doit item.
+
 ### Gitignored files are editable
 
 `.gitignore` controls what git *tracks*, not what you may *edit*. A gitignored file — or any file inside an ignored directory — is editable exactly like a tracked file. There is no instruction anywhere that bars editing ignored files; do not invent one. Read, edit, create, and delete them under the same gates as everything else (read-before-edit, confirm before destructive/outward-facing). Never stop, skip, or ask permission *solely because* a path is gitignored — that is not a reason to halt.
 
 ## Scope of Changes (blast radius)
 
-The task defines the blast radius. Nothing outside it gets touched.
+The feature or work being handled defines the blast radius. Inside it, finish the pieces you find (`### Proactive execution`). Outside it, nothing gets touched.
 
-- No drive-by edits: refactors, comment cleanup, config tweaks, doc fixes outside the named task — mention them, don't do them.
+- No drive-by edits in areas the work never touched (refactors, comment cleanup, config tweaks, doc fixes): mention them in one line; don't do them.
 - Team-shared agent config — git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` / checked-in `.claude/**` in any repo other than `claude-code-config` / `dotfiles` — NEVER edit as a side effect of another task. Propose the diff in chat; edit only when the user explicitly directed that exact change. `guard_protected_paths.py` PreToolUse hook gates this mechanically (ask-prompt).
 - Never create a git worktree unless asked. Work in the current worktree; run artifacts go under the current repo's `.giantmem/`.
 - Deletions: list targets, wait for confirm, then delete.
@@ -71,7 +84,7 @@ Forbidden moves:
 When a doc and the code disagree:
 
 - The code wins. Say so explicitly to the user.
-- Offer to refresh the stale doc/comment in the same turn, or flag it as a follow-up.
+- Refresh the stale doc/comment in the same turn when it sits in the work's area (`### Proactive execution`); outside it, flag it in one line.
 - Never silently "average" the two or hedge ("the doc says X but maybe…"). State the divergence directly.
 
 This applies to MR descriptions, proposals, kaizens, runbooks, ADRs, frontmatter — every text artifact. The artifact is a snapshot; the running system is the truth.
