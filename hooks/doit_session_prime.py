@@ -260,6 +260,11 @@ def list_name(root: str, feat) -> str:
     while len(words) > 1 and len(repo) + 1 + len("-".join(words)) > MAX_LIST_NAME:
         words.pop()
     name = f"{repo}-{'-'.join(words)}" if words else repo
+    # daily twins are labeled "<list>: ...", so a list named claude reads as a `claude:` burn item
+    if name == "claude":
+        name = "-".join(
+            (parent[:-3] if in_wt else leaf).removeprefix(ORG_PREFIX).split("-")[:2]
+        )
     return name[:MAX_LIST_NAME].rstrip("-")
 
 

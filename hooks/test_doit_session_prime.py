@@ -42,6 +42,8 @@ CASES = [
     # long repo names keep their first word
     ("/dev/investigator-agent-wt/admin-qol", "admin-qol", "investigator-admin-qol"),
     ("/dev/claude-code-config", "assigned-reviews", "claude-assigned-reviews"),
+    # a bare "claude" list makes its daily twins read as `claude:` burn items
+    ("/dev/claude-code-config", None, "claude-code"),
     # feat- prefix dropped
     (
         "/dev/frontend-wt/feat-redact-api-tokens",

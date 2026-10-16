@@ -282,7 +282,7 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 | `~/dev/python/cc-wt/local-dev-runner` | none | `cc-local-dev-runner` |
 | `~/dev/python/cc-wt/main` | none | `cc` |
 
-- Repo = worktree parent minus `-wt` (parent ends `-wt`), else `{leaf}`; `recharge-` dropped; over 14 chars → first word.
+- Repo = worktree parent minus `-wt` (parent ends `-wt`), else `{leaf}`; `recharge-` dropped; over 14 chars → first word. A name that comes out as bare `claude` keeps two words (`claude-code`), since a `claude:` twin label in `daily` reads as a burn item.
 - Then `-{feature}`, else `-{worktree}` unless it is `main`/`master`/`develop`. `feat-`/`fix-`/`chore-` dropped.
 - Capped at 24 chars (the MCP rejects longer): trailing words shed, never cut mid-word.
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
