@@ -22,4 +22,4 @@ After it runs:
    ```bash
    python3 ~/.claude/hooks/doit_session_prime.py --name-only --feature <name> --cwd "$(pwd)"
    ```
-   Pass the printed name to doit MCP `create_list`; an "already exists" error means reuse. Put the list name in the summary. For the rest of the session every doit call about this feature uses that list, not the one SessionStart primed (that one follows the `in_progress` feature). Never call `switch_list` for it: tmux session links are the user's view state.
+   Pass the printed name to doit MCP `create_list`; an "already exists" error means reuse. Put the list name in the summary. For the rest of the session every doit call about this feature uses that list, not the one SessionStart primed (that one follows the `in_progress` feature). Never call `switch_list` for it: tmux window links are the user's view state.

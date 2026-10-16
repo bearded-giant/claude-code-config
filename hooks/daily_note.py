@@ -118,7 +118,7 @@ def context(data):
         "sid": data.get("session_id") or "",
         "root": root,
         "list": mod.list_name(root, mod.active_feature(root)),
-        "tmux": mod.tmux_session(),
+        "tmux": mod.tmux_window(),
         "slug": Path(data.get("transcript_path") or "").parent.name,
     }
 

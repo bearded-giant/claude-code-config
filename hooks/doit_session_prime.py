@@ -32,14 +32,14 @@ def git_root(cwd: str) -> str:
     return cwd
 
 
-def tmux_session():
+def tmux_window():
     if not os.environ.get("TMUX"):
         return None
     pane = os.environ.get("TMUX_PANE")
     target = ["-t", pane] if pane else []
     try:
         out = subprocess.run(
-            ["tmux", "display-message", "-p", *target, "#S"],
+            ["tmux", "display-message", "-p", *target, "#S:#W"],
             capture_output=True,
             text=True,
             timeout=2,
@@ -280,7 +280,7 @@ def main() -> None:
         "<system-reminder>",
         "doit session list (repo-qualified, worktree-aware):",
         f"  list: {name}   {feat_note}",
-        f"  session: {session_id or '?'}  tmux: {tmux_session() or 'none'}",
+        f"  session: {session_id or '?'}  tmux: {tmux_window() or 'none'}",
         f"  resume line for owed items: cd {root} && {resume}",
         (
             f"  giantmem link: giantmem://session/{session_id}"

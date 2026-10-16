@@ -252,12 +252,12 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
   - artifact: <claude.ai url>
 
   resume:
-  tmux: <session>
+  tmux: <session>:<window>
   cd <worktree abs path> && claude --resume <session id>
   giantmem://session/<session id>
   ```
 
-  The SessionStart `doit session list` block prints the session id, the tmux session, and the ready-made resume line. Link every vault note, artifact, and `.giantmem` doc this session wrote that the action touches.
+  The SessionStart `doit session list` block prints the session id, the tmux `session:window`, and the ready-made resume line. Link every vault note, artifact, and `.giantmem` doc this session wrote that the action touches.
 - Close: action done (user says so, MR merged, doc resolved) → `complete_todo` on either twin; both close. Moot → `delete_todo` on either twin; both go. `update_todo` done / priority / due also follow.
 - Drift: a twin checked off or deleted in the tmux or nvim UI does not sync. SessionStart prints `DRIFT` lines for the session list; fix those first. `/doit-prune` repairs the rest.
 
@@ -288,7 +288,7 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 - Reuse the list if it already exists, else `create_list` (hyphens, no spaces — names already kebab).
 - Proactive todo ASK fires in OR out of a feature: feature active → `{repo}-{feature}`, none → bare `{repo}`. Don't gate on a feature.
 - Todos belong to the feature the work is for, not the one SessionStart primed. Work on a `pending` feature while another is `in_progress` → that feature's list (`--feature <name>`), never the primed list.
-- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default is `daily` (or a `DOIT_ACTIVE_LIST` export), not this derivation; tmux session links steer only the user's views.
+- Session start: the `doit_session_prime` hook prints this session's derived list name + every pending item (priority bucket → do-order, first description line, `in_progress` marker, truncated past 15). Items already in context — `list_todos` only to refresh after a write or see past truncation. Re-derive on cwd / worktree / feature change. Several features `in_progress` → the hook picks the one whose `branch` matches HEAD, else the first. ALWAYS pass `list=` explicitly on every doit call; the MCP's active-list default is `daily` (or a `DOIT_ACTIVE_LIST` export), not this derivation; tmux window links steer only the user's views.
 - Pending items are the feature's open work. Land one this session → `start_todo` on pickup, `complete_todo` + DONE record when it lands. Never leave a landed item open.
 - `daily` is the user's cross-repo inbox. Qualified lists reach it only through `owe=true` twins, never by copying items.
 
