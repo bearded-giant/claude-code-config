@@ -13,6 +13,8 @@ persistent debug state is current before the session ends.
 NOTE: Uses only Python standard library (no external dependencies)
 """
 
+from __future__ import annotations
+
 import sys
 import json
 import os

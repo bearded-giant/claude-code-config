@@ -17,6 +17,8 @@ since Claude Code resolves the project ID from the working directory.
 NOTE: Uses only Python standard library (no external dependencies)
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess

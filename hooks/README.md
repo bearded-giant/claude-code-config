@@ -2,6 +2,8 @@
 
 Hooks that run at various Claude Code lifecycle events.
 
+Some launch paths run hooks under macOS `/usr/bin/python3` (3.9), where an `X | None` annotation raises at import. A hook that uses one starts with `from __future__ import annotations`. Tests: `python3 hooks/test_py39_compat.py`.
+
 ## workspace_session_end.py
 
 **Hook:** `SessionEnd`

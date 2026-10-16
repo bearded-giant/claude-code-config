@@ -9,6 +9,8 @@ matcher, so this is a guard against tool-driven edits, not a security boundary.
 NOTE: Uses only Python standard library (no external dependencies)
 """
 
+from __future__ import annotations
+
 import sys
 import json
 import os
