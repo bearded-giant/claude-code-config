@@ -8,7 +8,7 @@ OUT="$(cd "$(dirname "$0")/.." && pwd)/kai-local/plugins/kai"
 # allowlist so new upstream skills stay out until added; dapr-*, chronoctl, stackdriver-promql are called by review-code and chronosphere-expert
 SKILLS=(
   open-mr glab accept-kai-feedback gitlab-inline-comments
-  review-code review-code-select review-adversarial classify-repo
+  review-code review-code-select classify-repo
   dapr-parallel-deploy dapr-pubsub dapr-pubsub-debugging dapr-recharge-foundations dapr-grpc-resilience
   chronoctl stackdriver-promql update-kai
 )

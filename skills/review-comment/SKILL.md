@@ -5,7 +5,7 @@ description: >-
   reviewer wrote it, show it for approval, then post it. Auto-fires when user
   says "post this as a review comment", "comment this on the MR", "leave review
   comments", "add findings to the MR", or invokes /review-comment. Needs
-  findings already in session (run /kai:review-adversarial or /grill first).
+  findings already in session (run /grill or /grill <mr-url> first).
   Skip for MR descriptions (use ship-it).
 argument-hint: "<mr-or-pr-url> [--post]"
 ---
@@ -13,7 +13,7 @@ argument-hint: "<mr-or-pr-url> [--post]"
 
 Findings → one human-voiced comment → user approves → post.
 
-Findings must already exist in session (from `/kai:review-adversarial`, `/grill`, `/review-code`, or manual trace). No findings → say so, point at those skills, stop. Do NOT re-review here.
+Findings must already exist in session (from `/grill <mr-url>`, `/grill`, `/review-code`, or manual trace). No findings → say so, point at those skills, stop. Do NOT re-review here.
 
 ## Steps
 
