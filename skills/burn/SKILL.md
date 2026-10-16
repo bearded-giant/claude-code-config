@@ -46,7 +46,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
 1. **Claim** — `start_todo` (→ in_progress) FIRST, before any work, as its own tool call. MUST land before reading/working the item — never skip, never batch, never go straight to `complete_todo`. Two purposes: (a) the lock — parallel sessions see it taken, won't double-grab; (b) the user tracks the live item visually in their doit tooling. Item stays in_progress for its whole work window, until step 4/5 closes it.
 2. **Read** — strip `claude:`; read instruction + the todo's note (doc / script / ids).
 3. **Work** — end-to-end. Existing gates HOLD:
-   - commit / push / MR → normal git rules. A todo that explicitly says "commit & push X" IS the authorization; silent default = no push.
+   - commit / push / MR → CLAUDE.md git_rules: commit each item on green, push when the branch is the user's own (feature branch, or main of their personal repos); opening or updating an MR waits for "ship it" or a todo that says so.
    - destructive / irreversible / outward-facing NOT named in the todo → pause, surface, don't execute.
    - sev-5 (data loss, security, prod mutation) → stop, flag for human.
 4. **Close (success)** — `complete_todo` (mark done) + `add_note` mode=`append` with the completion record (below). `append` keeps the user's original note (doc / script / context) intact.

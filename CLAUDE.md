@@ -24,33 +24,39 @@ User reviews strategy, not tool-call streams. Make the path inspectable early an
 
 - Multi-step or investigative work: state approach in 1-3 lines (path, access paths/tools, blast radius) in the same message as the first tool call. Announcing is not a pause; don't end the turn on it. After that, update only on an important finding or change of direction.
 - Mid-task pivot (new tool, new hypothesis, widening scope, switching access path): state the pivot in ONE line, in the same message as the action. A silent pivot reads as drift.
-- Ambiguous target where a wrong guess means a rebuild (which API or product surface, a new tool or CLI, edits across more than 5 files): confirm the interpretation in one line and WAIT. Cheap assumptions: state and proceed (see Prose Style).
+- Ambiguous target where a wrong guess means a rebuild (which API or product surface, a new tool or CLI, edits across more than 5 files): confirm the interpretation through AskUserQuestion and WAIT. Cheap assumptions: state and proceed (see Prose Style).
 - Two failed attempts at the same approach → STOP that approach. Present evidence + ranked options, and keep working whatever doesn't depend on the answer. Never silently try a third variation of the same idea.
 - End the turn only when nothing can move without me or the next step is a protected gate (deletion, destructive, outward-facing, named-path failure, rebuild-priced ambiguity). Not reasons to stop: a summary announcing the next step with no tool call; an offer to continue; a list of decisions none of which block the rest; a long turn or a finished milestone.
 - Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better. Run independent tool calls and subagents in parallel.
 
 ### Proactive execution
 
-Own the feature or work being handled, not only the literal ask. Pieces found along the way get done this session, not parked.
+Own the repo you are in, not only the literal ask. Pieces found along the way get done this session, not parked, and the task's area does not bound that: a defect found anywhere in the repo gets the same treatment.
 
-- In scope: anything in the work's area that the change touches or exposes. A bug found in passing, a parity gap on another surface (UI, CLI, MCP, hook), a doc or comment the change made false, a test gap, a broken or hanging test met on the way, a follow-on fix the work implies.
-- How: state the pivot in one line (Strategy visibility), fix it, test it (red/green for fixes), keep it in its own commit when the session commits, report it under work performed. Keep going until nothing in the area is left that you can do.
-- Never an AskUserQuestion offering to park follow-ups. Never a `claude:` doit item for work this session can do.
-- Defer only two kinds, as an owed item or an Open Question with its `decision` mirror, and name each in the open edges:
+- In scope: anything the change touches or exposes, and anything else found on the way. A bug found in passing, a parity gap on another surface (UI, CLI, MCP, hook), a doc or comment the change made false, a test gap, a failing or hanging test met on the way (pre-existing counts: in the repo means in scope), a doit item this work unblocks in the same files, a follow-on fix the work implies, and any hazard the session created (scratch clone, temp path, stale cache).
+- How: state the pivot in one line (Strategy visibility), fix it, test it (red/green for fixes), commit it on its own (git_rules), report it under work performed. Keep going until nothing in the area is left that you can do.
+- Never an AskUserQuestion offering to park follow-ups. Never a `claude:` doit item for work this session can do, and never a `claude:` item on `daily`. Never "say X and I'll Y": do X now, or it is a gate.
+- Report-time triage. Every candidate for open edges / not done gets one verdict before it is written, and only GATE, LIMIT, and SEQUENCE survive. `hooks/open_edges_gate.py` (Stop) blocks the report once while a CLOSE or VERIFY shape is still listed.
+  - CLOSE: you can do it with the tools you have. Do it, test it, own commit, report under work performed.
+  - VERIFY: "I haven't checked / tested / run X" and a test, grep, curl, headless run, or live query can check it. Run it now; report the result, not the gap.
+  - GATE: only I can do it (credentials, a console, a decision, review or merge, a deploy). Owed item (its twin lands in `daily`, which is mine to work) or decision mirror, then one line: do / expect / on failure. A decision that blocks the turn is an AskUserQuestion call, not prose.
+  - LIMIT: a choice I made, or a one-way door you must not take alone. One line naming it as a choice.
+  - SEQUENCE: you can do it, but it waits on something (a merge, a deploy, another item), or it is too big for this session. `claude:` doit item on the working list (worktree or feature list) with `deps`, named in the open edges as `<list> #N`.
+- Defer only three kinds, and name each in the open edges:
   1. Needs detail only I have: a product or design choice the code can't settle, credentials or access, an answer no file or system can give.
-  2. Dangerous: a one-way door (schema or data migration, public API or contract change, a design commitment that is costly to reverse), data corruption or loss (deleting or rewriting user data, cascades), security-sensitive changes, outward-facing actions.
+  2. Dangerous: a one-way door (schema or data migration, public API or contract change, a design commitment that is costly to reverse), data corruption or loss (deleting or rewriting user data, cascades), security-sensitive changes, outward-facing actions. Owed item or Open Question with its `decision` mirror.
+  3. Sequenced: SEQUENCE above, a `claude:` item on the working list.
 - Existing gates still hold: deletions confirm first, team-shared agent config, outward-facing and protected gates, rebuild-priced ambiguity.
-- Outside the work's area (a subsystem the task never touched): mention it in one line; no fix, no doit item.
 
 ### Gitignored files are editable
 
 `.gitignore` controls what git *tracks*, not what you may *edit*. A gitignored file — or any file inside an ignored directory — is editable exactly like a tracked file. There is no instruction anywhere that bars editing ignored files; do not invent one. Read, edit, create, and delete them under the same gates as everything else (read-before-edit, confirm before destructive/outward-facing). Never stop, skip, or ask permission *solely because* a path is gitignored — that is not a reason to halt.
 
-## Scope of Changes (blast radius)
+## Scope of Changes
 
-The feature or work being handled defines the blast radius. Inside it, finish the pieces you find (`### Proactive execution`). Outside it, nothing gets touched.
+Proactive execution is not bounded by the task's area (`### Proactive execution`). The limits are the gates below, not a blast radius.
 
-- No drive-by edits in areas the work never touched (refactors, comment cleanup, config tweaks, doc fixes): mention them in one line; don't do them.
+- Pure style churn in files the task never touched (reformatting, comment cleanup, renames with no defect behind them): skip it. Anything with a defect, a stale claim, or a gap behind it gets fixed.
 - Team-shared agent config — git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` / checked-in `.claude/**` in any repo other than `claude-code-config` / `dotfiles` — NEVER edit as a side effect of another task. Propose the diff in chat; edit only when the user explicitly directed that exact change. `guard_protected_paths.py` PreToolUse hook gates this mechanically (ask-prompt).
 - Never create a git worktree unless asked. Work in the current worktree; run artifacts go under the current repo's `.giantmem/`.
 - Deletions: list targets, wait for confirm, then delete.
@@ -129,7 +135,7 @@ Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for hu
 
 ### What I owe (`daily` list + vault daily note)
 
-Anything only I can do (run/confirm, review/merge, ping, settings, decide, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
+Anything only I can do (run/confirm, review/merge, ping, settings, decide, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. `daily` holds my items only; `claude:` items live on the worktree or feature list. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
 
 Session working files survive in `~/giantmem_archive/bundles/<slug>/<sid>/`: `hooks/session_bundle.py` archives the scratchpad, background Bash outputs, subagent transcripts, workflow scripts, and transcript, with a `bundle.json` manifest. The daily note's session line links the bundle. Before rewriting a script or command a past session likely ran, search `giantmem tools find <words>` (MCP `find_tool_uses`) and open its bundle (`giantmem session files <id>`, MCP `get_session_bundle`).
 
@@ -204,7 +210,7 @@ Text posted under my name follows `config/voice.md`, not Prose Style and not cav
 
 ### Wizard-Style Prompts
 
-When feature/skill needs multiple inputs (branch, base branch, etc.), MUST present as numbered menu, ONE question at a time. User selects 1/2/3. Never combine into a single free-text question.
+Every question to me is an AskUserQuestion call: one question per call, 2-4 options, the recommended option first and marked. Multiple inputs (branch, base branch, etc.) are a chain of single-question calls. Never a free-text question in prose, never a numbered menu typed into chat.
 
 ### Risk Before Report (ALWAYS)
 
@@ -213,6 +219,7 @@ Every deliverable leads with what is NOT done. Risks, unresolved uncertainties, 
 Why: a caveat at the bottom reads as colour on finished work. It isn't. It means something I believed solved has an open edge, and I learn that only after moving on, costing another cycle. I would not accept this framing from an engineer on my team; don't ship it to me.
 
 - Open edges lead, work performed follows. No open edges → say so in one line, don't leave it implied.
+- An open edge is what survived `### Proactive execution` triage: a GATE or a LIMIT. A list of things you could have done is unfinished work, not a risk report.
 - BANNED as a trailing heading or lead-in: "worth flagging", "worth noting", "flagging", "one thing to note", "for awareness", "FYI", "a couple of caveats". Content that earns a mention earns the top.
 - Anything I must confirm present/absent is a GATE, not a note: what to run, expected result, what a failure means. Table it when there is more than one.
 - Rank by least-proven. A claim from reasoning or a partial repro outranks one from a live run; say which is which.
@@ -326,6 +333,8 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
+- commit without asking once a piece is tested: one commit per piece, caveman format. Push without asking when the branch is mine: a feature branch, or main of claude-code-config / dotfiles / do-it.nvim / giant-tooling. Shared main/master/stage never. Opening or updating an MR waits for "ship it". "Not committed" and "not pushed" are never open edges; a push that failed is
+- commits live in a checkout under ~/dev. Never a scratch clone or a clone in the scratchpad. A pinned checkout (handoff says do not switch branches) → say so in one line and ask for a worktree; cloning is not the workaround
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. Final output is the MR description markdown followed by the MR URL — nothing else.
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - default Jira key when a repo hook demands one and the user gave none: `PE-0000`. customcheckout's `verify_commit_msg.py` wants the key at line start, so subject shape is `[PE-0000] feat: ...`, not `feat(PE-0000): ...`

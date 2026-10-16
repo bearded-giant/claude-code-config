@@ -30,7 +30,7 @@ def for_subagent(text):
     # subagents cannot wait on the user; confirm-and-wait becomes an early end_turn
     out = []
     for line in text.splitlines():
-        if line.startswith("DOIT LIST:"):
+        if line.startswith(("DOIT LIST:", "GIT:")):
             continue
         out.append(SUBAGENT_STRATEGY if line.startswith("STRATEGY:") else line)
     return "\n".join(out)

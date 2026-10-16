@@ -35,10 +35,11 @@ def main():
 
         # confirm-and-wait strategy and parent-only doit rules must not reach subagents
         constraints.write_text(
-            "SCOPE: a\nSTRATEGY: confirm and wait\nDOIT LIST: todos\nTIME: fast"
+            "SCOPE: a\nSTRATEGY: confirm and wait\nDOIT LIST: todos\nGIT: push\nTIME: fast"
         )
         out = run(flag, constraints)
         assert "confirm and wait" not in out and "DOIT LIST" not in out, out
+        assert "GIT:" not in out, out
         assert "STRATEGY: no user to confirm with" in out and "TIME: fast" in out, out
 
         # symlinked flag must never be read, same as caveman-config.js readFlag

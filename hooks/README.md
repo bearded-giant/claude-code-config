@@ -51,6 +51,14 @@ Checks `.giantmem/debug/` and any `features/{name}/debug/` directories for markd
 
 Skips the check when `stop_hook_active` is true (already continuing from a prior stop hook) to prevent infinite loops.
 
+## open_edges_gate.py
+
+**Hook:** `Stop` (via dispatch)
+
+Mechanical half of CLAUDE.md `### Proactive execution` report-time triage. Reads the last assistant turn from the transcript, finds an `Open edges` / `Not done` section, and blocks the stop once when an item there has a shape the rule says to close or verify rather than report: `I haven't checked / tested / run X`, `not verified`, `say "ship it" and I'll`, a pre-existing failure the session did not touch, a doit item parked for `/burn`, a scratch clone or `/private/tmp` path, `not committed` / `not pushed` / `no MR`. An item that names an owed twin (`daily #N`), states an expectation (`expect`, `to check:`, `on failure`), or carries a dependency (`dep on`, `blocked by`, `waits on`) is already a gate or a sequenced item and is skipped. Scanning stops at the next heading, so a `What changed` list is never matched. The block reason quotes each item with its tag, and the model gets one turn to do the work or restate the item as a GATE or LIMIT.
+
+Skips when `stop_hook_active` is true, so a report blocked once goes through on the second stop. `OPEN_EDGES_GATE=off` in the environment disables it. Tests: `python3 hooks/test_open_edges_gate.py`.
+
 ## guard_protected_paths.py
 
 **Hook:** `PreToolUse` (matcher: Write, Edit, MultiEdit)
@@ -107,7 +115,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | SessionStart, PostToolUse | `daily_note.py` (Artifact, Write/Edit/MultiEdit, Bash `note.py new`): appends to the vault daily note `daily/<date>.md`, creating it from `templates/dailytemplate.md`. One `## CLAUDE SESSIONS` line per interactive session (repo list, tmux, `claude --resume <id>`; headless `sdk-cli` runs skipped), one `## CLAUDE LINKS` line per artifact publish, vault note write, or `.giantmem/**/handoff.md` write. flock-guarded, section-scoped dedupe. Tests: `python3 hooks/test_daily_note.py` | No (file write only) |
 | Stop, PreCompact, SessionEnd | `session_bundle.py`: detached rsync of the session's `/private/tmp/claude-*/<slug>/<sid>/{scratchpad,tasks}` (purged by macOS) into `~/giantmem_archive/bundles/<slug>/<sid>/`, skipping `.venv`, `node_modules`, caches, binaries, files over 20MB, and symlinks. PreCompact and SessionEnd also copy `~/.claude/projects/<slug>/<sid>/{subagents,workflows,tool-results}` and the transcript into `claude/`. Writes `bundle.json` (cwd, branch, first prompt, resume command, file list with kinds). Archive only: files the session deletes stay. After the SessionEnd sync it re-runs `giantmem db ingest -s session-bundle`, so the final files are indexed even when `session_end_ingest` got there first. `--backfill [--from DIR]` sweeps existing tmp dirs or a saved copy. Tests: `python3 hooks/test_session_bundle.py` | No (file write only) |
 | SessionStart | `doit_session_prime.py` also prints the session id + tmux session + `resume` line, the owed count, and `DRIFT` lines for owed twins out of sync with `daily`. Tests: `python3 hooks/test_doit_session_prime.py` | Yes |
-| Stop | dispatch: `debug_stop_check` | No (JSON decision only) |
+| Stop | dispatch: `debug_stop_check`, `open_edges_gate` | No (JSON decision only) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |
 
