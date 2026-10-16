@@ -23,7 +23,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
 
 1. **Git**, for every repo touched this session: cwd, any repo edited or named this session, and the repos of paired sessions.
    - `git status --short`, `git log @{u}.. --oneline`, branch, HEAD sha
-   - open MRs: state, pipeline, unresolved threads
+   - open MRs: state, pipeline, unresolved threads. Include MRs this session opened on other repos: `giantmem mr list --project <repo>` (the `/feature-next` gather already runs it)
    - Uncommitted or unpushed work is a gap. Offer commit, or commit and push, in the batched ask.
 2. **doit** (always pass `list=`):
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.

@@ -23,10 +23,14 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
 
    Then `list_todos` with `list=<name>` (doit MCP only, never the JSON). A `claude:` prefix marks claude's items; everything else is the user's.
 
-3. MRs / PRs: the current branch plus every MR/PR URL in the feature dir, since features span repos.
+3. MRs / PRs: the current branch, every MR/PR URL in the feature dir, and every MR/PR this repo's Claude sessions opened or touched on any repo, since features span repos (a terraform MR opened from an auth worktree only shows up in the third source).
 
    ```bash
    grep -rhoE 'https://[^ )>"`]+/(merge_requests|pull)/[0-9]+' .giantmem/features/<name>/ | sort -u
+   ```
+
+   ```bash
+   giantmem mr list --project "$(basename -s .git "$(git remote get-url origin)")" --json
    ```
 
    - GitLab origin: `glab mr list --source-branch "$(git branch --show-current)"`, and per URL `glab mr view <iid> -R <group/project>`
@@ -38,7 +42,7 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
 
 ## Output
 
-Fixed order, blockers first. One line per item, with identifiers exact (`!43`, doit `#12`). Omit empty sections. No sources at all → say so in one line.
+Fixed order, blockers first. One line per item, with identifiers exact (`recharge-auth!43`, doit `#12`). MR refs always carry the repo, since repos share ids. Omit empty sections. No sources at all → say so in one line.
 
 ```
 <feature or repo>  branch: <branch>
@@ -46,7 +50,7 @@ Fixed order, blockers first. One line per item, with identifiers exact (`!43`, d
 Blocked / needs decision
 - ...
 In flight
-- !43 recharge-auth  open, pipeline green, 2 unresolved threads
+- recharge-auth!43  open, pipeline green, 2 unresolved threads
 Next: user
 1. ...
 Next: claude
