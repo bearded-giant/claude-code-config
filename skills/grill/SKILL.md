@@ -1,10 +1,10 @@
 ---
 name: grill
-description: Adversarial pre-ship review loop for larger/complex changes. Runs `greptile review --json` on local branch committed diff vs base, triages each finding as skeptical staff engineer, scores it (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR URL (`/grill <mr-url>`, "grill this MR", "adversarial review of <mr-url>"), runs read-only MR mode instead: seeds from Greptile's MR threads, verifies the MR description's claims against the code, refutes and scores, prints findings. MR mode never edits, writes files, or posts.
+description: Adversarial pre-ship review loop for larger/complex changes. Runs `greptile review --json` on local branch committed diff vs base (Recharge GitLab + RechargePayments / skio-org GitHub repos; any other remote gets grill's own review instead), triages each finding as skeptical staff engineer, scores it (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR URL (`/grill <mr-url>`, "grill this MR", "adversarial review of <mr-url>"), runs read-only MR mode instead: seeds from Greptile's MR threads, verifies the MR description's claims against the code, refutes and scores, prints findings. MR mode never edits, writes files, or posts.
 ---
 <!-- caveman:compressed -->
 
-Adversarial pre-ship review LOOP. Greptile CLI reviews committed diff (turn 1). Skeptical staff engineer refutes + scores each finding, auto-fixes confident items, surfaces uncertain/fatal items, re-checks own fixes. Max 3 turns.
+Adversarial pre-ship review LOOP. Turn 1: Greptile CLI reviews committed diff on Recharge repos; any other remote, grill self-reviews it (see Scope). Skeptical staff engineer refutes + scores each finding, auto-fixes confident items, surfaces uncertain/fatal items, re-checks own fixes. Max 3 turns.
 
 NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 
@@ -32,15 +32,32 @@ grill/
   final.md     (always, end of last run)
 ```
 
+## Scope
+
+Greptile is Recharge's tool: it reviews Recharge-owned repos only. `git remote get-url origin` picks turn 1's finding source:
+
+| origin | Turn 1 source |
+|---|---|
+| host `gitlab.rechargeapps.net` | Greptile |
+| `github.com`, org `RechargePayments` (Recharge) or `skio-org` (Skio) | Greptile |
+| anything else: personal GitHub, other hosts, no `origin` | self-review |
+
+Org = first path segment after the host, from `git@github.com:<org>/...` or `https://github.com/<org>/...`, matched case-insensitive. A personal fork of a Recharge repo is out of scope.
+
+Self-review (out of scope): skip Greptile preflight + run. Read `git diff <base>...HEAD` whole, plus callers and definitions of changed symbols; sweep the Review categories table as checklist; every candidate `source: self-review`. Downstream unchanged: Verification pass, scoring, matrix, auto-fix, loop. run.md + final.md say `Greptile: n/a (out of scope: <host>/<org>)`, frontmatter `reviewer: self`, `greptile_confidence: n/a`.
+
+In scope + Greptile unavailable (not installed, signed out, repo not connected, review failed) → stop and report per Preflight. Self-review is the out-of-scope path, never a fallback.
+
 ## Greptile review
 
-Turn 1 finding source is the Greptile CLI (`greptile-cli` skill has command + output details). Grill triages, scores, fixes, and tests. Greptile does not run code, so the Generated-output rule and Refusal cases stay grill's own.
+In-scope repos only (see Scope). Turn 1 finding source is the Greptile CLI (`greptile-cli` skill has command + output details). Grill triages, scores, fixes, and tests. Greptile does not run code, so the Generated-output rule and Refusal cases stay grill's own.
 
 ### Preflight (step 5)
 
 - `command -v greptile` empty → stop, report broken install or `PATH`.
 - `greptile whoami | grep -q '^Not signed in'` → stop, tell user to run `greptile login` (interactive browser flow, never run it). `whoami` exits 0 when signed out; gate on text.
-- No fallback. Greptile unavailable → stop and report. NEVER substitute a Claude-only review.
+- `this repository is not connected to Greptile yet` → stop, tell user to run `greptile init` or add the repo in the dashboard (never run it: registers the repo with the org).
+- No fallback. In-scope repo + Greptile unavailable → stop and report. NEVER substitute a Claude-only review.
 
 ### Run (turn 1)
 
@@ -96,7 +113,7 @@ Greptile author: `author.username == "greptile"` (`greptile` skill, Greptile fac
 - Each unresolved Greptile DiffNote → candidate. `position.new_path` + `new_line` = file:line (`old_line` only → base side). Bold title + body = problem. ```` ```suggestion ```` block = proposed fix, never applied blind. Badge `badges/p0|p1|p2.svg` seeds sev per the mapping table above. Resolved threads: skip.
 - `<!-- greptile_outside_diff -->` note: each item a candidate.
 - Reviewed sha != head → Greptile stale. Status each seeded finding at head (RESOLVED / STILL OPEN), then self-review `<reviewed>..<head>` with the Review categories table, `source: self-review`.
-- No summary note (Greptile reviews off for the repo, or not run yet) → self-review the full diff with the Review categories table, header says `greptile: none`. Only path where grill reviews without Greptile.
+- No summary note (Greptile reviews off for the repo, or not run yet) → self-review the full diff with the Review categories table, header says `greptile: none`. Only MR-mode path where grill reviews without Greptile.
 - Prompt names a previously reviewed sha (glmon re-review) → lead with what changed in `<prev>..<head>`.
 
 ### Claim check
@@ -236,7 +253,7 @@ To reset: delete `.config.yaml` or pass `--no-sticky` (skill ignores file for th
 
 Loop runs up to `loops` turns (default 3, configurable). Each turn:
 
-1. N=1: `greptile review -b <base> --json` + `git diff <base>...HEAD` for context → triage (see Greptile review); N>1: `git diff` (prior turn's auto-fix edits) → self-review
+1. N=1: in scope, `greptile review -b <base> --json` + `git diff <base>...HEAD` for context → triage (see Greptile review); out of scope, self-review the diff (see Scope); N>1: `git diff` (prior turn's auto-fix edits) → self-review
 2. Score every finding (sev + conf)
 3. Write `NN-run.md` with all findings + dispositions
 4. Apply `auto-fix` items (edit files only — no stage/commit/push)
@@ -286,11 +303,11 @@ Diff touches a script that emits data artifacts (converters, generators, mutatio
    - Else project CLAUDE.md `mr_base_branch: <branch>`
    - Else git remote default
    - Else ask (main / master / stage / develop)
-5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Greptile preflight** (see Greptile review); fails → stop and report.
+5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Scope check** (see Scope): in scope → **Greptile preflight** (see Greptile review), fails → stop and report; out of scope → self-review, no Greptile.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
-   a. N=1: run `greptile review -b <base> --json` (see Greptile review); read `git diff <base>...HEAD` for context. N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
-   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then map every Greptile comment to a candidate finding (see Greptile review); N>1: self-review the fix hunks as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output).
+   a. N=1, in scope: run `greptile review -b <base> --json` (see Greptile review); read `git diff <base>...HEAD` for context. N=1, out of scope: self-review `git diff <base>...HEAD` (see Scope). N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
+   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then map every Greptile comment to a candidate finding (see Greptile review), or collect self-review candidates when out of scope; N>1: self-review the fix hunks as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output).
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
    d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix.
    e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
@@ -378,6 +395,7 @@ feature: {name or "none"}
 runs_completed: N
 termination: all-clear | loop-limit | refusal
 final_rating: SHIP IT | NEEDS WORK | BLOCK
+reviewer: greptile | self
 greptile_confidence: 1-5 | n/a
 prior_grill: prev-{YYYYMMDD-HHMM} | none
 lifecycle: candidate
@@ -457,7 +475,7 @@ Greptile re-check: commit fixes, re-run /grill
 final.md: <path>
 ```
 
-Omit the `Greptile re-check:` line when zero auto-fixes applied.
+Omit the `Greptile re-check:` line when zero auto-fixes applied or the repo is out of scope.
 
 No additional summary in chat. User reads `final.md`.
 
@@ -484,7 +502,8 @@ State refusal reason terse, write a stub `NN-run.md` with `status: refused` + re
 - NEVER apply edits in `--dry-run` mode.
 - Demoted (over `max_fixes_per_turn` cap) items must surface in final.md `Deferred` section.
 - NEVER auto-fix an unrelated-change finding — splitting the branch is the user's call.
-- Local mode: turn 1 findings come from `greptile review --json`. Greptile unavailable → stop and report, NEVER substitute a Claude-only review.
+- Local mode, in-scope repo: turn 1 findings come from `greptile review --json`. Greptile unavailable → stop and report, NEVER substitute a Claude-only review.
+- Local mode, out-of-scope repo: turn 1 is grill's self-review (see Scope). NEVER run `greptile review` or `greptile init` there.
 - MR mode: NEVER write to the MR or the filesystem. No notes, approvals, `@greptile review`, edits, or files.
 - NEVER write Greptile output into the worktree.
 - NEVER apply a Greptile `suggestion` without checking it fits the surrounding code.
