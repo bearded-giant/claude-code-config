@@ -14,7 +14,7 @@ Manage feature lifecycle across sessions, branches, and workspaces.
 | `/abandon-feature [name] [--reason "..."] [--no-archive]` | Framed but not building it. Marks `status: abandoned` + `lifecycle: deprecated`, appends `## Abandoned`, skips the delta-spec merge entirely, then chains `giantmem feature archive` (dir removed, `live_docs` rows stay searchable). |
 | `/feature-validate <name> [--fix]` | Lint structure + frontmatter; `--fix` auto-repairs. |
 | `/wrap [--feature]` | Pre-exit gate before ending a session or closing a feature: git and MR state, doit sync, docs, running processes, handoff (`features/{name}/handoff.md` or `.giantmem/handoff.md`). Ends with `safe to exit: yes/no`. Runs before `/complete-feature` and `/abandon-feature`. |
-| `/feature-next [name]` | Status report: next ready artifact (`artifacts.json` + DAG config), doit list, and open MRs, with next steps split user vs claude. Works in a bare repo without the artifact step. |
+| `/feature-next [name]` | Status report: next ready artifact (`artifacts.json` + DAG config), doit list, and open MRs (including ones this repo's sessions opened on other repos, via `giantmem mr list --project`), with next steps split user vs claude. Works in a bare repo without the artifact step. |
 | `/feature-report [name]` | QA report from delta-spec Requirements (falls back to legacy "Acceptance Criteria"). |
 | `/list-features` | All features from cache. |
 | `/feature-facts <name>` | Flags / config / branch / test commands. |
