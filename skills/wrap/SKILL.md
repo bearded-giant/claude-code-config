@@ -50,7 +50,7 @@ Gaps
 - recharge-auth: 2 unpushed commits on better-redis-search
 - ngrok :4040 running, next session reuses it (recorded)
 Fixed
-- doit #12, #14 completed
+- recharge-auth #12, #14 completed
 - tasks.md 3.2 checked
 Handoff
 - /abs/path/.giantmem/features/<name>/handoff.md
