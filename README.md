@@ -77,7 +77,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | Event | Hook | Purpose |
 |-------|------|---------|
 | SessionStart | `sync_settings.py` | Merges repo `settings.json` into live `~/.claude/settings.json` (see note below) |
-| SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer |
+| SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer, plus open MRs/PRs opened or touched by this project's sessions |
 | SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list for this session plus its pending items, so the running todo is in context from turn one (`claude:` assignment + `/burn`) |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
 | SessionStart | `memory_ingest.py` | Detached `giantmem db ingest --source memory-md`: harness memory into archives.db (durable, backed up, survives a live.db rebuild) |

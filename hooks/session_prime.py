@@ -29,10 +29,11 @@ def main() -> None:
             capture_output=True,
             text=True,
             timeout=8,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return
-    except Exception:
+    except (OSError, ValueError):
         return
 
     if out.returncode != 0 or not out.stdout.strip():
@@ -43,9 +44,16 @@ def main() -> None:
     except json.JSONDecodeError:
         return
 
-    # skip the prime if there's nothing actionable
-    if not (data.get("active_feature") or data.get("recent_docs")):
-        return
+    text = render(data)
+    if text:
+        print(text)
+
+
+def render(data: dict) -> str | None:
+    if not (
+        data.get("active_feature") or data.get("recent_docs") or data.get("open_mrs")
+    ):
+        return None
 
     lines = ["<system-reminder>", "giantmem prime: workspace context"]
     lines.append(f"project: {data.get('project','?')}")
@@ -62,8 +70,24 @@ def main() -> None:
             feat = f" [{d['feature']}]" if d.get("feature") else ""
             lines.append(f"  - {tag}{feat} {d['path']}")
 
+    if data.get("open_mrs"):
+        lines.append("")
+        lines.append(
+            "open MRs from this project's sessions (giantmem mr list for more):"
+        )
+        for m in data["open_mrs"]:
+            state = m.get("state") or "?"
+            if m.get("cached"):
+                state += " (cached)"
+            opener = m.get("opener") or "-"
+            if m.get("role") == "touched":
+                opener += " (first touched)"
+            lines.append(
+                f"  - {m.get('label','?')}  {state}  {opener}  {m.get('url','')}"
+            )
+
     lines.append("</system-reminder>")
-    print("\n".join(lines))
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
