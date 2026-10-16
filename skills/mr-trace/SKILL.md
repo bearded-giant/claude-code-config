@@ -53,5 +53,6 @@ touched   4c72c55a  <ts>  dir <session cwd>
 ```
 
 - `opened` means the session ran the create call. `first touched` means no create call was seen: the MR was opened outside Claude (web UI, plain terminal), or before the index had the record. The earliest session that pushed to it or updated it stands in. Say which one applies.
-- The session dir is where to resume. The checkout is where the source branch lives now. They differ when a session opened an MR from a scratch clone or from another repo's worktree. Report both.
+- The session dir is where to resume. The checkout is where the source branch lives now. They differ when a session opened an MR from a scratch clone or from another repo's worktree. Report both. `(ran in <dir>)` after the session dir is where the session's shell sat when it linked the MR (a `cd` into another repo or a scratch clone); resume still uses the session dir.
+- `mr list` table markers: `~sid` opener = first touched, `state*` = cached state, `state!` = the live read failed.
 - The state line is a live read. With `--no-status` or `live: false`, label it as cached.
