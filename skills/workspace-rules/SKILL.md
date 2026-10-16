@@ -83,7 +83,7 @@ Sections in fixed order; omit empty ones:
 ## Open edges                blockers, gaps, and items the user waived during /wrap; owed items by `daily #N`
 ## Start here                numbered, exact commands; step 1 runs as-is
 ## State
-- repos: absolute path, branch, HEAD sha, pushed or not, MR !N and its state
+- repos: absolute path, branch, HEAD sha, pushed or not, each MR as `repo!N` plus its full URL, and its state
 - running: process, how it was started, port/pid, left up or torn down, restart command
 - doit: list name, pending count, next 3 by do-order
 ## Decisions                 non-obvious choices, one line of why each

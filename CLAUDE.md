@@ -207,6 +207,7 @@ Text posted under my name follows `config/voice.md`, not Prose Style and not cav
 - NEVER use emojis in code, scripts, docs (any context)
 - **Published docs** — READMEs and guides shipped to other devs/users: NO bullet lists. Use numbered lists, prose, or tables.
 - **Internal docs** — CLAUDE.md, agents/, skills/, commands/, `.giantmem/`, chat: bullets allowed per Concise Output Rules below.
+- MR/PR refs in chat, docs, handoffs, and doit items: `<repo>!N` (GitHub `<repo>#N`) or the full URL. Never a bare `!N`: repos share ids (`recharge-auth!62` and `investigator-agent!62` both exist). Which session opened or touched an MR → `mr-trace` skill (`giantmem mr whose <ref>`), never a hand grep of transcripts.
 
 ### Wizard-Style Prompts
 
