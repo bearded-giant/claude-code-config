@@ -304,7 +304,7 @@ def main() -> None:
             "Assign model work: prefix a doit todo `claude:`. Drain it: /burn.",
             (
                 "Owe the user an action (run/confirm, review/merge, ping, settings, "
-                f'decide, resume): create_list name="{name}" first, then add_todo '
+                f'resume): create_list name="{name}" first, then add_todo '
                 "owe=true on it; the twin lands in `daily`."
             ),
             "</system-reminder>",
@@ -345,11 +345,11 @@ def main() -> None:
             "corruption/loss, security, outward-facing): code work (`ref:` "
             "first description line, `claude:` if model work) deps on its "
             "owed or `decision` item; a `decision` mirrors one doc Open "
-            "Question 1:1 (decisions also pass owe=true)"
+            "Question 1:1 (decisions stay on this list: no owe, no daily twin)"
         ),
         (
             "  - anything the USER must do (run/confirm/verify, review/merge an MR, "
-            "ping, console/settings, decide, resume) -> add_todo owe=true on this "
+            "ping, console/settings, resume) -> add_todo owe=true on this "
             "list; it twins into `daily`. No ask. search_todos first to dedupe. "
             "Name it `daily #N` in your report"
         ),

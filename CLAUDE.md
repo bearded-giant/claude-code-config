@@ -39,7 +39,7 @@ Own the repo you are in, not only the literal ask. Pieces found along the way ge
 - Report-time triage. Every candidate for open edges / not done gets one verdict before it is written, and only GATE, LIMIT, and SEQUENCE survive. `hooks/open_edges_gate.py` (Stop) blocks the report once while a CLOSE or VERIFY shape is still listed.
   - CLOSE: you can do it with the tools you have. Do it, test it, own commit, report under work performed.
   - VERIFY: "I haven't checked / tested / run X" and a test, grep, curl, headless run, or live query can check it. Run it now; report the result, not the gap.
-  - GATE: only I can do it (credentials, a console, a decision, review or merge, a deploy). Owed item (its twin lands in `daily`, which is mine to work) or decision mirror, then one line: do / expect / on failure. A decision that blocks the turn is an AskUserQuestion call, not prose.
+  - GATE: only I can do it (credentials, a console, a decision, review or merge, a deploy). Owed item (its twin lands in `daily`, which is mine to work), or a decision mirror on the feature list (design decisions are feature work: no `daily` twin), then one line: do / expect / on failure. A decision that blocks the turn is an AskUserQuestion call, not prose.
   - LIMIT: a choice I made, or a one-way door you must not take alone. One line naming it as a choice.
   - SEQUENCE: you can do it, but it waits on something (a merge, a deploy, another item), or it is too big for this session. `claude:` doit item on the working list (worktree or feature list) with `deps`, named in the open edges as `<list> #N`.
 - Defer only three kinds, and name each in the open edges:
@@ -135,7 +135,7 @@ Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for hu
 
 ### What I owe (`daily` list + vault daily note)
 
-Anything only I can do (run/confirm, review/merge, ping, settings, decide, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. `daily` holds my items only; `claude:` items live on the worktree or feature list. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
+Anything only I can do (run/confirm, review/merge, ping, settings, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. `daily` holds my items only; `claude:` items live on the worktree or feature list. Design decisions are feature work, not inbox actions: their `decision` mirrors stay on the feature or project list and never twin into `daily`. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
 
 Session working files survive in `~/giantmem_archive/bundles/<slug>/<sid>/`: `hooks/session_bundle.py` archives the scratchpad, background Bash outputs, subagent transcripts, workflow scripts, and transcript, with a `bundle.json` manifest. The daily note's session line links the bundle. Before rewriting a script or command a past session likely ran, search `giantmem tools find <words>` (MCP `find_tool_uses`) and open its bundle (`giantmem session files <id>`, MCP `get_session_bundle`).
 
@@ -235,7 +235,7 @@ Any LLM-generated doc with unresolved questions for the user MUST put them at th
 - Format: numbered list, each item marked `[BLOCKING]` or `[non-blocking]`
 - Remove the section once all items resolved (don't leave empty stub)
 - If a template scaffolds the section by default, leave it in until populated/resolved — buried questions get missed
-- In `.giantmem/` docs, each item mirrors 1:1 to a doit `decision` item; the doc stays the source of truth (`feature-management` → `### Decision mirror`)
+- In `.giantmem/` docs, each item mirrors 1:1 to a doit `decision` item on the feature or project list, never twinned into `daily`; the doc stays the source of truth (`feature-management` → `### Decision mirror`)
 
 ```markdown
 ## Open Questions for User
