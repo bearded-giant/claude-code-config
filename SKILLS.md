@@ -6,6 +6,7 @@
 |-------|---------|
 | `/ws-history` | Show recent workspace sessions or `--search <q>` to grep |
 | `/session-search {query}` | Search conversation content globally; `--list` for listing |
+| `/mr-trace [ref]` | Which session opened or touched an MR/PR (`repo!N`, URL, or bare `!N` listing every match), its session dir, branch checkout, and resume line; or the running list of open MRs from Claude sessions with live status (`giantmem mr whose` / `giantmem mr list`) |
 
 ## Architecture
 
