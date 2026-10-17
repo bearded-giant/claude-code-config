@@ -206,7 +206,7 @@ No ask; the owed or decision item is the gate. Name each in the open edges.
   - code work: a repo, a file or symbol, a change. `claude:` when the model can do it; no prefix when the user keeps it.
   - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
   - owed: an action only the user can do, per `### Owed items → daily twin`.
-- Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item.
+- Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item when it passes the bar in `### Owed items → daily twin`.
 - Model-only next-steps (things the model does this turn) are NOT todos — skip them.
 - No active feature → use the bare `{repo}` list. User works outside features often — do NOT skip. `daily` is written only through `owe=true` twins or on explicit user request.
 - Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
@@ -224,15 +224,27 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
 
 ### Owed items → daily twin
 
-`daily` is the user's one inbox for everything they owe across 4-6 parallel projects. The project list keeps the work record; `daily` holds its twin, so the user never has to remember which list holds their next action.
+`daily` is the user's one dashboard across 4-6 parallel projects: core, actionable signal, not a log of every user-shaped step. The project list keeps the work record; `daily` holds only the owed twins that pass the bar.
 
-- What: anything only the user can do that the work waits on. Run / confirm / verify (stage check, manual login, eval run), review / approve / merge an MR, comms (ping, share, announce), console / admin / DNS / cert / vault / beta-admin settings, BLOCKED `/burn` items, READY MRs from `/babysit`, and resuming work `/wrap` paused.
-- Not: model next-steps, code work the model can do (`claude:` code item), design decisions (`decision` mirrors on the feature list, per `### Decision mirror`), FYIs or suggestions that block nothing.
+- Bar: owe only when all four hold.
+  1. Only the user can do it: credentials or access, a console (vault, DNS, cert, IdP, GCP, beta admin), outward comms (ping, share, file a ticket), or a human call the code can't settle.
+  2. Actionable now: not waiting on another reviewer's approval, a release, a cutover window, a conflict fix, or another item.
+  3. Something waits on it: blocked work, or a security or prod risk.
+  4. Not routine flow (the never-owe list below).
+- Never owe (routine flow, or it has a better home):
+  - resuming a session or paused work: the handoff's `Start here` carries it, and SessionStart lists every `status: ready` handoff in the repo.
+  - review / approve / merge an MR, tag or deploy after a merge: glmon, `giantmem mr list`, and `/feature-next` show MR state.
+  - watch or verify on a future event (next release, first merchant, after cutover): the handoff's `Open edges`, or a project-list item with `deps`.
+  - "say ship it", or approving a diff proposed in chat (team-shared agent config): ask in chat at the time.
+  - anything the model can run itself (installs, scripts, doc triage): do it now, or a `claude:` code item.
+  - model next-steps, design decisions (`decision` mirrors, per `### Decision mirror`), FYIs, suggestions that block nothing.
+- Conditional asks (fail only bar 2): a project-list item with `deps`, no `owe`. Owe it (delete + re-add with `owe=true`) once the dep clears; `/doit-prune` does this.
+- One console session = one owed item with a checklist in `do:`, never one item per setting.
 - How: `add_todo owe=true list=<project list>`, one call. The MCP writes `[type] N. owed in daily #M: <action>` in the project list and `[type] M. <project list>: <action>` in `daily`. Each carries a `twin` field and a first description line naming the other. Never write the twin by hand, never `claude:`.
-- Gate: none. Write when the need appears, then name it in the chat report's open edges as `daily #M`. Dedupe first: `search_todos` on the action's key noun; an open twin for the same action → update it instead.
-- Type: `gate` (run / confirm / verify), `review`, `merge`, `ping`, `setting`, `unblock`, `resume`.
+- Gate: no ask once the bar passes. Write when the need appears, then name it in the chat report's open edges as `daily #M`. Dedupe first: `search_todos` on the action's key noun; an open twin for the same action → update it instead.
+- Type: `gate` (run / confirm / verify that blocks a rollout), `sec`, `setup`, `setting`, `ping`, `unblock`.
 - Priority: blocks the critical path → `urgent`; else none. `due` only for a real date.
-- Text: the action as an imperative the user can do cold, ≤ 80 chars. Name the thing (`merge !812 auth0 callback fix`), not the activity (`check MR`).
+- Text: the action as an imperative the user can do cold, ≤ 80 chars. Name the thing (`rotate shppa_ token for store 109866`), not the activity (`check token`).
 - Description, for the user reading it days later. Labeled sections, blank line between, empty rows omitted:
 
   ```
