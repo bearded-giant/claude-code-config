@@ -78,6 +78,8 @@ Landed or open: name it in the note (`Fix: <repo>!N merged <sha>` or `open`), co
 
 Locate every endpoint, function, and file the ticket names; `git grep` the route string, then read the handler end to end: decorator and middleware chain, the service it calls, the data access, the response. Trace every id the client supplies (`store_id`, `conversation_id`, `criteria.*`, a JWT claim) from the request to the query that uses it. For each claim in the ticket: holds, partial, or does not hold, with `file:line`. Clients of the same function or route shape (`grep` the helper, the decorator, the query) widen the blast radius; list them.
 
+A claim about what the UI gates on (a permission, a hidden nav item): read the route and nav gate in the frontend repo (repos.csv `frontend`, its base branch, read-only) and cite it; the API check is the one that counts.
+
 Data, JWT, or config causes: say what to read and where (which DB via the named access path, which Redis key, which Auth0 setting, which claim). Read-only queries are fine when the access path exists in the session; never a write.
 
 ### 7. Root cause and fix
