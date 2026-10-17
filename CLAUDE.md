@@ -137,6 +137,8 @@ Never auto-burns — `/burn` is the gate. Destructive / sev-5 items pause for hu
 
 Anything only I can do (run/confirm, review/merge, ping, settings, resume) → `add_todo owe=true` on the project list; the doit MCP twins it into `daily`, my cross-project inbox, with backlinks both ways. `daily` holds my items only; `claude:` items live on the worktree or feature list. Design decisions are feature work, not inbox actions: their `decision` mirrors stay on the feature or project list and never twin into `daily`. The vault daily note `daily/<date>.md` is the day's dashboard: `hooks/daily_note.py` logs sessions (with resume lines), artifact publishes, vault notes, and handoffs there on its own. Full rule → `feature-management` → `### Owed items → daily twin`.
 
+Every doit item ends closed, never dangling. Done (landed, merged, resolved) → `complete_todo` + `DONE {ts}` note. Dropped (won't-fix, MR closed unmerged, superseded, target gone) → `complete_todo` + `WONTFIX {ts} <reason>` note, in the same turn the drop is decided. Close on either twin; both follow. `delete_todo` only for noise (an FYI, a duplicate, a pointer to another list) or a delete-and-re-add. Report it as closed (`<list> #N closed, won't-fix`), never as "marked".
+
 Session working files survive in `~/giantmem_archive/bundles/<slug>/<sid>/`: `hooks/session_bundle.py` archives the scratchpad, background Bash outputs, subagent transcripts, workflow scripts, and transcript, with a `bundle.json` manifest. The daily note's session line links the bundle. Before rewriting a script or command a past session likely ran, search `giantmem tools find <words>` (MCP `find_tool_uses`) and open its bundle (`giantmem session files <id>`, MCP `get_session_bundle`).
 
 <doc_sync>

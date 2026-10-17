@@ -258,7 +258,7 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
   ```
 
   The SessionStart `doit session list` block prints the session id, the tmux `session:window`, and the ready-made resume line. Link every vault note, artifact, and `.giantmem` doc this session wrote that the action touches.
-- Close: action done (user says so, MR merged, doc resolved) → `complete_todo` on either twin; both close. Moot → `delete_todo` on either twin; both go. `update_todo` done / priority / due also follow.
+- Close: action done (user says so, MR merged, doc resolved) → `complete_todo` on either twin; both close. Dropped (won't-fix, MR closed unmerged, superseded, target gone) → `complete_todo` on either twin plus a `WONTFIX {ts} <reason>` note; both close. `delete_todo` only for noise, duplicates, or a delete-and-re-add. `update_todo` done / priority / due also follow.
 - Drift: a twin checked off or deleted in the tmux or nvim UI does not sync. SessionStart prints `DRIFT` lines for the session list; fix those first. `/doit-prune` repairs the rest.
 
 ### List resolution — repo-qualified, worktree-aware

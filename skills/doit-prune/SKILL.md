@@ -25,11 +25,11 @@ Evidence is live, this run: `glab mr view` / `gh pr view` for any MR or PR named
 | landed | code item: the change it names is committed and pushed in an open or merged MR/PR, or already on the default branch; or its whole job was an MR that has since merged | `complete_todo` + `add_note` append `DONE {ts} landed: <mr url or sha>` |
 | resolved | `decision` item: its `ref:` doc exists and no longer lists the question under Open Questions | `complete_todo` + `add_note` append `DONE {ts} resolved in <doc path>: <answer, if the doc states one>` |
 | twin-drift | owed item whose `daily` twin is done, or whose twin is gone | twin done → `complete_todo`. Twin gone and the action is still open → `delete_todo` + re-add with `owe=true`; else delete |
-| moot | its MR closed unmerged, its branch is gone with nothing landed, the file/symbol it targets no longer exists, its `ref:` doc is gone, another item supersedes it (name the rank), or it is a POINTER/handoff to another list | delete |
+| moot | its MR closed unmerged, its branch is gone with nothing landed, the file/symbol it targets no longer exists, its `ref:` doc is gone, or another item supersedes it (name the rank) | `complete_todo` + `add_note` append `WONTFIX {ts} <reason>` (twin closes with it) |
 | decision-twin | open `decision` item that carries a `daily` twin. Design decisions are feature work, not the user's inbox | `delete_todo` (removes both twins), then re-add on the project list with the same type, text, priority, and `ref:` description, no `owe` |
 | orphan | `decision` item with no `ref:` doc behind it | still open → adopt: add the entry to the feature's proposal/plan Open Questions and set `ref:`. Else delete |
 | owe | live user action with no `daily` twin: comms/share/ping, review/approve/merge an MR, console/admin/DNS/cert/vault/beta-admin settings, manual confirm/verify, ops runbook steps | `add_todo owe=true` with the same type, text, and priority, description in the owed format (why / do / links / resume, pulled from the old notes); then `delete_todo` the old item. Holds an unlanded code half → that half stays a code item |
-| noise | an FYI, a model next-step, or a user action already done (MR merged, step ran) | delete |
+| noise | an FYI, a model next-step, a duplicate, a POINTER/handoff to another list, or a user action already done (MR merged, step ran) | delete |
 | drifted | open code work whose text names stale files/symbols/flags or whose notes are a dated status log; or a `decision` whose question was reworded or whose priority no longer matches `[BLOCKING]` | `update_todo`: accurate text and priority, `claude:` on if model work, description opens with the `ref:` line, the log collapsed to what is left |
 | open | target exists, text accurate | keep |
 | unknown | evidence unreachable (glab auth, repo not on disk, network) | keep; name what is missing |
@@ -43,7 +43,7 @@ User-authored items (the nvim/tmux `Mine` block: `source` set to anything but `m
 1. `--dry-run` → table only, no writes. Stop.
 2. `landed`, `resolved`, `twin-drift` completes, and unmirrored adds → apply now, no ask. All reversible (`revert_todo`, `delete_todo`).
 3. `--auto` (babysit and other loops) → stop after step 2. No asks, no deletes, no rewrites. Output one line: `doit <list>: <n> closed, <m> to prune (/doit-prune)`.
-4. Everything else → print the table, then ONE `AskUserQuestion`: apply all / apply except ranks I name / none. Run owe conversions, deletes, adoptions, and rewrites after the answer. With `--all`, one ask covers every list. If the list would end with 0 pending, put `clear_done` + `delete_list` in the same ask and name any tmux window `list_lists` shows linked to it.
+4. Everything else → print the table, then ONE `AskUserQuestion`: apply all / apply except ranks I name / none. Run owe conversions, won't-fix closes, deletes, adoptions, and rewrites after the answer. With `--all`, one ask covers every list. If the list would end with 0 pending, put `clear_done` + `delete_list` in the same ask and name any tmux window `list_lists` shows linked to it.
 
 ## Output
 
@@ -57,8 +57,8 @@ resolved  #9  (proposal.md Q2) closed
 mirrored  +2 from plan.md
 owe       #13 #14 -> daily #5 #6
 drift     #20  twin done in daily, closed
-noise     #15 #16  deleted
-moot      POINTER  deleted
+noise     #15 #16 POINTER  deleted
+moot      #21  (!8 closed unmerged) closed, won't-fix
 drifted   #22  rewritten
 open      #18 #19 #34
 ```
