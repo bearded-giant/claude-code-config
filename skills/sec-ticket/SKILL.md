@@ -36,7 +36,7 @@ python3 $NOTE list --ticket <KEY>
 python3 $NOTE list --area security --since 180
 ```
 
-A note for the same key exists: extend it (Edit, then `bump`), do not write a second. Read notes for every related key the ticket names (`Coordinate with`, `same controller`, H1 ids). Then `python3 $NOTE list --ticket <RELATED>` for each.
+A note for the same key exists: extend it (Edit, then `bump`), do not write a second. Re-run (V2): `git diff --stat <note sha>..<head> -- <cited files>` per repo; unchanged files carry their claims forward, changed ones get re-read. Spend the run on the note's gates and any section below 5/5. Read notes for every related key the ticket names (`Coordinate with`, `same controller`, H1 ids). Then `python3 $NOTE list --ticket <RELATED>` for each.
 
 ### 3. Repo
 
@@ -102,7 +102,7 @@ One score per section, 1-5, printed as `confidence: N/5` on its own line under t
 | 2 | mostly inference; the path could not be located or the repo is not the right one |
 | 1 | could not confirm; stated why |
 
-A 3 or below in any section needs a row in the gates table saying what run or query settles it.
+A 3 or below in any section needs a row in the gates table saying what run or query settles it. Before writing a gate, try it: one a read-only query, `git grep`, or log search in this session can answer (a beta flag's rollout, a bounded audit count, whether a row is still bound) is run and its result goes in the note. An audit join that times out gets a tighter bound (one store, then 30-day windows) before it becomes a gate.
 
 ### 9. Write the note
 
