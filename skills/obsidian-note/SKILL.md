@@ -26,6 +26,7 @@ Prints abs path. Report that path to the user, nothing else.
 - `--project` defaults to git repo name of cwd (worktree parent minus `-wt`, so `cc-wt/stage` gives `cc`). Pass it when cwd is not the subject repo or the default is too terse.
 - `--tags` comma list, lowercase, hyphenated. `claude` prepended always.
 - `--created` ISO 8601, only for imports (birthtime). Default now with tz.
+- `--key PE-1234` for ticket notes (`sec-ticket` skill): filename becomes `PE-1234-<slug>.md` (key kept uppercase, stripped from the slug when the title starts with it), frontmatter gains `ticket`, `rev: 1`, `modified`.
 - Body starting with `# ` keeps its own H1; otherwise `# <title>` is inserted.
 - Filename = slug of title. Collision appends `-YYYY-MM-DD`, then `-N`. Never overwrite.
 
@@ -41,6 +42,7 @@ Prints abs path. Report that path to the user, nothing else.
 | dev-process | merge train, quality, local dev setup, SDLC |
 | dev-tools | nvim, tmux, terminal, shell, alfred |
 | personal | bearded giant, non-work |
+| security | ticket reviews (HackerOne, internal, client), vuln research, fix proposals; domain = repo alias |
 
 New area = edit `AREAS` in `scripts/note.py` and this table, same commit. Domains are open; the vault tree is the registry.
 
@@ -57,7 +59,17 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, and `artifact` + `artifact_rev` once linked. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` once linked, and `ticket` + `rev` + `modified` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+
+## Bump a ticket note
+
+After any edit to a `--key` note:
+
+```bash
+python3 ~/.claude/skills/obsidian-note/scripts/note.py bump <note.md> --log "one line on what changed"
+```
+
+`rev` +1, `modified` = now, and with `--log` a `- rev N · <ts> · <log>` line under `## Revisions`. Exits non-zero on a note without `rev:`.
 
 ## Link to an artifact
 
@@ -75,6 +87,7 @@ Upserts `artifact:` / `artifact_rev:` and appends `- rev N · <ts> · <log>` und
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --area auth --since 90
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --area auth --domain sessions
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --tag redis
+python3 ~/.claude/skills/obsidian-note/scripts/note.py list --ticket PE-1526   # ticket: key or a key-prefixed filename, any area
 python3 ~/.claude/skills/obsidian-note/scripts/note.py domains
 ```
 

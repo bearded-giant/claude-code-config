@@ -134,6 +134,7 @@ Unlike everything else here, `settings.json` is **not** a stow symlink. Claude C
 | `/wrap [--feature]` | Pre-exit check before you end a session or close a feature: git and MR state, doit sync, docs, running processes, and a handoff for the next session. Ends with `safe to exit: yes/no` |
 | `/mr-trace [ref]` | Find the Claude session and worktree behind an MR/PR (`repo!N`, a URL, or a bare `!N` that lists every repo with that number), or list the open MRs/PRs your sessions opened or touched, with live status. Wraps `giantmem mr whose` and `giantmem mr list` |
 | `/jira-status [ref]` | Read-only check of the Jira ticket behind the current branch, another branch, or an MR: key, status, and whether it matches what the MR implies. Wraps `glmon-jirad --lookup` |
+| `/sec-ticket <key or url>... [--repo alias] [--fix]` | Research a security or bug ticket against the code: confirm it, find the root cause, propose the fix, each scored 1-5, as a vault note `areas/security/<repo>/<KEY>-<slug>.md` with rev and modified. `--fix` implements the note on a `<KEY>-<slug>` branch with the key in every commit subject so the MR title links the ticket |
 
 ## Archive Search
 
