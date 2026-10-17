@@ -126,6 +126,18 @@ Code read on <repo> `<worktree>` at `<sha>` (<base> head <date>).
 
 ## Open Questions for User            <- only when there is one; [BLOCKING] / [non-blocking]
 
+## Summary
+**Bug.** <who can do what to whom, 1-2 sentences, plain words>
+**Why.** <the missing check or wrong source of truth, and why the existing guard misses it>
+**Fix.** <the change per repo in one sentence each>
+**Severity.** <level> (agree|disagree). <bound>. SLA <date or "none stated">. Scores: confirmed N/5, root cause N/5, fix N/5.
+**Not proven.** <what did not run, pointing at the gates>
+
+### Repos
+<one line: what ships together and in what order; branch `<KEY>-<slug>` per repo>
+| ship | repo (repos.csv) | GitLab project | base | role in the bug | change | test command |
+(one row per repo read, including repos that need no change; test command is the exact command from the repo's CLAUDE.md or Makefile with the test files the fix touches, or "CI only" when the repo forbids local runs)
+
 ## Gates before trusting this note    <- table: check | expected | failure means
 
 ## Confirmation
@@ -150,6 +162,8 @@ confidence: N/5 <reason>
 (related keys with one line each; [[wiki links]] to vault notes read in step 2)
 ```
 
+Summary rules: five bold-lead fields, no `file:line`, no commit SHAs, short sentences; a reader with 6 tickets this week scans it in under a minute. The table is what fix mode walks, so every row's base and test command must be real: read the repo's CLAUDE.md or Makefile and check the test files exist at base head. A `|` inside a cell breaks the table; reword it.
+
 No secrets, tokens, cookies, or customer PII: redact as `<REDACTED:token>`. Store ids and account ids the reporter controls are fine. Raw dumps stay in `$SCRATCH`.
 
 ### 10. Report
@@ -168,9 +182,9 @@ Then stop. No Jira comment, no H1 reply, no Slack. Those are the user's.
 Trigger: `--fix`, "implement <KEY>", "fix <KEY> from the note", or the user pastes the note path.
 
 1. `python3 $NOTE list --ticket <KEY>`; Read the note. A `[BLOCKING]` open question still unanswered: AskUserQuestion with the options the note lists, then continue.
-2. Repo and base as in review step 3-4. Fix needs a writable checkout: worktree parent with no worktree on the base branch free of work: AskUserQuestion, options `reuse <wt>` (a clean review worktree) or `new worktree <parent>/<key-lower>`; the answer is the authorization to create one. Plain checkout: `git switch -c`.
+2. Walk the note's `### Repos` table in `ship` order; rows with change `none` are skipped, and rows sharing a ship number are one batch. Steps 2-6 run once per repo. Repo and base come from the row. Fix needs a writable checkout: worktree parent with no worktree on the base branch free of work: AskUserQuestion, options `reuse <wt>` (a clean review worktree) or `new worktree <parent>/<key-lower>`; the answer is the authorization to create one. Plain checkout: `git switch -c`.
 3. Branch `<KEY>-<slug>` from `origin/<base>` (`git switch -c PE-1526-bind-2fa-to-callback origin/stage`).
-4. Implement the note's Proposed fix. Red/green: write the tests the note lists, run them failing, apply the change, run them passing, then the touched test files. `py-check` / `ts-check` before any commit.
+4. Implement that repo's part of the note's Proposed fix. Red/green with the row's test command: write the tests the note lists, run them failing, apply the change, run them passing, then the touched test files. "CI only" rows: write the tests, run the repo's allowed lint, and report tests as unrun locally. `py-check` / `ts-check` before any commit.
 5. Commit per piece, caveman format, subject `[<KEY>] fix: <what>` (key at line start; customcheckout's `verify_commit_msg.py` wants it there). Never an attribution trailer.
 6. `python3 $NOTE bump <note> --log "fix on <branch> <sha>: <one line>"`. The fix changed what the note claimed: Edit the note's section first, then bump.
 7. Stop before push and MR. "ship it" runs `ship-it`: the MR title is the commit subject, so the key is in the title and Jira links the MR; `glmon-jirad` leaves a real key alone. After the MR opens, `bump` again with `--log "MR <repo>!N"`.
