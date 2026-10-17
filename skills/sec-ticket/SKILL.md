@@ -58,7 +58,7 @@ Read-only. Base branch: `mr_base_branch:` in the repo's CLAUDE.md, else `git sym
 ```bash
 git -C <wt> fetch -q origin <base>
 git -C <wt> status --short            # must be empty before any ff
-git -C <wt> merge --ff-only origin/<base>   # review worktree only
+git -C <wt> merge --ff-only origin/<base>   # only when clean and on <base> or a review branch
 git -C <wt> rev-parse --short HEAD    # goes in the note's Code read line
 ```
 
