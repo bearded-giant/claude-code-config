@@ -176,13 +176,13 @@ def write_handoff(path, status):
 def handoff_cases(tmp):
     base = os.path.join(tmp, "proj", ".giantmem")
     assert "handoff" not in run_main("")
-    # a paused feature's handoff surfaces even with no repo-level one
+    # a paused feature's handoff surfaces, but never as the one to act on first
     write_handoff(os.path.join(base, "features", "paused", "handoff.md"), "ready")
     write_handoff(os.path.join(base, "features", "closed", "handoff.md"), "done")
     out = run_main("")
     paused = os.path.join(base, "features", "paused", "handoff.md")
-    assert f"  handoff ready: {paused} (updated 2026-10-17). Read it FIRST" in out, out
-    assert "closed" not in out
+    assert f"  other ready handoff: {paused} (updated 2026-10-17)" in out, out
+    assert "handoff ready:" not in out and "closed" not in out, out
     # repo-level comes first, other features follow as secondary lines
     write_handoff(os.path.join(base, "handoff.md"), "ready")
     lines = run_main("").splitlines()
