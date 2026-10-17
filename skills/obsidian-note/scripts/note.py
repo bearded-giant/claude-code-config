@@ -203,7 +203,13 @@ def cmd_bump(a):
     fm, body = split_fm(path)
     keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
     if "rev" not in keys:
-        sys.exit(f"not a ticket note (no rev:): {path}")
+        m = re.match(r"^([A-Za-z][A-Za-z0-9]+-\d+)-", path.stem)
+        if not m:
+            sys.exit(f"not a ticket note (no rev:): {path}")
+        if "ticket" not in keys:
+            fm.append(f"ticket: {m.group(1).upper()}")
+        fm += ["rev: 1", "modified: "]
+        keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
     rev = int(fm[keys["rev"]].split(":", 1)[1]) + 1
     fm[keys["rev"]] = f"rev: {rev}"
     fm[keys["modified"]] = f"modified: {now_iso()}"
@@ -423,6 +429,14 @@ def self_test():
             raise AssertionError("bump on non-ticket note must exit")
         except SystemExit:
             pass
+        assert cmd_bump(argparse.Namespace(note=str(legacy), log="upgraded")) == 2
+        text = legacy.read_text()
+        assert (
+            "created: 2026-09-05T00:00:00-07:00\nticket: PE-1527\nrev: 2\nmodified: 2"
+            in text
+        ), text
+        assert "- rev 2 · " in text and text.count("ticket:") == 1, text
+        assert cmd_bump(argparse.Namespace(note=str(legacy), log=None)) == 3
         assert key_arg("pe-1526") == "PE-1526"
         try:
             key_arg("1526")

@@ -69,7 +69,7 @@ After any edit to a `--key` note:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py bump <note.md> --log "one line on what changed"
 ```
 
-`rev` +1, `modified` = now, and with `--log` a `- rev N · <ts> · <log>` line under `## Revisions`. Exits non-zero on a note without `rev:`.
+`rev` +1, `modified` = now, and with `--log` a `- rev N · <ts> · <log>` line under `## Revisions`. A note without `rev:` whose filename starts with a ticket key (legacy `pe-1527-review-...`) gains `ticket`, `rev: 2`, `modified` on its first bump; any other note without `rev:` exits non-zero.
 
 ## Link to an artifact
 
