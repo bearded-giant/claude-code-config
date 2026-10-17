@@ -33,7 +33,7 @@ claude -p "/babysit"                          # one-shot, observe
 
 ## Composes with
 
-`kai:glab` (glab syntax), `kai:gitlab-inline-comments` (DiffNote replies), `kai:debugging-pipelines` (red pipeline escalation), `kai:open-mr` (MR creation), `py-check`/`ts-check`, `caveman-commit`, `ship-it` (MR desc + open; in Greptile repos starts `/loop 5m /babysit`), `greptile` (`@greptile review` trigger, `.greptile/` rules), `loop`.
+`kai:glab` (glab syntax), `kai:gitlab-inline-comments` (DiffNote replies), `kai:debugging-pipelines` (red pipeline escalation), `kai:open-mr` (MR creation), `py-check`/`ts-check`, `caveman-commit`, `ship-it` (MR desc + open; GitLab with `glmon-jirad` enabled syncs a Jira ticket; in Greptile repos starts `/loop 5m /babysit`), `greptile` (`@greptile review` trigger, `.greptile/` rules), `loop`.
 
 ## Files
 

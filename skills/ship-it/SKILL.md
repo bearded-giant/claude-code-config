@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR; in Greptile repos also triggers a re-review on an existing MR and starts `/loop 5m /babysit`. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR and starts `/loop 5m /babysit`. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -75,6 +75,14 @@ Title: use the most recent commit subject (or the branch's primary commit subjec
 
 If the MR/PR already exists for this branch: skip creation, capture the existing URL.
 
+### Step 4a — Jira ticket (GitLab only; skip on GitHub)
+
+Skip when `glmon-jirad` is not on PATH or `glmon-jirad --status` prints `enabled=False`.
+
+1. Write `jira-summary.md` next to the step-3 description: at most 3 bullets on what the MR is for, plain sentences a non-engineer can read. No code, identifiers, file paths, routes, or implementation detail. Normal prose, not caveman.
+2. Run `glmon-jirad --mr <mr-url> --summary-file <path>`. It creates a ticket in `jira.project` when the title carries no real key (a `PE-0000` placeholder is replaced in place), writes the key into the MR title, and syncs status. Excluded namespaces and already-keyed MRs are handled inside it, and it is idempotent, so an existing MR is safe.
+3. A non-zero exit or error never stops the chain. Keep its last log line for step 5.
+
 ### Step 4b — Review handoff (GitLab repos with `.greptile/` or `greptile.json` at root; else skip)
 
 1. MR existed before this run (step 4 skipped creation) and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
@@ -87,6 +95,7 @@ Print to chat in EXACTLY this order, nothing else:
 1. The full MR description markdown (so user sees what was posted)
 2. One blank line
 3. The MR URL on its own line
+4. Only when step 4a ran: `glmon-jirad`'s last log line (created / retitled / skip / error)
 
 Then STOP. Do NOT add a closing summary. Do NOT offer next steps. Do NOT explain what happened — the description and URL are the report.
 
@@ -113,5 +122,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → greptile repos: `@greptile review` if MR existed + `/loop 5m /babysit` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed + `/loop 5m /babysit` → print desc + URL
 ```
