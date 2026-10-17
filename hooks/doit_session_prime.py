@@ -234,20 +234,23 @@ def read_ready(path: str):
     return path, meta.get("updated") or "?"
 
 
-def ready_handoffs(root: str, feat) -> list:
+def ready_handoffs(root: str, feat):
     base = os.path.join(root, ".giantmem")
     feats = os.path.join(base, "features")
     # repo-level fallback: work unrelated to the in_progress feature still hands off
-    paths = [os.path.join(feats, feat, "handoff.md")] if feat else []
-    paths.append(os.path.join(base, "handoff.md"))
+    own = [os.path.join(feats, feat, "handoff.md")] if feat else []
+    own.append(os.path.join(base, "handoff.md"))
     # paused/pending features hand off too; without this their handoff only surfaces via a daily resume item
+    others = []
     with contextlib.suppress(OSError):
-        paths += [
+        others = [
             os.path.join(feats, d, "handoff.md")
             for d in sorted(os.listdir(feats))
             if d != feat
         ]
-    return [found for found in map(read_ready, paths) if found][:MAX_HANDOFFS]
+    primary = next(filter(None, map(read_ready, own)), None)
+    rest = [found for found in map(read_ready, others) if found][:MAX_HANDOFFS]
+    return primary, rest
 
 
 def list_name(root: str, feat) -> str:
@@ -301,17 +304,16 @@ def main() -> None:
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
         "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
     ]
-    handoffs = ready_handoffs(root, feat)
-    if handoffs:
-        first, rest = handoffs[0], handoffs[1:]
+    primary, rest = ready_handoffs(root, feat)
+    if primary:
         lines.append(
-            f"  handoff ready: {first[0]} (updated {first[1]}). Read it FIRST, "
+            f"  handoff ready: {primary[0]} (updated {primary[1]}). Read it FIRST, "
             "verify its state against git, act on Start here, then set status: done"
         )
-        lines += [
-            f"  other ready handoff: {p} (updated {u}); read it when resuming that work"
-            for p, u in rest
-        ]
+    lines += [
+        f"  other ready handoff: {p} (updated {u}); read it when resuming that work"
+        for p, u in rest
+    ]
 
     if not exists:
         lines += [
