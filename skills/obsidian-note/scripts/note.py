@@ -55,6 +55,7 @@ def git_project(cwd):
 
 DOMAIN_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 LINK_KEYS = ("artifact", "artifact_rev")
+STATUSES = ("new", "ready", "blocked", "in_progress", "in_review", "done", "wont_fix")
 
 
 def domain_arg(v):
@@ -115,7 +116,11 @@ def cmd_new(a):
             f"project: {project}" if project else 'project: ""',
             f"created: {created}",
         ]
-        + ([f"ticket: {key}", "rev: 1", f"modified: {created}"] if key else [])
+        + (
+            [f"ticket: {key}", "rev: 1", f"modified: {created}", "status: new"]
+            if key
+            else []
+        )
         + ["---"]
     )
     path.write_text(f"{fm}\n\n{heading}{body}\n", encoding="utf-8")
@@ -208,18 +213,30 @@ def cmd_bump(a):
             sys.exit(f"not a ticket note (no rev:): {path}")
         if "ticket" not in keys:
             fm.append(f"ticket: {m.group(1).upper()}")
-        fm += ["rev: 1", "modified: "]
+        fm += ["rev: 1", "modified: "] + ([] if "status" in keys else ["status: new"])
         keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
     rev = int(fm[keys["rev"]].split(":", 1)[1]) + 1
     fm[keys["rev"]] = f"rev: {rev}"
     fm[keys["modified"]] = f"modified: {now_iso()}"
-    if a.log:
-        if "\n## Revisions" not in body:
-            body += "\n\n## Revisions\n"
-        body += f"\n- rev {rev} · {now_iso()} · {a.log}"
     path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
     print(f"{path} rev {rev}")
     return rev
+
+
+def cmd_status(a):
+    path = Path(a.note).expanduser()
+    fm, body = split_fm(path)
+    keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
+    if "rev" not in keys:
+        sys.exit(f"not a ticket note (no rev:): {path}")
+    if "status" in keys:
+        fm[keys["status"]] = f"status: {a.status}"
+    else:
+        fm.append(f"status: {a.status}")
+    fm[keys["modified"]] = f"modified: {now_iso()}"
+    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    print(f"{path} {a.status}")
+    return a.status
 
 
 def cmd_list(a):
@@ -253,6 +270,8 @@ def cmd_list(a):
             or p.stem.lower().startswith(a.ticket.lower() + "-")
         ):
             continue
+        if a.status and first("status") != a.status:
+            continue
         if cutoff and first("created")[:10] < cutoff:
             continue
         rows.append(
@@ -264,6 +283,7 @@ def cmd_list(a):
                 str(p.relative_to(vault())),
                 first("title"),
             )
+            + ((first("status"),) if first("status") else ())
         )
     rows.sort(reverse=True)
     for r in rows:
@@ -297,6 +317,7 @@ def self_test():
                         "tag": None,
                         "since": None,
                         "ticket": None,
+                        "status": None,
                         **kw,
                     }
                 )
@@ -397,7 +418,7 @@ def self_test():
         ), t1
         text = t1.read_text()
         assert (
-            "created: 2026-09-04T10:00:00-07:00\nticket: PE-1526\nrev: 1\nmodified: 2026-09-04T10:00:00-07:00\n---"
+            "created: 2026-09-04T10:00:00-07:00\nticket: PE-1526\nrev: 1\nmodified: 2026-09-04T10:00:00-07:00\nstatus: new\n---"
             in text
         ), text
         assert "# PE-1526 review: mixed identity binding\n" in text, text
@@ -413,30 +434,41 @@ def self_test():
         assert [r[4] for r in lst(ticket="PE-1527")] == [
             "areas/auth/security/pe-1527-review-old.md"
         ]
-        assert cmd_bump(argparse.Namespace(note=str(t1), log="fix MR opened")) == 2
-        assert cmd_bump(argparse.Namespace(note=str(t1), log=None)) == 3
+        assert cmd_bump(argparse.Namespace(note=str(t1))) == 2
+        assert cmd_bump(argparse.Namespace(note=str(t1))) == 3
         text = t1.read_text()
         assert (
             "rev: 3\nmodified: 2" in text and "modified: 2026-09-04" not in text
         ), text
-        assert (
-            text.count("## Revisions") == 1
-            and "- rev 2 · " in text
-            and "- rev 3" not in text
-        ), text
+        assert "## Revisions" not in text and "status: new" in text, text
+        assert lst(status="new")[0][6] == "new"
+        assert cmd_status(argparse.Namespace(note=str(t1), status="ready")) == "ready"
+        text = t1.read_text()
+        assert "status: ready\n---" in text and text.count("status:") == 1, text
+        assert "rev: 3\n" in text, text
+        assert [r[4] for r in lst(status="ready")] == [
+            "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+        ]
+        assert lst(status="new") == []
+        assert len(lst(area="auth", domain="sessions")[0]) == 6
         try:
-            cmd_bump(argparse.Namespace(note=str(p1), log=None))
+            cmd_status(argparse.Namespace(note=str(p1), status="ready"))
+            raise AssertionError("status on non-ticket note must exit")
+        except SystemExit:
+            pass
+        try:
+            cmd_bump(argparse.Namespace(note=str(p1)))
             raise AssertionError("bump on non-ticket note must exit")
         except SystemExit:
             pass
-        assert cmd_bump(argparse.Namespace(note=str(legacy), log="upgraded")) == 2
+        assert cmd_bump(argparse.Namespace(note=str(legacy))) == 2
         text = legacy.read_text()
         assert (
             "created: 2026-09-05T00:00:00-07:00\nticket: PE-1527\nrev: 2\nmodified: 2"
             in text
         ), text
-        assert "- rev 2 · " in text and text.count("ticket:") == 1, text
-        assert cmd_bump(argparse.Namespace(note=str(legacy), log=None)) == 3
+        assert "status: new\n---" in text and text.count("ticket:") == 1, text
+        assert cmd_bump(argparse.Namespace(note=str(legacy))) == 3
         assert key_arg("pe-1526") == "PE-1526"
         try:
             key_arg("1526")
@@ -472,9 +504,12 @@ def main(argv=None):
     l.add_argument(
         "--ticket", help="ticket key; matches ticket: or a key-prefixed filename"
     )
+    l.add_argument("--status", choices=STATUSES)
     b = sub.add_parser("bump")
     b.add_argument("note")
-    b.add_argument("--log", help="one line for the note's revision log")
+    t = sub.add_parser("status")
+    t.add_argument("note")
+    t.add_argument("status", choices=STATUSES)
     d = sub.add_parser("domains")
     d.add_argument("--area", choices=AREAS)
     k = sub.add_parser("link")
@@ -495,6 +530,8 @@ def main(argv=None):
         return cmd_link(a)
     if a.cmd == "bump":
         return cmd_bump(a)
+    if a.cmd == "status":
+        return cmd_status(a)
     ap.print_help()
 
 
