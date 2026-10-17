@@ -167,6 +167,32 @@ def drift_cases():
     assert "drift:" not in run_main("")
 
 
+def write_handoff(path, status):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        fh.write(f"---\ntype: handoff\nstatus: {status}\nupdated: 2026-10-17\n---\n")
+
+
+def handoff_cases(tmp):
+    base = os.path.join(tmp, "proj", ".giantmem")
+    assert "handoff" not in run_main("")
+    # a paused feature's handoff surfaces even with no repo-level one
+    write_handoff(os.path.join(base, "features", "paused", "handoff.md"), "ready")
+    write_handoff(os.path.join(base, "features", "closed", "handoff.md"), "done")
+    out = run_main("")
+    paused = os.path.join(base, "features", "paused", "handoff.md")
+    assert f"  handoff ready: {paused} (updated 2026-10-17). Read it FIRST" in out, out
+    assert "closed" not in out
+    # repo-level comes first, other features follow as secondary lines
+    write_handoff(os.path.join(base, "handoff.md"), "ready")
+    lines = run_main("").splitlines()
+    i = next(n for n, line in enumerate(lines) if "handoff ready:" in line)
+    assert lines[i].startswith(f"  handoff ready: {os.path.join(base, 'handoff.md')}")
+    assert lines[i + 1].startswith(f"  other ready handoff: {paused}"), lines[i + 1]
+    os.remove(os.path.join(base, "handoff.md"))
+    os.remove(paused)
+
+
 def hook_cases() -> None:
     os.environ.pop("TMUX", None)
     with tempfile.TemporaryDirectory() as tmp:
@@ -178,6 +204,7 @@ def hook_cases() -> None:
         mod.LISTS_DIR = os.path.join(tmp, "lists")
         try:
             session_cases(tmp)
+            handoff_cases(tmp)
             drift_cases()
         finally:
             mod.LISTS_DIR = saved

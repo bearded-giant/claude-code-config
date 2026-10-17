@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import contextlib
 import json
 import os
 import subprocess
@@ -9,6 +10,7 @@ LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 PRIORITY_RANK = {"critical": 0, "urgent": 1, "important": 2}
 MAX_ITEMS = 15
 MAX_DRIFT = 10
+MAX_HANDOFFS = 6
 # do-it.nvim's create_list / rename_list reject longer names
 MAX_LIST_NAME = 24
 REPO_MAX = 14
@@ -232,16 +234,20 @@ def read_ready(path: str):
     return path, meta.get("updated") or "?"
 
 
-def ready_handoff(root: str, feat):
+def ready_handoffs(root: str, feat) -> list:
     base = os.path.join(root, ".giantmem")
+    feats = os.path.join(base, "features")
     # repo-level fallback: work unrelated to the in_progress feature still hands off
-    paths = [os.path.join(base, "features", feat, "handoff.md")] if feat else []
+    paths = [os.path.join(feats, feat, "handoff.md")] if feat else []
     paths.append(os.path.join(base, "handoff.md"))
-    for path in paths:
-        found = read_ready(path)
-        if found:
-            return found
-    return None
+    # paused/pending features hand off too; without this their handoff only surfaces via a daily resume item
+    with contextlib.suppress(OSError):
+        paths += [
+            os.path.join(feats, d, "handoff.md")
+            for d in sorted(os.listdir(feats))
+            if d != feat
+        ]
+    return [found for found in map(read_ready, paths) if found][:MAX_HANDOFFS]
 
 
 def list_name(root: str, feat) -> str:
@@ -295,12 +301,17 @@ def main() -> None:
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
         "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
     ]
-    handoff = ready_handoff(root, feat)
-    if handoff:
+    handoffs = ready_handoffs(root, feat)
+    if handoffs:
+        first, rest = handoffs[0], handoffs[1:]
         lines.append(
-            f"  handoff ready: {handoff[0]} (updated {handoff[1]}). Read it FIRST, "
+            f"  handoff ready: {first[0]} (updated {first[1]}). Read it FIRST, "
             "verify its state against git, act on Start here, then set status: done"
         )
+        lines += [
+            f"  other ready handoff: {p} (updated {u}); read it when resuming that work"
+            for p, u in rest
+        ]
 
     if not exists:
         lines += [
@@ -308,9 +319,10 @@ def main() -> None:
             "repo/feature",
             "Assign model work: prefix a doit todo `claude:`. Drain it: /burn.",
             (
-                "Owe the user an action (run/confirm, review/merge, ping, settings, "
-                f'resume): create_list name="{name}" first, then add_todo '
-                "owe=true on it; the twin lands in `daily`."
+                "Owe the user an action only when it passes the daily bar (only "
+                "they can do it, actionable now, something waits on it, not "
+                f'routine merge/deploy/resume): create_list name="{name}" first, '
+                "then add_todo owe=true on it; the twin lands in `daily`."
             ),
             "</system-reminder>",
         ]
@@ -353,10 +365,15 @@ def main() -> None:
             "Question 1:1 (decisions stay on this list: no owe, no daily twin)"
         ),
         (
-            "  - anything the USER must do (run/confirm/verify, review/merge an MR, "
-            "ping, console/settings, resume) -> add_todo owe=true on this "
-            "list; it twins into `daily`. No ask. search_todos first to dedupe. "
-            "Name it `daily #N` in your report"
+            "  - owed (add_todo owe=true on this list, twins into `daily`, no ask, "
+            "search_todos first, report as `daily #N`) ONLY when all hold: only "
+            "the user can do it (credentials, console/vault/DNS/IdP, outward "
+            "comms, a human call), actionable now (not waiting on a reviewer, "
+            "release, cutover, or other item), and something waits on it. Never "
+            "owe: resume (the handoff carries it), merge/review an MR, tag or "
+            "deploy, watch for a future event, 'say ship it', approve a chat "
+            "diff, anything you can run. Conditional asks: this list with deps, "
+            "no owe. One console session = one owed item with a checklist"
         ),
         (
             "  - complete or revert either twin through the MCP and both follow; "
