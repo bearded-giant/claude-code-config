@@ -18,6 +18,7 @@ AREAS = [
     "dev-process",
     "dev-tools",
     "personal",
+    "security",
 ]
 
 
@@ -66,6 +67,13 @@ def now_iso():
     return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def key_arg(v):
+    v = v.upper()
+    if not re.match(r"^[A-Z][A-Z0-9]+-\d+$", v):
+        raise argparse.ArgumentTypeError(f"ticket key must look like PE-1234: {v!r}")
+    return v
+
+
 def unique_path(area_dir, base, created):
     path = area_dir / f"{base}.md"
     if not path.exists():
@@ -88,7 +96,12 @@ def cmd_new(a):
     created = a.created or now_iso()
     area_dir = vault() / "areas" / a.area / a.domain
     area_dir.mkdir(parents=True, exist_ok=True)
-    path = unique_path(area_dir, slug(a.title), created)
+    key = getattr(a, "key", None)
+    base = slug(a.title)
+    if key:
+        rest = re.sub(rf"^{re.escape(key)}\b[:\s-]*", "", a.title, flags=re.IGNORECASE)
+        base = f"{key}-{slug(rest)}"
+    path = unique_path(area_dir, base, created)
     tags = ["claude"] + [t.strip() for t in (a.tags or "").split(",") if t.strip()]
     project = a.project if a.project is not None else git_project(os.getcwd())
     heading = "" if body.startswith("# ") else f"# {a.title}\n\n"
@@ -101,8 +114,9 @@ def cmd_new(a):
             f"area: {a.area}",
             f"project: {project}" if project else 'project: ""',
             f"created: {created}",
-            "---",
         ]
+        + ([f"ticket: {key}", "rev: 1", f"modified: {created}"] if key else [])
+        + ["---"]
     )
     path.write_text(f"{fm}\n\n{heading}{body}\n", encoding="utf-8")
     print(path)
@@ -118,7 +132,7 @@ def parse_fm(path):
         return None
     fm, cur = {}, None
     for line in text[4:end].splitlines():
-        if line.startswith("-") or line.startswith("  -"):
+        if line.startswith(("-", "  -")):
             if cur:
                 fm[cur].append(line.split("-", 1)[1].strip().strip('"'))
             continue
@@ -131,7 +145,7 @@ def parse_fm(path):
             if v.startswith("[")
             else ([v.strip('"')] if v else [])
         )
-    m = re.search(r"^# (.+)$", text[end:], re.M)
+    m = re.search(r"^# (.+)$", text[end:], re.MULTILINE)
     fm["title"] = [m.group(1) if m else path.stem]
     return fm
 
@@ -176,10 +190,39 @@ def cmd_link(a):
     return path
 
 
+def split_fm(path):
+    text = path.read_text(encoding="utf-8")
+    end = text.find("\n---", 4) if text.startswith("---\n") else -1
+    if end < 0:
+        sys.exit(f"no frontmatter: {path}")
+    return text[4:end].splitlines(), text[end + 4 :].rstrip("\n")
+
+
+def cmd_bump(a):
+    path = Path(a.note).expanduser()
+    fm, body = split_fm(path)
+    keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
+    if "rev" not in keys:
+        sys.exit(f"not a ticket note (no rev:): {path}")
+    rev = int(fm[keys["rev"]].split(":", 1)[1]) + 1
+    fm[keys["rev"]] = f"rev: {rev}"
+    fm[keys["modified"]] = f"modified: {now_iso()}"
+    if a.log:
+        if "\n## Revisions" not in body:
+            body += "\n\n## Revisions\n"
+        body += f"\n- rev {rev} · {now_iso()} · {a.log}"
+    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    print(f"{path} rev {rev}")
+    return rev
+
+
 def cmd_list(a):
     cutoff = ""
     if a.since:
-        cutoff = (datetime.date.today() - datetime.timedelta(days=a.since)).isoformat()
+        cutoff = (
+            datetime.datetime.now().astimezone().date()
+            - datetime.timedelta(days=a.since)
+        ).isoformat()
     rows = []
     for p in sorted((vault() / "areas").rglob("*.md")):
         if p.stem == "index":
@@ -188,7 +231,7 @@ def cmd_list(a):
         if not fm:
             continue
 
-        def first(k):
+        def first(k, fm=fm):
             return (fm.get(k) or [""])[0]
 
         if a.area and first("area") != a.area:
@@ -198,6 +241,11 @@ def cmd_list(a):
         if a.project and first("project") != a.project:
             continue
         if a.tag and a.tag not in fm.get("tags", []):
+            continue
+        if a.ticket and not (
+            first("ticket").upper() == a.ticket.upper()
+            or p.stem.lower().startswith(a.ticket.lower() + "-")
+        ):
             continue
         if cutoff and first("created")[:10] < cutoff:
             continue
@@ -242,6 +290,7 @@ def self_test():
                         "project": None,
                         "tag": None,
                         "since": None,
+                        "ticket": None,
                         **kw,
                     }
                 )
@@ -325,6 +374,61 @@ def self_test():
             and "## Artifact revisions\n\n- rev 2 · " in text
         ), text
         assert parse_fm(p1)["artifact_rev"] == ["2"], parse_fm(p1)
+
+        t1 = cmd_new(
+            ns(
+                title="PE-1526 review: mixed identity binding",
+                area="security",
+                domain="customcheckout",
+                key="PE-1526",
+                created="2026-09-04T10:00:00-07:00",
+            )
+        )
+        assert (
+            t1
+            == Path(d)
+            / "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+        ), t1
+        text = t1.read_text()
+        assert (
+            "created: 2026-09-04T10:00:00-07:00\nticket: PE-1526\nrev: 1\nmodified: 2026-09-04T10:00:00-07:00\n---"
+            in text
+        ), text
+        assert "# PE-1526 review: mixed identity binding\n" in text, text
+        legacy = Path(d) / "areas/auth/security/pe-1527-review-old.md"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text(
+            "---\nid: pe-1527-review-old\narea: auth\ncreated: 2026-09-05T00:00:00-07:00\n---\n\n# old\n",
+            encoding="utf-8",
+        )
+        assert [r[4] for r in lst(ticket="pe-1526")] == [
+            "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+        ]
+        assert [r[4] for r in lst(ticket="PE-1527")] == [
+            "areas/auth/security/pe-1527-review-old.md"
+        ]
+        assert cmd_bump(argparse.Namespace(note=str(t1), log="fix MR opened")) == 2
+        assert cmd_bump(argparse.Namespace(note=str(t1), log=None)) == 3
+        text = t1.read_text()
+        assert (
+            "rev: 3\nmodified: 2" in text and "modified: 2026-09-04" not in text
+        ), text
+        assert (
+            text.count("## Revisions") == 1
+            and "- rev 2 · " in text
+            and "- rev 3" not in text
+        ), text
+        try:
+            cmd_bump(argparse.Namespace(note=str(p1), log=None))
+            raise AssertionError("bump on non-ticket note must exit")
+        except SystemExit:
+            pass
+        assert key_arg("pe-1526") == "PE-1526"
+        try:
+            key_arg("1526")
+            raise AssertionError("bad key must fail")
+        except argparse.ArgumentTypeError:
+            pass
     print("ok")
 
 
@@ -340,12 +444,23 @@ def main(argv=None):
     n.add_argument("--tags", help="comma separated")
     n.add_argument("--created", help="ISO 8601, default now")
     n.add_argument("--body-file", help="default stdin")
+    n.add_argument(
+        "--key",
+        type=key_arg,
+        help="ticket key; prefixes the filename, adds ticket/rev/modified",
+    )
     l = sub.add_parser("list")
     l.add_argument("--area", choices=AREAS)
     l.add_argument("--domain")
     l.add_argument("--project")
     l.add_argument("--tag")
     l.add_argument("--since", type=int, help="days")
+    l.add_argument(
+        "--ticket", help="ticket key; matches ticket: or a key-prefixed filename"
+    )
+    b = sub.add_parser("bump")
+    b.add_argument("note")
+    b.add_argument("--log", help="one line for the note's revision log")
     d = sub.add_parser("domains")
     d.add_argument("--area", choices=AREAS)
     k = sub.add_parser("link")
@@ -364,6 +479,8 @@ def main(argv=None):
         return cmd_domains(a)
     if a.cmd == "link":
         return cmd_link(a)
+    if a.cmd == "bump":
+        return cmd_bump(a)
     ap.print_help()
 
 
