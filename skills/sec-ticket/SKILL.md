@@ -46,7 +46,7 @@ Triage (`--status <value>` with keys, or "approve <KEY>"): `note.py status`, the
 
 ## Review
 
-More than one ticket: the main thread fetches each ticket (step 1), settles the repo and checkout once per repo (steps 3-4), then runs one `general-purpose` subagent per ticket, in parallel, each briefed with this skill's path, the ticket file, the worktree path and SHA, and the note command. Each subagent runs steps 2 and 5-9 for its ticket, writes its own note, and returns the note path plus the scores line. The main thread never re-reads the code; it builds the report from the notes. One ticket: run it inline.
+More than one ticket: the main thread fetches each ticket (step 1), settles the repo and checkout once per repo (steps 3-4), then runs one `general-purpose` subagent per ticket, in parallel, each briefed with this skill's path, the ticket file, the worktree path and SHA, and the note command. Each subagent runs steps 2 and 5-9 for its ticket, writes its own note, and returns the note path, the scores line, the severity verdict, the SLA, and a short title. Subagents never touch doit: parallel writes to one list can race, so the main thread adds every item and `add_note` line after they return. The main thread never re-reads the code; it builds the report from the notes. One ticket: run it inline.
 
 ### 1. Fetch
 
