@@ -86,7 +86,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | SessionEnd | `workspace_session_end.py` | Writes the session file and index line, refreshes WORKSPACE.md tables, spawns the haiku summarizer (see `docs/workspace-hooks.md`) |
 | Stop | `debug_stop_check.py` | Blocks a stop while an unresolved `.giantmem/debug/` file has a stale `next_action` |
 | Stop | `open_edges_gate.py` | Blocks a report once when its open-edges list holds work the session could do itself (CLOSE or VERIFY shapes, not gates); `OPEN_EDGES_GATE=off` bypasses |
-| Stop | `doit_active_gate.py` | Blocks a stop once when the session's doit list has pending items and none `in_progress`, so the chip always shows the active or next item; `DOIT_ACTIVE_GATE=off` bypasses |
+| Stop | `doit_active_gate.py` | Blocks a stop once when the session's doit list has pending items and none `in_progress`, so the chip always shows the active or next item. Links an unlinked tmux window to a list created mid-session. Skips `claude -p` children; `DOIT_ACTIVE_GATE=off` bypasses |
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |
 | PreToolUse | `artifact_gate.py` | Blocks an `Artifact` publish whose page lacks a visible `Rev N · YYYY-MM-DD HH:MM` stamp or carries a changelog-shaped heading (`claude-artifact` skill) |

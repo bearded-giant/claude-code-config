@@ -68,15 +68,20 @@ def read_session_file() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def link_window(name: str):
-    if not os.environ.get("TMUX"):
-        return None
+def interactive() -> bool:
+    # claude -p sets sdk-cli even when its parent session is cli
+    return not os.environ.get("CLAUDE_CODE_ENTRYPOINT", "cli").startswith("sdk")
+
+
+def link_window(name: str, follow=("", "daily")):
     pane = os.environ.get("TMUX_PANE")
-    target = ["-t", pane] if pane else []
+    # untargeted display-message resolves to the last-used client's window, not this pane's
+    if not os.environ.get("TMUX") or not pane:
+        return None
     fmt = f"#{{window_id}}{TMUX_SEP}#{{@doit-window-list}}{TMUX_SEP}#S:#W"
     try:
         out = subprocess.run(
-            ["tmux", "display-message", "-p", *target, fmt],
+            ["tmux", "display-message", "-p", "-t", pane, fmt],
             capture_output=True,
             text=True,
             timeout=2,
@@ -91,7 +96,7 @@ def link_window(name: str):
         links = {}
     current = live or links.get(key) or ""
     # a window the user linked to a project list keeps it; only an unlinked or daily window follows the session
-    if current not in ("", "daily"):
+    if current not in follow:
         return key, current, False
     for opt, val in (("@doit-window-list", name), ("@doit-window-key", key)):
         subprocess.run(
@@ -349,7 +354,7 @@ def main() -> None:
     feat_note = f"feature: {feat}" if feat else "(no active feature)"
     resume = f"claude --resume {session_id}" if session_id else "claude --continue"
     window = tmux_window() or "none"
-    link = link_window(name) if exists else None
+    link = link_window(name) if exists and interactive() else None
     if link:
         key, linked, changed = link
         window = f"{key} -> {linked}" + (
@@ -435,8 +440,8 @@ def main() -> None:
             "in_progress: the one you are on, else the one waiting on the user, "
             "else the top pending one. Waiting on the user for an ask no item "
             "covers (review, ship it, a console step) -> add_todo type=gate (no "
-            "owe, no claude:) naming the ask, start_todo it, complete it once "
-            "they act. doit_active_gate (Stop) blocks once while items are "
+            "owe, no claude:, `ref:` first description line) naming the ask, "
+            "start_todo it, complete it once they act. doit_active_gate (Stop) blocks once while items are "
             "pending and none is in_progress"
         ),
         (

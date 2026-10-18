@@ -18,11 +18,15 @@ def prime():
     return mod
 
 
-def check(cwd):
-    p = prime()
+def check(p, cwd):
     root = p.git_root(cwd)
     name = p.list_name(root, p.active_feature(root))
-    todos = p.load_todos(os.path.join(p.LISTS_DIR, f"{name}.json")) or []
+    path = os.path.join(p.LISTS_DIR, f"{name}.json")
+    if not os.path.isfile(path):
+        return None
+    # a list created mid-session missed the SessionStart link; daily stays, the user may have switched to it
+    p.link_window(name, follow=("",))
+    todos = p.load_todos(path) or []
     pending = [t for t in todos if isinstance(t, dict) and not t.get("done")]
     if not pending or any(t.get("in_progress") for t in pending):
         return None
@@ -47,8 +51,11 @@ def main():
     # one block per stop, so a failing start_todo cannot loop the session
     if data.get("stop_hook_active") or os.environ.get(BYPASS_ENV, "").lower() == "off":
         return
+    p = prime()
+    if not p.interactive():
+        return
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
-    found = check(cwd)
+    found = check(p, cwd)
     if found:
         print(json.dumps({"decision": "block", "reason": reason(*found)}))
 

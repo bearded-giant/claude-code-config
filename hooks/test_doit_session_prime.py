@@ -264,6 +264,16 @@ def link_cases() -> None:
             assert mod.link_window("proj") == ("s:a b", "kept", False)
             assert opt("@doit-window-list") == ""
 
+            # the stop gate follows only unlinked windows: daily was the user's switch
+            T("set-option", "-wq", "-t", "s:a b", "@doit-window-list", "daily")
+            assert mod.link_window("proj", follow=("",)) == ("s:a b", "daily", False)
+            assert opt("@doit-window-list") == "daily"
+
+            # no pane id: an untargeted query would answer for another window
+            pane = os.environ.pop("TMUX_PANE")
+            assert mod.link_window("proj") is None
+            os.environ["TMUX_PANE"] = pane
+
             os.environ.pop("TMUX")
             assert mod.link_window("proj") is None
         finally:

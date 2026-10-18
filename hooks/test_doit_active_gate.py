@@ -22,6 +22,8 @@ def load(name) -> Any:
 mod = load("doit_active_gate")
 prime = load("doit_session_prime")
 mod.prime = lambda: prime
+links = []
+prime.link_window = lambda name, follow=("", "daily"): links.append((name, follow))
 
 
 def run_hook(payload):
@@ -45,8 +47,9 @@ def gate_cases(tmp):
     os.makedirs(proj)
     os.environ["CLAUDE_PROJECT_DIR"] = proj
 
-    # no list for this repo: nothing to point at
+    # no list for this repo: nothing to point at, no window to link
     assert run_hook({}) is None
+    assert not links
 
     # only done items: the chip has nothing to show and nothing is next
     write_list("gaterepo", [{"id": "a", "text": "old", "done": True}])
@@ -63,6 +66,15 @@ def gate_cases(tmp):
     out = run_hook({})
     assert out and out["decision"] == "block", out
     assert 'list="gaterepo"' in out["reason"] and "(2 pending)" in out["reason"]
+    # a list made mid-session gets linked at stop, but a window on daily stays there
+    assert links[-1] == ("gaterepo", ("",)), links
+
+    # claude -p children (the session summarizer) have no user and no chip
+    os.environ["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+    try:
+        assert run_hook({}) is None
+    finally:
+        os.environ["CLAUDE_CODE_ENTRYPOINT"] = "cli"
 
     # the retry stop never blocks again
     assert run_hook({"stop_hook_active": True}) is None
@@ -126,6 +138,8 @@ def dispatch_cases(tmp):
 
 
 def main():
+    os.environ.pop("TMUX", None)
+    os.environ["CLAUDE_CODE_ENTRYPOINT"] = "cli"
     with tempfile.TemporaryDirectory() as tmp:
         tmp = os.path.realpath(tmp)
         os.makedirs(os.path.join(tmp, "lists"))
