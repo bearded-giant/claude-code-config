@@ -61,6 +61,16 @@ Mechanical half of CLAUDE.md `### Proactive execution` report-time triage. Reads
 
 Skips when `stop_hook_active` is true, so a report blocked once goes through on the second stop. `OPEN_EDGES_GATE=off` in the environment disables it. Tests: `python3 hooks/test_open_edges_gate.py`.
 
+## created_links_gate.py
+
+**Hook:** `Stop` (via dispatch)
+
+Makes the links a turn created land where the user sees them. It reads the turn (records since the last real user prompt; teammate messages, task notifications, and local command output are not prompts) plus every subagent transcript under `<session>/subagents/` with records inside that window, and collects what was created: MRs/PRs from `glab mr create` / `gh pr create` (matched in the command, or `Creating merge request for` in the output when a script ran it), dashboards from the `splunk|chronosphere|newrelic` `create|put|update_dashboard` MCP tools (the result's `url` field, else its first https URL), and Chronosphere dashboards after a `chronoctl apply` / `create` that was not `--dry-run`. chronoctl prints no URL, so any `https://<tenant>.chronosphere.io/dashboards/<slug>` that shows up later in that transcript's tool results or the agent's own text counts. A create whose output hid the URL falls back to a harness `pr-link` record first seen in the turn; a `pr-link` alone never counts, since the harness writes one for an MR that was only viewed.
+
+Each new link opens once per session in the browser (macOS `open`). The hook then blocks the stop once when a link is missing from the last 12 non-empty lines of the final message, listing each as `<repo>!N <url>`, `<repo>#N <url>`, or `<kind> dashboard <url>`. A link that reached those last lines once is marked delivered and never demanded again. State lives in `/tmp/claude-created-links/<session>.json` (`opened`, `delivered`).
+
+Skips `claude -p` children and `stop_hook_active` stops (a blocked report goes through on the second stop; opening still runs). `CREATED_LINKS_GATE=off` disables it. Tests: `python3 hooks/test_created_links_gate.py`.
+
 ## guard_protected_paths.py
 
 **Hook:** `PreToolUse` (matcher: Write, Edit, MultiEdit)
@@ -118,7 +128,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | Stop, PreCompact, SessionEnd | `session_bundle.py`: detached rsync of the session's `/private/tmp/claude-*/<slug>/<sid>/{scratchpad,tasks}` (purged by macOS) into `~/giantmem_archive/bundles/<slug>/<sid>/`, skipping `.venv`, `node_modules`, caches, binaries, files over 20MB, and symlinks. PreCompact and SessionEnd also copy `~/.claude/projects/<slug>/<sid>/{subagents,workflows,tool-results}` and the transcript into `claude/`. Writes `bundle.json` (cwd, branch, first prompt, resume command, file list with kinds). Archive only: files the session deletes stay. After the SessionEnd sync it re-runs `giantmem db ingest -s session-bundle`, so the final files are indexed even when `session_end_ingest` got there first. `--backfill [--from DIR]` sweeps existing tmp dirs or a saved copy. Tests: `python3 hooks/test_session_bundle.py` | No (file write only) |
 | SessionStart | `session_prime.py` renders `giantmem prime --json`: active feature, recent `.giantmem/` writes, and `open_mrs` (MRs/PRs this project's sessions opened or touched that are not merged or closed, one line each: `repo!N  state  opener  url`). Skips the prime only when all three are empty. Tests: `python3 hooks/test_session_prime.py` | Yes |
 | SessionStart | `doit_session_prime.py` also prints the session id + tmux `session:window` + `resume` line, the owed count, and `DRIFT` lines for owed twins out of sync with `daily`. Tests: `python3 hooks/test_doit_session_prime.py` | Yes |
-| Stop | dispatch: `debug_stop_check`, `open_edges_gate` | No (JSON decision only) |
+| Stop | dispatch: `debug_stop_check`, `open_edges_gate`, `doit_active_gate`, `created_links_gate` | No (JSON decision only; `created_links_gate` also opens created links in the browser) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |
 
