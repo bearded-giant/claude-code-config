@@ -32,13 +32,13 @@ Evidence is live, this run: `glab mr view` / `gh pr view` for any MR or PR named
 | unowe | owed item that fails the bar: review/merge an MR, tag/deploy, watch or verify on a future event, waiting on someone else or on another item, "say ship it", approving a chat diff, work the model can run | `delete_todo` (removes both twins), then re-add on the project list with the same type, text, priority, and description minus the twin line, no `owe`, `deps` when it waits on an item; model-runnable → re-add as a `claude:` code item. Its MR merged or step ran → `landed` instead |
 | noise | an FYI, a model next-step, a duplicate, a POINTER/handoff to another list, a `resume` item (the handoff carries it), or a user action already done (MR merged, step ran) that is not a `gate` item (those close as `gate-done`) | delete |
 | gate-done | `gate` item: the ask it names is done (its MR merged or got its "ship it", the console step ran, the user answered) | `complete_todo` + `add_note` append `DONE {ts} <evidence>` |
-| drifted | open code work whose text names stale files/symbols/flags or whose notes are a dated status log; or a `decision` whose question was reworded or whose priority no longer matches `[BLOCKING]` | `update_todo`: accurate text and priority, `claude:` on if model work, description opens with the `ref:` line, the log collapsed to what is left |
+| drifted | open code work whose text names stale files/symbols/flags or whose notes are a dated status log; or a `decision` whose question was reworded or whose priority no longer matches `[BLOCKING]`; or any open MCP-created item whose text is more than a short label (`feature-management` → `### Title`) | `update_todo`: accurate text cut to a label, the detail moved into the description, accurate priority, `claude:` on if model work, description opens with the `ref:` line, the log collapsed to what is left |
 | open | target exists, text accurate | keep |
 | unknown | evidence unreachable (glab auth, repo not on disk, network) | keep; name what is missing |
 
 User-authored items (the nvim/tmux `Mine` block: `source` set to anything but `mcp`, or no `source`, no `twin`, and text not starting with `claude:`, a `[type]` tag, or an `N.` rank) take only `landed` or `moot`, never `owe` or `noise`. They are the user's call.
 
-**Unmirrored scan** (skipped with `--mr`): read `## Open Questions for User` in every `.md` under the list's scope dir: the feature dir for a feature list, or `.giantmem/` minus `features/` for a bare repo list. An entry with no matching `decision` item (match on question text) → add the mirror per `### Decision mirror`.
+**Unmirrored scan** (skipped with `--mr`): read `## Open Questions for User` in every `.md` under the list's scope dir: the feature dir for a feature list, or `.giantmem/` minus `features/` for a bare repo list. An entry with no matching `decision` item (match on the item's `question:` description line, else its text) → add the mirror per `### Decision mirror`.
 
 ## Apply
 

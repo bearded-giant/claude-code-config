@@ -36,7 +36,7 @@ Paths below: `$SCRATCH` is the session scratchpad; `$NOTE` is `~/.claude/skills/
 
 doit list `security-tickets` (create it with `create_list` if `list_lists` lacks it; pass `list="security-tickets"` on every call):
 
-- One item per ticket, added when its note is first written: `add_todo` with text `<KEY> <severity>: <short title>`, `type: "sec"`, priority from the note's severity verdict, not the ticket's triage (Critical `critical`, High `urgent`, Medium `important`, Low none), `due` = the SLA date when one is stated, description first line `ref: <vault-relative note path>`. No `claude:` marker: `/burn` never drains security fixes; only `/sec-ticket` runs them. `search_todos <KEY>` first; never a second item for a key.
+- One item per ticket, added when its note is first written: `add_todo` with text `<KEY> <severity>: <short title>` (≤ 40 chars, `feature-management` → `### Title`), `type: "sec"`, priority from the note's severity verdict, not the ticket's triage (Critical `critical`, High `urgent`, Medium `important`, Low none), `due` = the SLA date when one is stated, description first line `ref: <vault-relative note path>`. No `claude:` marker: `/burn` never drains security fixes; only `/sec-ticket` runs them. `search_todos <KEY>` first; never a second item for a key.
 - The item stays pending from `new` through `in_review`. `done` closes it with `complete_todo` + note `DONE <ts> <MR refs>`; `wont_fix` with `complete_todo` + `WONTFIX <ts> <reason>`.
 - The session log lives here, not in the note: every run that touches a ticket appends one `add_note` line, `<date> · <mode> · rev N · <one line>`. The note carries no revision history.
 

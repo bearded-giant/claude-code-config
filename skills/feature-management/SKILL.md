@@ -203,7 +203,7 @@ A code item is written only when the work waits on the user, or on explicit requ
 
 No ask; the owed or decision item is the gate. Name each in the open edges.
 - Three item kinds only:
-  - code work: a repo, a file or symbol, a change. `claude:` when the model can do it; no prefix when the user keeps it.
+  - code work: a repo, a file or symbol, a change. Text names the change (`### Title`); repo and file/symbol go in the description. `claude:` when the model can do it; no prefix when the user keeps it.
   - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
   - owed: an action only the user can do, per `### Owed items → daily twin`.
 - Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item when it passes the bar in `### Owed items → daily twin`.
@@ -217,9 +217,9 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
 
 - Write in the same turn the doc gains or rewords an entry. No ask. Say `mirrored N decisions to <list>` in chat.
 - List: the doc's feature list (`--feature <name>` derivation below), or the bare `{repo}` list for a repo-level doc.
-- Item: `add_todo type=decision` on that list, no `owe`. A design decision is feature work, not an inbox action, so it never twins into `daily`. Text = the question (≤ 80 chars); description opens `ref: <doc abs path>`, then `why` (what it blocks) and `links`. `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`.
+- Item: `add_todo type=decision` on that list, no `owe`. A design decision is feature work, not an inbox action, so it never twins into `daily`. Text = its topic as a short question (≤ 40 chars, `### Title`); description opens `ref: <doc abs path>`, then `question:` (the entry verbatim), `why` (what it blocks), and `links`. `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`.
 - Resolve doc first: the answer lands in the doc and the entry leaves Open Questions, then `complete_todo` + `add_note` append `DONE {ts} resolved in <doc path>: <one-line answer>`. Same order when the user answers in chat or in the doit note.
-- Match items to entries on question text; entry numbers shift as others resolve.
+- Match items to entries on the description's `question:` line, else the text; entry numbers shift as others resolve.
 - Drift either way (orphan item, unmirrored entry, a decision carrying a `daily` twin) → `/doit-prune` repairs it.
 
 ### Owed items → daily twin
@@ -244,7 +244,7 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
 - Gate: no ask once the bar passes. Write when the need appears, then name it in the chat report's open edges as `daily #M`. Dedupe first: `search_todos` on the action's key noun; an open twin for the same action → update it instead.
 - Type: `gate` (run / confirm / verify that blocks a rollout), `sec`, `setup`, `setting`, `ping`, `unblock`.
 - Priority: blocks the critical path → `urgent`; else none. `due` only for a real date.
-- Text: the action as an imperative the user can do cold, ≤ 80 chars. Name the thing (`rotate shppa_ token for store 109866`), not the activity (`check token`).
+- Text: the action as an imperative the user can do cold, ≤ 40 chars (`### Title`). Name the thing (`rotate shppa_ token for store 109866`), not the activity (`check token`).
 - Description, for the user reading it days later. Labeled sections, blank line between, empty rows omitted:
 
   ```
@@ -315,9 +315,14 @@ First form follows the `in_progress` feature (same as SessionStart). Second pins
 
 Code and `claude:` items live only in the feature list. Only owed items twin into `daily`.
 
-### Numbering
+### Title — a label, not a spec
 
-Prefix every item text with `N.` = do-order / critical-path sequence across the whole list (`1. wire token refresh`, `2. add ttl config`). The number is the explicit priority signal the user reads — doit exposes no visible ordinal. Bucket conveys urgency; number conveys "do this Nth". Skip `order_index` unless the visible sort drifts from the numbers.
+The text is what the user's tmux chip and board sidebar show. Keep it a label; the description carries the spec.
+
+- Text ≤ 40 chars: verb + object (`wire token refresh`), a `decision`'s topic as a short question (`hide skipped checks?`). The MCP adds `claude: [type] N.` and `(dep on #M)` around it.
+- Never in the text: paths, commands, file:line, branch or MR refs, lists of sub-parts, options, rationale, status. They go in the description under `ref:` / `do:` / `files:` / `test:` / `why:`.
+- Bad: `investigator: build_activity + part.activity (no steps), status activity, DISPLAY_ROWS 5, pack audience flags, Merchant view tab, tests`. Good: `investigator activity part`, the six parts listed under `do:`.
+- `N.` is the MCP's fixed rank handle, assigned on `add_todo`; never write it into the text. It is not work order: order goes in `sequence` (`sequence_todos`).
 
 ### Description — more than a post-it
 
@@ -336,7 +341,7 @@ Notes are not a status log. When scope shrinks or names change, rewrite the text
 
 1. `list_todos list={feature}` first.
 2. Dedupe — skip items whose text fuzzy-matches an existing todo.
-3. Append new items; continue numbering from current max `N`.
+3. Append new items; the MCP assigns the next rank `N`.
 4. Re-bucket / add notes on existing items via `update_todo` / `add_note` only when their priority or context changed.
 
 Never silently renumber the whole list — append-extend. Reorder only on explicit user request.

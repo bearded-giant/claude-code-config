@@ -470,6 +470,11 @@ def main() -> None:
             "Question 1:1 (decisions stay on this list: no owe, no daily twin)"
         ),
         (
+            "  - item text is a short label, <= 40 chars: it is what the tmux "
+            "chip and board sidebar show. Paths, files, commands, sub-steps, "
+            "options, and why go in the description"
+        ),
+        (
             "  - owed (add_todo owe=true on this list, twins into `daily`, no ask, "
             "search_todos first, report as `daily #N`) ONLY when all hold: only "
             "the user can do it (credentials, console/vault/DNS/IdP, outward "
