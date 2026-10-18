@@ -32,6 +32,8 @@ def test_mirror_nested_root_and_prune(tmp_path):
         "x/node_modules/pkg",
         "cfg/.mdlive/history",
         "cfg/plugins/cache/x",
+        "Library/app",
+        "giantmem_archive/old",
     )
     (root / "deep/a/b/c/d/e/f").mkdir(parents=True)
     mk(root, "deep/a/b/c/d/e/f/g")
@@ -40,9 +42,9 @@ def test_mirror_nested_root_and_prune(tmp_path):
     gv.sync(root, vault)
     got = links(vault)
     assert got == {
-        "_dev": str(root / ".giantmem"),
-        "cfg": str(root / "cfg/.giantmem"),
-        "cfg--plugins": str(root / "cfg/plugins/.giantmem"),
+        "_giantmem": str(root / ".giantmem"),
+        "cfg/_giantmem": str(root / "cfg/.giantmem"),
+        "cfg/plugins": str(root / "cfg/plugins/.giantmem"),
         "ai/kai": str(root / "ai/kai/.giantmem"),
         "python/cc-wt/stage": str(root / "python/cc-wt/stage/.giantmem"),
     }, got
@@ -69,10 +71,23 @@ def test_ancestor_gaining_workspace_relinks_child(tmp_path):
     mk(root, "a")
     gv.sync(root, vault)
     assert links(vault) == {
-        "a": str(root / "a/.giantmem"),
-        "a--b": str(root / "a/b/.giantmem"),
+        "a/_giantmem": str(root / "a/.giantmem"),
+        "a/b": str(root / "a/b/.giantmem"),
     }
     assert (root / "a/b/.giantmem/WORKSPACE.md").exists()
+    for rel in ("a/b", "a"):
+        (root / rel / ".giantmem/WORKSPACE.md").unlink()
+        (root / rel / ".giantmem").rmdir()
+    mk(root, "a")
+    gv.sync(root, vault)
+    assert links(vault) == {"a": str(root / "a/.giantmem")}
+
+
+def test_lone_root_workspace(tmp_path):
+    root, vault = tmp_path / "home", tmp_path / "vault"
+    mk(root, ".")
+    gv.sync(root, vault)
+    assert links(vault) == {"_giantmem": str(root / ".giantmem")}
 
 
 def test_real_dir_in_the_way_is_left_alone(tmp_path):

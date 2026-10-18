@@ -4,10 +4,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path.home() / "dev"
+ROOT = Path.home()
 VAULT = Path.home() / "giantmem-vault"
-PRUNE = {"cache", "node_modules", "target", "vendor", "venv"}
-MAX_DEPTH = 6
+PRUNE = {
+    "Library",
+    "cache",
+    "giantmem-vault",
+    "giantmem_archive",
+    "node_modules",
+    "target",
+    "vendor",
+    "venv",
+}
+MAX_DEPTH = 7
+SELF = "_giantmem"
 
 
 def find_workspaces(root, max_depth=MAX_DEPTH):
@@ -25,26 +35,12 @@ def find_workspaces(root, max_depth=MAX_DEPTH):
 
 
 def desired_links(root, repos):
-    rels = sorted(r.relative_to(root) for r in repos)
+    rels = {r.relative_to(root) for r in repos}
+    ancestors = {p for r in rels for p in r.parents}
+    # a workspace with workspaces below it stays a real dir, or their links would land inside its .giantmem
     links = {}
     for rel in rels:
-        if not rel.parts:
-            links[Path("_dev")] = root / ".giantmem"
-            continue
-        top = next(
-            (
-                t
-                for t in rels
-                if t.parts and t != rel and rel.parts[: len(t.parts)] == t.parts
-            ),
-            None,
-        )
-        # a nested workspace under its ancestor's link would land inside the ancestor's .giantmem
-        name = (
-            rel
-            if top is None
-            else top.parent / "--".join((top.name,) + rel.parts[len(top.parts) :])
-        )
+        name = rel / SELF if rel in ancestors or not rel.parts else rel
         links[name] = root / rel / ".giantmem"
     return links
 
