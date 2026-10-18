@@ -192,7 +192,7 @@ confidence: N/5 <reason>
 (related keys with one line each; [[wiki links]] to vault notes read in step 2)
 ```
 
-Summary rules: five bold-lead fields, no `file:line`, no commit SHAs, short sentences; a reader with 6 tickets this week scans it in under a minute. The table is what fix mode walks, so every row's base and test command must be real: read the repo's CLAUDE.md or Makefile and check the test files exist at base head. A `|` inside a cell breaks the table; reword it.
+Summary rules: five bold-lead fields, no `file:line`, no commit SHAs, short sentences; a reader with 6 tickets this week scans it in under a minute. The table is what fix mode walks, so every row's base and test command must be real: read the repo's CLAUDE.md or Makefile at base head (`git -C <wt> show origin/<base>:CLAUDE.md`), never from a worktree on another branch, and check the test files exist at base head. A `|` inside a cell breaks the table; reword it.
 
 No secrets, tokens, cookies, or customer PII: redact as `<REDACTED:token>`. Store ids and account ids the reporter controls are fine. Raw dumps stay in `$SCRATCH`.
 
