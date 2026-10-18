@@ -10,12 +10,13 @@ Output modes:
 
 A control object (decision / permissionDecision / continue) wins outright and is
 printed alone: a block reason is the whole payload or it is nothing. Several
-blocks merge their reasons into the first.
+blocks merge their reasons into the first. Stop blocks from claude -p are dropped.
 """
 
 import importlib.util
 import io
 import json
+import os
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -83,6 +84,10 @@ def main():
         event, argv = argv[1], argv[2:]
 
     raw = sys.stdin.read()
+    # a block in claude -p replaces its stdout, which callers parse (the session summarizer)
+    headless = event == "Stop" and os.environ.get(
+        "CLAUDE_CODE_ENTRYPOINT", "cli"
+    ).startswith("sdk")
     texts, control = [], None
     for name in argv:
         chunk = run(name, raw)
@@ -90,6 +95,12 @@ def main():
             continue
         kind, value = classify(chunk)
         if kind == "control":
+            if (
+                headless
+                and isinstance(value, dict)
+                and value.get("decision") == "block"
+            ):
+                continue
             if not isinstance(control, dict):
                 control = value
             elif (

@@ -136,6 +136,19 @@ def dispatch_cases(tmp):
     # both blocks reach the model, the plain context does not ride along
     assert out == {"decision": "block", "reason": "first\n\nsecond"}, out
 
+    # claude -p: blocks would replace the stdout its caller parses, so they drop
+    os.environ["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli"
+    sys.argv = ["dispatch.py", "--event", "Stop", "gate_a", "gate_b"]
+    sys.stdin = io.StringIO("{}")
+    buf = io.StringIO()
+    try:
+        with redirect_stdout(buf):
+            dispatch.main()
+    finally:
+        sys.argv = saved
+        os.environ["CLAUDE_CODE_ENTRYPOINT"] = "cli"
+    assert buf.getvalue() == "", buf.getvalue()
+
 
 def main():
     os.environ.pop("TMUX", None)
