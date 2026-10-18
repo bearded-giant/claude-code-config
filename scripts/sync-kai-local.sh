@@ -5,14 +5,14 @@ KAI_LIVE="${KAI_LIVE_DIR:-$HOME/dev/ai/kai-live}"
 SRC="$KAI_LIVE/plugins/kai"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/kai-local/plugins/kai"
 
-# allowlist so new upstream skills stay out until added; dapr-*, chronoctl, stackdriver-promql are called by review-code and chronosphere-expert
+# allowlist so new upstream skills stay out until added; dapr-* are called by review-code. chronoctl and chronosphere-expert stay out: they force [DRAFT-AI-GEN] names on every dashboard write
 SKILLS=(
   open-mr glab accept-kai-feedback gitlab-inline-comments
   review-code review-code-select classify-repo
   dapr-parallel-deploy dapr-pubsub dapr-pubsub-debugging dapr-recharge-foundations dapr-grpc-resilience
-  chronoctl stackdriver-promql update-kai
+  stackdriver-promql update-kai
 )
-AGENTS=(code-reviewer chronosphere-expert backend-engineer incident-investigator)
+AGENTS=(code-reviewer backend-engineer incident-investigator)
 MCPS=(watchtower dba-mcp-prod dba-mcp-stage atlassian)
 
 [ -d "$SRC/skills" ] || { echo "kai source missing: $SRC" >&2; exit 1; }
