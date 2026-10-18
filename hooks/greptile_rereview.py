@@ -62,12 +62,20 @@ def _git(top, *args):
     return _run(["git", "-C", top, *args], top)
 
 
-def already_requested(top, iid, head, head_time):
+def mr_notes(top, iid):
     raw = _run(["glab", "api", f"projects/:id/merge_requests/{iid}/notes?sort=desc&order_by=created_at&per_page=100"], top)
     try:
-        notes = json.loads(raw or "[]")
+        return json.loads(raw or "[]")
     except json.JSONDecodeError:
-        return True
+        return None
+
+
+# a repo can be reviewed by greptile with no .greptile/ in the tree; its approvals on the MR say so
+def greptile_reviews(notes):
+    return any(n.get("author", {}).get("username") == "greptile" for n in notes)
+
+
+def already_requested(notes, head, head_time):
     for n in notes:
         body = n.get("body", "")
         if "greptile_summary" in body:
@@ -85,8 +93,9 @@ def request_review(data):
     if not d:
         return None
     top = _git(d, "rev-parse", "--show-toplevel")
-    if not top or not (Path(top, ".greptile").is_dir() or Path(top, "greptile.json").exists()):
+    if not top:
         return None
+    has_config = Path(top, ".greptile").is_dir() or Path(top, "greptile.json").exists()
     if "gitlab" not in _git(top, "remote", "get-url", "origin"):
         return None
     branch = _git(top, "rev-parse", "--abbrev-ref", "HEAD")
@@ -102,6 +111,9 @@ def request_review(data):
     if len(mrs) != 1:
         return None
     iid = mrs[0]["iid"]
+    notes = mr_notes(top, iid)
+    if notes is None or not (has_config or greptile_reviews(notes)):
+        return None
     # gitlab registers a push a few seconds late; a request before that reviews the old head
     for _ in range(8):
         try:
@@ -112,7 +124,7 @@ def request_review(data):
         time.sleep(2)
     else:
         return None
-    if already_requested(top, iid, head, _ts(_git(top, "log", "-1", "--format=%cI"))):
+    if already_requested(notes, head, _ts(_git(top, "log", "-1", "--format=%cI"))):
         return None
     _run(["glab", "mr", "note", str(iid), "-m", "@greptile review"], top)
     return (
