@@ -31,6 +31,8 @@ GIANTMEM_VIEW = "~/giantmem-vault"
 def view_target(file_path: str, cwd: str) -> str | None:
     path = os.path.normpath(os.path.join(cwd, os.path.expanduser(file_path)))
     root = os.path.expanduser(GIANTMEM_VIEW)
+    if path.startswith(os.path.join(root, ".obsidian") + os.sep):
+        return None
     if path == root or path.startswith(root + os.sep):
         return os.path.realpath(path)
     return None

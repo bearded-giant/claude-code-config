@@ -21,4 +21,6 @@ def test_other_paths_pass(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     assert g.view_target("~/Recharge-Notes/areas/x.md", "/") is None
     assert g.view_target("~/giantmem-vault-other/x.md", "/") is None
+    assert g.view_target("~/giantmem-vault/.obsidian/app.json", "/") is None
+    assert g.view_target("~/giantmem-vault/stray.md", "/") is not None
     assert g.view_target(str(tmp_path / "dev/cfg/.giantmem/x.md"), "/") is None
