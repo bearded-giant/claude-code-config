@@ -58,8 +58,8 @@ Proactive execution is not bounded by the task's area (`### Proactive execution`
 
 - Pure style churn in files the task never touched (reformatting, comment cleanup, renames with no defect behind them): skip it. Anything with a defect, a stale claim, or a gap behind it gets fixed.
 - Team-shared agent config — git-tracked `CLAUDE.md` / `AGENTS.md` / `INSTRUCTIONS.md` / checked-in `.claude/**` in any repo other than `claude-code-config` / `dotfiles` — NEVER edit as a side effect of another task. Propose the diff in chat; edit only when the user explicitly directed that exact change. `guard_protected_paths.py` PreToolUse hook gates this mechanically (ask-prompt).
-- Never create a git worktree unless asked. Work in the current worktree; run artifacts go under the current repo's `.giantmem/`.
-- Deletions: list targets, wait for confirm, then delete.
+- Never create a git worktree unless asked. Work in the current worktree; run artifacts go under the current repo's `.giantmem/`. Worktree lifecycle is mine: `## Branches and Worktrees`.
+- Deletions: list targets, wait for confirm, then delete. No confirm for: files and dirs this session created (stray outputs, temp scripts, temp worktrees), tracked files this session's change made dead (git keeps them; delete in the same commit), stale remote-tracking refs (`git fetch --prune`), and branch cleanup under `## Branches and Worktrees`. Confirm still holds for untracked files the session did not create, data, and remote resources other than branches.
 
 ## Artifact vs Execution
 
@@ -342,6 +342,7 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 - claude-code-config: no feature branches, no MR. Commit on `main`, push every commit to both remotes (`origin` GitLab and `github`) in the same turn
 - commits live in a checkout under ~/dev. Never a scratch clone or a clone in the scratchpad. A pinned checkout (handoff says do not switch branches) → say so in one line and ask for a worktree; cloning is not the workaround
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. GitLab with `glmon-jirad` enabled also creates or syncs the Jira ticket. Final output is the MR description markdown followed by the MR URL, plus the `glmon-jirad` result line when it ran, nothing else.
+- links to what a turn created close the turn. An MR/PR opened this turn, one that reached READY, or any other resource with a URL (Splunk / Chronosphere / New Relic dashboard, artifact, Jira ticket), including ones a subagent created: the final message ends with each on its own line (`<repo>!N <url>`, `splunk dashboard <url>`), after every doc, doit, and script step. Never only inside diffs, tool output, or a mid-turn status line. `hooks/created_links_gate.py` (Stop) opens created links in the browser and blocks once when they are missing from the last lines; don't `open` them yourself
 - use `caveman-commit` format for messages (conventional commits, subject ≤50 chars, body only for non-obvious why)
 - default Jira key when a repo hook demands one and the user gave none: `PE-0000`. customcheckout's `verify_commit_msg.py` wants the key at line start, so subject shape is `[PE-0000] feat: ...`, not `feat(PE-0000): ...`. Never hand-create a Jira ticket for an MR: `glmon-jirad` (gitlab-monitor) creates it and swaps the placeholder for the real key in the MR title
 - MR/PR descriptions are produced by `ship-it` only — no standalone description command; formats live at `skills/ship-it/{bullet,concise-kai}-format.md`
@@ -350,6 +351,22 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 - one-liner curls and shell scripts in chat
 - commit messages: casual short blurb. no multi-line details unless breaking change, security fix, or data migration
 </git_rules>
+
+## Branches and Worktrees
+
+Standard process: run it without asking, report it under work performed. MR/PR state comes from `glab mr view` / `gh pr view` in the same turn.
+
+Worktrees use the giant-tooling layout (`~/dev/giant-tooling/git-worktrees/`): a bare repo at `<base>/.bare` and one sibling worktree per branch at `<base>/<branch>/` (repo map paths ending `-wt`). I create and remove them with its per-project prefix functions. `{prefix}r <branch>` sweeps `.giantmem/` into giantmem's `live.db` first; `git worktree remove` skips that and loses the workspace.
+
+- Never remove, prune, move, or recreate a worktree, and never offer to: no ask, no gap, no open edge. That covers the worktree the session runs in (removing it kills the session) and any worktree on a merged branch. Exception: a temp worktree this session created (subagent isolation, a land agent) gets removed before the turn ends.
+- Use the worktree and branch the session starts in as is. Never ask to rename, switch, or recreate them.
+- MR/PR merged → delete its local branch with `git branch -D` (squash merges defeat `-d`). MR/PR closed unmerged because this session's work made it unneeded → delete the local branch and the remote one (`git push origin --delete <branch>`). Both cases:
+  - checked out in its own worktree (`<base>/<branch>/`): leave the branch. It goes after I run `{prefix}r`, via the sweep below.
+  - checked out in a base worktree (`main` / `master` / `develop` / `stage` dir, or a plain clone) and clean: `git switch <default> && git pull --ff-only`, then delete.
+  - local tip differs from the MR/PR head sha (unpushed work), or the checkout is dirty: leave the branch, one line in the report.
+- Merged-branch sweep at wrap, for each repo touched: `git fetch --prune`, then delete every local branch whose upstream is `[gone]`, whose tip equals a merged MR/PR head (`glab mr list --source-branch <b> --merged -F json` → `sha`; `gh pr list --head <b> --state merged --json headRefOid`), and that no worktree has checked out. A branch with no merged MR/PR stays.
+- Commit landed on a protected default branch (push rejected): `git switch -c <branch>` carries it, `git branch -f <default> origin/<default>` resets the default, push the branch. The MR still waits for "ship it".
+- Another live session's uncommitted work: leave it, no ask.
 
 ## Concise Output Rules
 

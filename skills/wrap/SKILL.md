@@ -6,7 +6,7 @@ description: >-
 
 The user is about to lose this session's context or close a feature. Anything not written down is gone. Run the checklist, fix what is safe to fix, and report the rest.
 
-Never commit, push, merge, delete, or kill a process on your own. Every such action goes into ONE batched AskUserQuestion at the end of the checklist. A bare "commit" answer means commit only.
+Without asking: commit and push tested work (CLAUDE.md git_rules), run branch cleanup (CLAUDE.md `## Branches and Worktrees`), and delete what this session created. Never remove a worktree or offer to, including the one this session runs in. Merge, opening or updating an MR ("ship it"), killing a process, and any other deletion go into ONE batched AskUserQuestion at the end of the checklist, and only when one of them is live.
 
 ## Mode
 
@@ -24,7 +24,9 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
 1. **Git**, for every repo touched this session: cwd, any repo edited or named this session, and the repos of paired sessions.
    - `git status --short`, `git log @{u}.. --oneline`, branch, HEAD sha
    - open MRs: state, pipeline, unresolved threads. Include MRs this session opened on other repos: `giantmem mr list --project <repo>` (the `/feature-next` gather already runs it)
-   - Uncommitted or unpushed work is a gap. Offer commit, or commit and push, in the batched ask.
+   - Uncommitted or unpushed work: tested → commit and push it. Untested, or another live session's → a gap, left as is.
+   - Branch cleanup per CLAUDE.md `## Branches and Worktrees`: delete branches of MRs/PRs merged or closed as unneeded, then the merged-branch sweep. List what went under `Fixed`.
+   - Links: every MR/PR this session opened (`giantmem mr list --project <repo>`) and every dashboard, artifact, or ticket it created, with URL.
 2. **doit** (always pass `list=`):
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
    - New items: code follow-ups should already be done (CLAUDE.md `### Proactive execution`). Work the session could do but did not finish goes in the handoff's `Start here`, not doit. Code blocked on me (operator detail, dangerous change) gets a code item that deps on its owed or decision item, no ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. User actions that pass the daily bar (`feature-management` → `### Owed items → daily twin`) become owed items (`add_todo owe=true`), no ask; the handoff's `Open edges` lists them by `daily #N`. Review/merge asks, tags, deploys, conditional confirms, and "say ship it" go in the handoff's `Open edges` as plain lines, never owed. Last doit call: leave the next item `in_progress` (`start_todo`): the one waiting on me, else the top pending one; when no item covers the ask the session stops on, `add_todo type=gate` (no `owe`) and start it.
@@ -52,10 +54,16 @@ Gaps
 Fixed
 - recharge-auth #12, #14 completed
 - tasks.md 3.2 checked
+- recharge-auth: deleted merged branches session-index-reads, sec-3897-logout-cutoff
 Handoff
 - /abs/path/.giantmem/features/<name>/handoff.md
 safe to exit: no: push recharge-auth
+
+recharge-auth!47 https://gitlab.rechargeapps.net/<group>/recharge-auth/-/merge_requests/47
+splunk dashboard https://<tenant>.splunkcloud.com/en-US/app/search/<id>
 ```
+
+The links close the output, one per line, after `safe to exit`. Omit the block when the session created none.
 
 `safe to exit: yes` requires all of these:
 - no uncommitted or unpushed work the user hasn't waived

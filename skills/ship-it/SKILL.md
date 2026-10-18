@@ -99,6 +99,8 @@ Print to chat in EXACTLY this order, nothing else:
 
 Then STOP. Do NOT add a closing summary. Do NOT offer next steps. Do NOT explain what happened — the description and URL are the report.
 
+Inside a longer turn (several branches shipped, doc or doit work after): the turn's final message still ends with every MR URL, one per line as `<repo>!N <url>`, after all other output. `hooks/created_links_gate.py` opens new MRs in the browser; don't `open` them yourself.
+
 ## Failure handling
 
 Any step fails → STOP the chain immediately. Report:
