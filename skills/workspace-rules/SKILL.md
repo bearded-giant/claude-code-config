@@ -113,7 +113,7 @@ updated: YYYY-MM-DD
 
 `.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, handoff, grill runs) never leaves `.giantmem/` unless the user names it.
 
-Preview: mdlive only when the user asks (preview / render / open). After writing a `.md`, return its path.
+Preview: Obsidian (`obsidian-preview`) only when the user asks (preview / render / open). After writing a `.md`, return its path.
 
 JSON artifacts (`meta.json`) get the same keys at top level (no `---` fences).
 

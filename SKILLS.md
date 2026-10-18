@@ -77,5 +77,5 @@
 | Skill | Purpose |
 |-------|---------|
 | `/mcp-builder` | Build MCP servers in TypeScript or Python |
-| `/mdlive` | Preview markdown as live-reloading HTML in browser; on request only, never auto-fires |
+| `/obsidian-preview` | Open a file in Obsidian with live reload; on request only, never auto-fires |
 | `/keybindings-help` | Customize keyboard shortcuts |
