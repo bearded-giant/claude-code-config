@@ -1,7 +1,7 @@
 ---
 name: burn
 description: >-
-  Burn down `claude:`-marked todos from a doit list, sequence-first then priority. Model claims each via in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
+  Burn down `claude:`-marked todos from a doit list, sequence-first then priority. Model marks each in_progress, works it end-to-end (normal git/confirm gates still apply), marks done with an outcome note, moves to next. Defaults to the active session's feature/project list; `--list` targets another. Auto-fires when user says "burn my todos", "burn down", "burn the queue", "work my todos", or invokes /burn. Flags: --list, --priority, --max, --dry-run.
 ---
 <!-- caveman:compressed -->
 
@@ -35,7 +35,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
 
 ## Build the queue
 
-1. `list_todos list={target} filter=pending`
+1. `list_todos list={target} filter=in_progress`, then `filter=pending`. An `in_progress` `claude:` item is the active one a prior turn or session left next: it heads the queue.
 2. Keep only items whose text matches `^\s*claude:` (case-insensitive)
 3. Order: sequenced items first, ascending (`list_todos` shows `[seq N]`, already listed first). Rest: critical → urgent → important → none, within a priority `order_index`. `N.` text prefix = fixed handle for deps, NOT order.
 4. `--priority <level>` → that level and above only (`urgent` = critical+urgent).
@@ -43,7 +43,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
 
 ## Burn loop (per item — autonomous)
 
-1. **Claim** — `start_todo` (→ in_progress) FIRST, before any work, as its own tool call. MUST land before reading/working the item — never skip, never batch, never go straight to `complete_todo`. Two purposes: (a) the lock — parallel sessions see it taken, won't double-grab; (b) the user tracks the live item visually in their doit tooling. Item stays in_progress for its whole work window, until step 4/5 closes it.
+1. **Claim** — `start_todo` (→ in_progress) FIRST, before any work, as its own tool call. MUST land before reading/working the item — never skip, never batch, never go straight to `complete_todo`. The user tracks the live item in their tmux chip. One item per list is `in_progress` (`start_todo` moves it), so it is a marker, not a lock. Item stays in_progress for its whole work window, until step 4/5 closes it.
 2. **Read** — strip `claude:`; read instruction + the todo's note (doc / script / ids).
 3. **Work** — end-to-end. Existing gates HOLD:
    - commit / push / MR → CLAUDE.md git_rules: commit each item on green, push when the branch is the user's own (feature branch, or main of their personal repos); opening or updating an MR waits for "ship it" or a todo that says so.
@@ -51,7 +51,7 @@ ONE list per run. Other lists untouched — safe across 4-6 parallel sessions.
    - sev-5 (data loss, security, prod mutation) → stop, flag for human.
 4. **Close (success)** — `complete_todo` (mark done) + `add_note` mode=`append` with the completion record (below). `append` keeps the user's original note (doc / script / context) intact.
 5. **Blocked** (missing info / needs decision / external dep) → `add_note` (append) `BLOCKED {ts} — {what's needed}`, `revert_todo` (→ pending, re-queueable). Then: missing info only the user has → `add_todo owe=true type=unblock` on the same list (text: what the user must supply), so the ask lands in `daily`; external dep (another team, a release, an MR merge) → `deps` on the item it waits for, or a BLOCKED note naming it, no `owe` (`feature-management` → `### Owed items → daily twin` bar); needs a design decision → add it to the item's `ref:` doc Open Questions and mirror it as a `decision` on the same list, no `owe` (`feature-management` → `### Decision mirror`). Set the blocked item's `deps` to the new rank. Collect for end summary, continue.
-6. Next item.
+6. Next item. Stopping (queue empty, blocked, or `--max` hit) → `start_todo` the next item first, the user's blocker when one exists (`doit_active_gate` blocks a stop with pending items and none `in_progress`).
 
 ## Completion record (appended on done)
 
@@ -93,7 +93,7 @@ Table: `# | seq | priority | item | result (done / blocked / skipped) | note`. B
 
 ## Recurring
 
-`/loop 10m /burn` → periodic drain. The `loop` skill owns scheduling; `/burn` runs once per fire (idempotent — claimed items are in_progress, completed items drop out of the pending queue).
+`/loop 10m /burn` → periodic drain. The `loop` skill owns scheduling; `/burn` runs once per fire (idempotent — completed items drop out of the queue; the `in_progress` item heads it).
 
 ## Ties to feature-todos
 
@@ -101,7 +101,7 @@ When the model proposes a feature-todo batch (`feature-management` → Feature t
 
 ## Burn-down queue (`claude:` marker)
 
-Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, sequence-first (`[seq N]` ascending) then priority (critical→urgent→important→default), claiming each via `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = `{repo}-{feature}` capped at 24 chars (`cc-retry-loop`; no feature → `{repo}` or `{repo}-{worktree}`; rule in `feature-management`); `--list` overrides. In_progress = the claim lock, so 4-6 parallel sessions don't double-grab.
+Any doit todo whose text starts `claude:` is assigned to the model. `/burn` drains them from one list, sequence-first (`[seq N]` ascending) then priority (critical→urgent→important→default), marking each `in_progress`, working it end-to-end under normal git/confirm gates, then auto-`complete_todo` + appending a DONE record (local `date` timestamp + ≤6 bullets of what was done; original note preserved). Target list = `{repo}-{feature}` capped at 24 chars (`cc-retry-loop`; no feature → `{repo}` or `{repo}-{worktree}`; rule in `feature-management`); `--list` overrides. One list per session keeps parallel sessions apart; `in_progress` is the active-item marker the user's chip shows.
 
 - Assign: type `claude: {task}` in doit. Put doc link / script / id in the todo's note for context.
 - Run: `/burn` (one drain) or `/loop 10m /burn` (periodic). Flags: `--list`, `--priority`, `--max`, `--dry-run`.

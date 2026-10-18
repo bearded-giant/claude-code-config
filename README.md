@@ -78,12 +78,15 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 |-------|------|---------|
 | SessionStart | `sync_settings.py` | Merges repo `settings.json` into live `~/.claude/settings.json` (see note below) |
 | SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer, plus open MRs/PRs opened or touched by this project's sessions |
-| SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list for this session plus its pending items, so the running todo is in context from turn one (`claude:` assignment + `/burn`) |
+| SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list for this session plus its pending items, so the running todo is in context from turn one (`claude:` assignment + `/burn`). Links the session's tmux window to that list when the window has no link or links to `daily`, so the doit chip shows the session's active item; a window linked to another project list keeps it |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
 | SessionStart | `memory_ingest.py` | Detached `giantmem db ingest --source memory-md`: harness memory into archives.db (durable, backed up, survives a live.db rebuild) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
 | SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
 | SessionEnd | `workspace_session_end.py` | Writes the session file and index line, refreshes WORKSPACE.md tables, spawns the haiku summarizer (see `docs/workspace-hooks.md`) |
+| Stop | `debug_stop_check.py` | Blocks a stop while an unresolved `.giantmem/debug/` file has a stale `next_action` |
+| Stop | `open_edges_gate.py` | Blocks a report once when its open-edges list holds work the session could do itself (CLOSE or VERIFY shapes, not gates); `OPEN_EDGES_GATE=off` bypasses |
+| Stop | `doit_active_gate.py` | Blocks a stop once when the session's doit list has pending items and none `in_progress`, so the chip always shows the active or next item; `DOIT_ACTIVE_GATE=off` bypasses |
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |
 | PreToolUse | `artifact_gate.py` | Blocks an `Artifact` publish whose page lacks a visible `Rev N · YYYY-MM-DD HH:MM` stamp or carries a changelog-shaped heading (`claude-artifact` skill) |

@@ -5,8 +5,12 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
+SESSION_FILE = os.path.expanduser("~/.local/share/nvim/doit/session.json")
+# tmux format separator; window names can hold tabs and spaces
+TMUX_SEP = "\x1f"
 PRIORITY_RANK = {"critical": 0, "urgent": 1, "important": 2}
 MAX_ITEMS = 15
 MAX_DRIFT = 10
@@ -26,6 +30,7 @@ def git_root(cwd: str) -> str:
             capture_output=True,
             text=True,
             timeout=2,
+            check=False,
         )
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()
@@ -45,12 +50,64 @@ def tmux_window():
             capture_output=True,
             text=True,
             timeout=2,
+            check=False,
         )
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()
     except Exception:
         pass
     return None
+
+
+def read_session_file() -> dict:
+    try:
+        with open(SESSION_FILE, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def link_window(name: str):
+    if not os.environ.get("TMUX"):
+        return None
+    pane = os.environ.get("TMUX_PANE")
+    target = ["-t", pane] if pane else []
+    fmt = f"#{{window_id}}{TMUX_SEP}#{{@doit-window-list}}{TMUX_SEP}#S:#W"
+    try:
+        out = subprocess.run(
+            ["tmux", "display-message", "-p", *target, fmt],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        win_id, live, key = out.stdout.rstrip("\n").split(TMUX_SEP, 2)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    session = read_session_file()
+    links = session.get("sessions")
+    if not isinstance(links, dict):
+        links = {}
+    current = live or links.get(key) or ""
+    # a window the user linked to a project list keeps it; only an unlinked or daily window follows the session
+    if current not in ("", "daily"):
+        return key, current, False
+    for opt, val in (("@doit-window-list", name), ("@doit-window-key", key)):
+        subprocess.run(
+            ["tmux", "set-option", "-wq", "-t", win_id, opt, val],
+            capture_output=True,
+            timeout=2,
+            check=False,
+        )
+    session["sessions"] = {**links, key: name}
+    session["timestamp"] = int(time.time())
+    tmp = f"{SESSION_FILE}.tmp"
+    with contextlib.suppress(OSError):
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(session, fh, indent=2)
+        os.replace(tmp, SESSION_FILE)
+    return key, name, True
 
 
 def hook_input():
@@ -68,6 +125,7 @@ def current_branch(root: str):
             capture_output=True,
             text=True,
             timeout=2,
+            check=False,
         )
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()
@@ -79,7 +137,7 @@ def current_branch(root: str):
 def active_feature(root: str):
     path = os.path.join(root, ".giantmem", "features", "features.json")
     try:
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
         return None
@@ -102,7 +160,7 @@ def active_feature(root: str):
 
 def load_todos(path: str):
     try:
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
         return None
@@ -204,7 +262,7 @@ def render_items(pending) -> list:
     lines = []
     for todo in pending[:MAX_ITEMS]:
         prio = todo.get("priorities") or "-"
-        mark = " <claimed in_progress>" if todo.get("in_progress") else ""
+        mark = " <in_progress: active>" if todo.get("in_progress") else ""
         lines.append(f"  [{prio}] {todo.get('text', '').strip()}{mark}")
         note = note_line(todo)
         if note:
@@ -217,7 +275,7 @@ def render_items(pending) -> list:
 
 def read_ready(path: str):
     try:
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             head = fh.read(4096)
     except Exception:
         return None
@@ -290,11 +348,24 @@ def main() -> None:
 
     feat_note = f"feature: {feat}" if feat else "(no active feature)"
     resume = f"claude --resume {session_id}" if session_id else "claude --continue"
+    window = tmux_window() or "none"
+    link = link_window(name) if exists else None
+    if link:
+        key, linked, changed = link
+        window = f"{key} -> {linked}" + (
+            " (linked now)"
+            if changed
+            else (
+                f" (user link kept; its chip shows {linked}, not {name})"
+                if linked != name
+                else ""
+            )
+        )
     lines = [
         "<system-reminder>",
         "doit session list (repo-qualified, worktree-aware):",
         f"  list: {name}   {feat_note}",
-        f"  session: {session_id or '?'}  tmux: {tmux_window() or 'none'}",
+        f"  session: {session_id or '?'}  tmux: {window}",
         f"  resume line for owed items: cd {root} && {resume}",
         (
             f"  giantmem link: giantmem://session/{session_id}"
@@ -355,8 +426,19 @@ def main() -> None:
         "first-class session state, not a sidecar. Rules:",
         "  - factor these items into any work you plan or resume this session; "
         "if the user's ask matches one, say so and work it as that item",
-        "  - work in this session that lands a listed item -> start_todo when "
-        "you pick it up, complete_todo + DONE note when it lands",
+        (
+            "  - one item here is always in_progress: it is what the user's tmux "
+            "chip shows. start_todo an item FIRST, as its own call, before you "
+            "read or edit for it, whether or not it lands this session; "
+            "complete_todo + DONE note when it lands. Ending a turn (done, "
+            "blocked, or waiting on the user) -> leave the next item "
+            "in_progress: the one you are on, else the one waiting on the user, "
+            "else the top pending one. Waiting on the user for an ask no item "
+            "covers (review, ship it, a console step) -> add_todo type=gate (no "
+            "owe, no claude:) naming the ask, start_todo it, complete it once "
+            "they act. doit_active_gate (Stop) blocks once while items are "
+            "pending and none is in_progress"
+        ),
         (
             "  - follow-ups found during the work get done this session: no "
             "item, no ask. New items only for work blocked on the user "

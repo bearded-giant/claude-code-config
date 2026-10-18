@@ -139,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check open_edges_gate); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
+            "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check open_edges_gate doit_active_gate); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
             "timeout": 10
           },
           {

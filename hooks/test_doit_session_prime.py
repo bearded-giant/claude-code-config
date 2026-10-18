@@ -3,6 +3,8 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -61,7 +63,7 @@ CASES = [
 
 
 def write_list(name, todos):
-    with open(os.path.join(mod.LISTS_DIR, f"{name}.json"), "w") as fh:
+    with open(os.path.join(mod.LISTS_DIR, f"{name}.json"), "w", encoding="utf-8") as fh:
         json.dump({"todos": todos}, fh)
 
 
@@ -162,14 +164,14 @@ def drift_cases():
     assert out.count("  drift: ") == mod.MAX_DRIFT and "  ... 2 more" in out, out
 
     # unreadable twin list proves nothing, so no drift is claimed
-    with open(os.path.join(mod.LISTS_DIR, "daily.json"), "w") as fh:
+    with open(os.path.join(mod.LISTS_DIR, "daily.json"), "w", encoding="utf-8") as fh:
         fh.write("{bad")
     assert "drift:" not in run_main("")
 
 
 def write_handoff(path, status):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as fh:
+    with open(path, "w", encoding="utf-8") as fh:
         fh.write(f"---\ntype: handoff\nstatus: {status}\nupdated: 2026-10-17\n---\n")
 
 
@@ -210,6 +212,72 @@ def hook_cases() -> None:
             mod.LISTS_DIR = saved
 
 
+def link_cases() -> None:
+    if not shutil.which("tmux"):
+        print("skip link_cases: no tmux")
+        return
+    saved_env = {k: os.environ.get(k) for k in ("TMUX", "TMUX_PANE")}
+    saved_file = mod.SESSION_FILE
+    with tempfile.TemporaryDirectory() as tmp:
+        sock = os.path.join(tmp, "t.sock")
+
+        def T(*args):
+            return subprocess.run(
+                ["tmux", "-S", sock, *args], capture_output=True, text=True, check=True
+            ).stdout.strip()
+
+        def opt(name):
+            return T("display-message", "-p", "-t", "s:a b", f"#{{{name}}}")
+
+        def persisted():
+            with open(mod.SESSION_FILE, encoding="utf-8") as fh:
+                return json.load(fh).get("sessions", {})
+
+        T("-f", "/dev/null", "new-session", "-d", "-s", "s", "-n", "a b")
+        try:
+            os.environ["TMUX"] = f"{sock},0,0"
+            os.environ["TMUX_PANE"] = T(
+                "display-message", "-p", "-t", "s:a b", "#{pane_id}"
+            )
+            mod.SESSION_FILE = os.path.join(tmp, "session.json")
+
+            # unlinked window follows the session list; key survives the space in the name
+            assert mod.link_window("proj") == ("s:a b", "proj", True)
+            assert opt("@doit-window-list") == "proj"
+            assert opt("@doit-window-key") == "s:a b"
+            assert persisted() == {"s:a b": "proj"}
+
+            # daily is the default view, not a choice: it follows too
+            T("set-option", "-wq", "-t", "s:a b", "@doit-window-list", "daily")
+            assert mod.link_window("other") == ("s:a b", "other", True)
+            assert opt("@doit-window-list") == "other"
+
+            # a project list the user linked is kept
+            T("set-option", "-wq", "-t", "s:a b", "@doit-window-list", "mine")
+            assert mod.link_window("proj") == ("s:a b", "mine", False)
+            assert opt("@doit-window-list") == "mine"
+
+            # live option gone (tmux restart) but session.json still holds the link
+            T("set-option", "-wqu", "-t", "s:a b", "@doit-window-list")
+            with open(mod.SESSION_FILE, "w", encoding="utf-8") as fh:
+                json.dump({"active_list": "x", "sessions": {"s:a b": "kept"}}, fh)
+            assert mod.link_window("proj") == ("s:a b", "kept", False)
+            assert opt("@doit-window-list") == ""
+
+            os.environ.pop("TMUX")
+            assert mod.link_window("proj") is None
+        finally:
+            subprocess.run(
+                ["tmux", "-S", sock, "kill-server"], capture_output=True, check=False
+            )
+            mod.SESSION_FILE = saved_file
+            for k, v in saved_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+
 def main() -> None:
     for root, feat, expected in CASES:
         got = mod.list_name(root, feat)
@@ -220,6 +288,7 @@ def main() -> None:
     long = mod.list_name("/dev/cc-wt/x", "a" * 40)
     assert len(long) == mod.MAX_LIST_NAME and long.startswith("cc-a")
     hook_cases()
+    link_cases()
     print("ok")
 
 
