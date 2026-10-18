@@ -115,6 +115,20 @@ def link_window(name: str, follow=("", "daily")):
     return key, name, True
 
 
+def stamp_pane(name: str) -> None:
+    pane = os.environ.get("TMUX_PANE")
+    if not os.environ.get("TMUX") or not pane:
+        return
+    # every pane in a window shares its link, so the board needs each claude pane's own list
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        subprocess.run(
+            ["tmux", "set-option", "-pq", "-t", pane, "@doit-pane-list", name],
+            capture_output=True,
+            timeout=2,
+            check=False,
+        )
+
+
 def hook_input():
     try:
         data = json.loads(sys.stdin.read() or "null")
@@ -354,6 +368,8 @@ def main() -> None:
     feat_note = f"feature: {feat}" if feat else "(no active feature)"
     resume = f"claude --resume {session_id}" if session_id else "claude --continue"
     window = tmux_window() or "none"
+    if interactive():
+        stamp_pane(name)
     link = link_window(name) if exists and interactive() else None
     if link:
         key, linked, changed = link

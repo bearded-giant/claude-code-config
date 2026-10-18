@@ -269,10 +269,26 @@ def link_cases() -> None:
             assert mod.link_window("proj", follow=("",)) == ("s:a b", "daily", False)
             assert opt("@doit-window-list") == "daily"
 
+            # each claude pane names its own list; the window link stays shared
+            mod.stamp_pane("solo")
+            pane_list = T(
+                "display-message",
+                "-p",
+                "-t",
+                os.environ["TMUX_PANE"],
+                "#{@doit-pane-list}",
+            )
+            assert pane_list == "solo", pane_list
+            assert opt("@doit-window-list") == "daily"
+
             # no pane id: an untargeted query would answer for another window
             pane = os.environ.pop("TMUX_PANE")
             assert mod.link_window("proj") is None
+            mod.stamp_pane("other")
             os.environ["TMUX_PANE"] = pane
+            assert (
+                T("display-message", "-p", "-t", pane, "#{@doit-pane-list}") == "solo"
+            )
 
             os.environ.pop("TMUX")
             assert mod.link_window("proj") is None

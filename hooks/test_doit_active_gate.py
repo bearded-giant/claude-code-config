@@ -24,6 +24,8 @@ prime = load("doit_session_prime")
 mod.prime = lambda: prime
 links = []
 prime.link_window = lambda name, follow=("", "daily"): links.append((name, follow))
+stamps = []
+prime.stamp_pane = stamps.append
 
 
 def run_hook(payload):
@@ -50,6 +52,8 @@ def gate_cases(tmp):
     # no list for this repo: nothing to point at, no window to link
     assert run_hook({}) is None
     assert not links
+    # the pane still names its list before the list exists
+    assert stamps == ["gaterepo"], stamps
 
     # only done items: the chip has nothing to show and nothing is next
     write_list("gaterepo", [{"id": "a", "text": "old", "done": True}])

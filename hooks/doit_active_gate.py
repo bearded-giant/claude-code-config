@@ -21,6 +21,7 @@ def prime():
 def check(p, cwd):
     root = p.git_root(cwd)
     name = p.list_name(root, p.active_feature(root))
+    p.stamp_pane(name)
     path = os.path.join(p.LISTS_DIR, f"{name}.json")
     if not os.path.isfile(path):
         return None

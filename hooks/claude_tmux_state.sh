@@ -12,7 +12,8 @@ case "${1:-}" in
 off)
 	tmux set-option "${t[@]}" -u @claude_state \; set-option "${t[@]}" -u @claude_state_at \; \
 		set-option "${t[@]}" -u @claude_attention \; set-option "${t[@]}" -u @claude_attention_sent \; set-option "${t[@]}" -u @claude_attention_ack \; \
-		set-option "${t[@]}" -u @claude_agents \; set-option "${t[@]}" -u @claude_ctx \; set-option "${t[@]}" -u @claude_err \; set-option "${t[@]}" -u @claude_model
+		set-option "${t[@]}" -u @claude_agents \; set-option "${t[@]}" -u @claude_ctx \; set-option "${t[@]}" -u @claude_err \; set-option "${t[@]}" -u @claude_model \; \
+		set-option "${t[@]}" -u @doit-pane-list
 	;;
 submit)
 	# a /loop tick submits too, so babysit re-raises attention on every run while something is pending
