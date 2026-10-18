@@ -85,7 +85,7 @@ NOT stop conditions while `claude:` items stay pending: a summary naming the nex
 | `--list <name>` | target list override |
 | `--priority <level>` | burn this level + above (`critical` / `urgent` / `important`) |
 | `--max <N>` | cap items this run |
-| `--dry-run` | print the ordered queue + per-item plan, execute nothing |
+| `--dry-run` | print the ordered queue + per-item plan, execute nothing; the one write is `start_todo` on the queue head when nothing is `in_progress` (`doit_active_gate`) |
 
 ## End summary
 

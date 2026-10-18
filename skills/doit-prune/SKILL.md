@@ -16,7 +16,7 @@ Docs and MRs are the source of truth; doit is the reminder. Code items close onc
 
 ## Classify
 
-Every pending item. `in_progress` items may be claimed by another session: classify them, but act only on `landed` and `resolved`.
+Every pending item. `in_progress` marks the list's active item, and another session may be on it: classify it, but act only on `landed`, `resolved`, and `gate-done`.
 
 Evidence is live, this run: `glab mr view` / `gh pr view` for any MR or PR named; `git -C <repo> fetch` then `git log` / `git grep` against the default branch and the item's branch; reads of the files, symbols, and docs it names. Notes are hints, not proof. Repo comes from the item's `ref:` line, else its notes, else the list name matched against `config/repos.csv`.
 
@@ -30,7 +30,8 @@ Evidence is live, this run: `glab mr view` / `gh pr view` for any MR or PR named
 | orphan | `decision` item with no `ref:` doc behind it | still open → adopt: add the entry to the feature's proposal/plan Open Questions and set `ref:`. Else delete |
 | owe | live user action with no `daily` twin that passes the bar (`feature-management` → `### Owed items → daily twin`): comms/share/ping, console/admin/DNS/cert/vault/beta-admin settings, a manual confirm or ops runbook step that blocks work, actionable now. A conditional one whose dep has cleared counts | `add_todo owe=true` with the same type, text, and priority, description in the owed format (why / do / links / resume, pulled from the old notes); then `delete_todo` the old item. Several items for one console session → one owed item with a checklist, the rest `moot` (superseded). Holds an unlanded code half → that half stays a code item |
 | unowe | owed item that fails the bar: review/merge an MR, tag/deploy, watch or verify on a future event, waiting on someone else or on another item, "say ship it", approving a chat diff, work the model can run | `delete_todo` (removes both twins), then re-add on the project list with the same type, text, priority, and description minus the twin line, no `owe`, `deps` when it waits on an item; model-runnable → re-add as a `claude:` code item. Its MR merged or step ran → `landed` instead |
-| noise | an FYI, a model next-step, a duplicate, a POINTER/handoff to another list, a `resume` item (the handoff carries it), or a user action already done (MR merged, step ran) | delete |
+| noise | an FYI, a model next-step, a duplicate, a POINTER/handoff to another list, a `resume` item (the handoff carries it), or a user action already done (MR merged, step ran) that is not a `gate` item (those close as `gate-done`) | delete |
+| gate-done | `gate` item: the ask it names is done (its MR merged or got its "ship it", the console step ran, the user answered) | `complete_todo` + `add_note` append `DONE {ts} <evidence>` |
 | drifted | open code work whose text names stale files/symbols/flags or whose notes are a dated status log; or a `decision` whose question was reworded or whose priority no longer matches `[BLOCKING]` | `update_todo`: accurate text and priority, `claude:` on if model work, description opens with the `ref:` line, the log collapsed to what is left |
 | open | target exists, text accurate | keep |
 | unknown | evidence unreachable (glab auth, repo not on disk, network) | keep; name what is missing |
@@ -41,8 +42,8 @@ User-authored items (the nvim/tmux `Mine` block: `source` set to anything but `m
 
 ## Apply
 
-1. `--dry-run` → table only, no writes. Stop.
-2. `landed`, `resolved`, `twin-drift` completes, and unmirrored adds → apply now, no ask. All reversible (`revert_todo`, `delete_todo`).
+1. `--dry-run` → table only, no writes beyond `start_todo` on the top item when nothing is `in_progress` (`doit_active_gate`). Stop.
+2. `landed`, `resolved`, `gate-done`, `twin-drift` completes, and unmirrored adds → apply now, no ask. All reversible (`revert_todo`, `delete_todo`). Closing the `in_progress` item → `start_todo` the next one (the one waiting on the user, else the top pending), so the list keeps an active item.
 3. `--auto` (babysit and other loops) → stop after step 2. No asks, no deletes, no rewrites. Output one line: `doit <list>: <n> closed, <m> to prune (/doit-prune)`.
 4. Everything else → print the table, then ONE `AskUserQuestion`: apply all / apply except ranks I name / none. Run owe and unowe conversions, won't-fix closes, deletes, adoptions, and rewrites after the answer. With `--all`, one ask covers every list. If the list would end with 0 pending, put `clear_done` + `delete_list` in the same ask and name any tmux window `list_lists` shows linked to it.
 

@@ -1,9 +1,9 @@
 ---
-description: "Feature or repo status: next ready artifact (artifacts.json + artifact_dag.yaml), doit list, and open MRs merged into one report, with what's next split user vs claude. Read-only. Auto-fires when user asks \"what's next\", \"what's left\", \"what is pending\", \"where are we\", \"where did I leave this\", \"levelset\", or invokes /feature-next."
+description: "Feature or repo status: next ready artifact (artifacts.json + artifact_dag.yaml), doit list, and open MRs merged into one report, with what's next split user vs claude. Read-only except the active marker. Auto-fires when user asks \"what's next\", \"what's left\", \"what is pending\", \"where are we\", \"where did I leave this\", \"levelset\", or invokes /feature-next."
 argument-hint: "[feature-name]"
 ---
 
-Read-only, informational. Never writes docs, todos, or MRs, and never enforces the DAG. The user can skip any artifact; never push back.
+Read-only, informational. Never writes docs, todos, or MRs, and never enforces the DAG. One exception: when no doit item is `in_progress`, `start_todo` the item Next leads with, so the user's chip shows it (`doit_active_gate` blocks the stop otherwise). The user can skip any artifact; never push back.
 
 ## Gather (independent, run in parallel)
 
