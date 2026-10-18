@@ -9,7 +9,8 @@ Output modes:
                is not parseable
 
 A control object (decision / permissionDecision / continue) wins outright and is
-printed alone: a block reason is the whole payload or it is nothing.
+printed alone: a block reason is the whole payload or it is nothing. Several
+blocks merge their reasons into the first.
 """
 
 import importlib.util
@@ -27,6 +28,7 @@ def _log_exception(name):
         spec = importlib.util.spec_from_file_location(
             "_giantmem_log", HOOKS / "_giantmem_log.py"
         )
+        assert spec and spec.loader
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         mod.log_exception(f"dispatch:{name}")
@@ -41,6 +43,7 @@ def run(name, raw):
         spec = importlib.util.spec_from_file_location(
             f"_hook_{name}", HOOKS / f"{name}.py"
         )
+        assert spec and spec.loader
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         sys.stdin = io.StringIO(raw)
@@ -87,8 +90,18 @@ def main():
             continue
         kind, value = classify(chunk)
         if kind == "control":
-            if control is None:
+            if not isinstance(control, dict):
                 control = value
+            elif (
+                isinstance(value, dict)
+                and control.get("decision") == value.get("decision") == "block"
+            ):
+                # the retry stop carries stop_hook_active, which silences every gate,
+                # so a dropped second reason would never be shown
+                control = {
+                    **control,
+                    "reason": f"{control.get('reason', '')}\n\n{value.get('reason', '')}",
+                }
             continue
         texts.append(value)
 
