@@ -29,3 +29,4 @@ inspector|inspector-agent,/Users/bryan/dev/ai/investigator-agent-wt,
 auth-session-sync|session-sync,/Users/bryan/dev/python/dapr/auth-session-sync,
 zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
+db-schema,/Users/bryan/dev/db-schema,liquibase schema repo; DDL MRs for every mysql db incl. concierge
