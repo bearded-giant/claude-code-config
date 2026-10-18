@@ -59,7 +59,7 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` once linked, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
 
 ## Bump or set status on a ticket note
 
@@ -80,7 +80,7 @@ After a `claude-artifact` publish of this note's content:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "one line on what changed"
 ```
 
-Upserts `artifact:` / `artifact_rev:` and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
+Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (logged-in claude.ai org label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL. `note.py account [<note.md>]` prints the login's label and exits non-zero when the note's artifact lives in another account. Building the artifact from a note → `claude-artifact` `## From a note`.
 
 ## Read before write
 

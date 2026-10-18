@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import io
+import json
 import os
 import re
 import subprocess
@@ -54,7 +55,9 @@ def git_project(cwd):
 
 
 DOMAIN_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-LINK_KEYS = ("artifact", "artifact_rev")
+LINK_KEYS = ("artifact", "artifact_rev", "artifact_account")
+# keep in step with LABEL_OVERRIDES in hooks/usage-fetch.py so labels match the statusline
+ACCOUNT_LABELS = {"recharge, inc": "rc-inc", "recharge, team": "rc-team"}
 STATUSES = ("new", "ready", "blocked", "in_progress", "in_review", "done", "wont_fix")
 
 
@@ -173,6 +176,32 @@ def cmd_domains(a):
     return rows
 
 
+def claude_account():
+    cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~").expanduser() / ".claude.json"
+    try:
+        org = json.loads(cfg.read_text(encoding="utf-8"))["oauthAccount"][
+            "organizationName"
+        ]
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+    key = org.strip().lower().rstrip(".")
+    return ACCOUNT_LABELS.get(key) or ("skio" if "skio" in key else key)
+
+
+def cmd_account(a):
+    cur = claude_account()
+    if not cur:
+        sys.exit("no claude.ai login found; run /login")
+    if a.note:
+        owner = (parse_fm(Path(a.note).expanduser()) or {}).get("artifact_account")
+        if owner and owner[0] != cur:
+            sys.exit(
+                f"artifact lives in {owner[0]}, logged in as {cur}: /login to {owner[0]} first"
+            )
+    print(cur)
+    return cur
+
+
 def cmd_link(a):
     path = Path(a.note).expanduser()
     text = path.read_text(encoding="utf-8")
@@ -185,6 +214,9 @@ def cmd_link(a):
         if l.split(":", 1)[0].strip() not in LINK_KEYS
     ]
     fm += [f"artifact: {a.url}", f"artifact_rev: {a.rev}"]
+    account = a.account or claude_account()
+    if account:
+        fm.append(f"artifact_account: {account}")
     body = text[end + 4 :].rstrip("\n")
     if a.log:
         if "\n## Artifact revisions" not in body:
@@ -294,6 +326,15 @@ def cmd_list(a):
 def self_test():
     with tempfile.TemporaryDirectory() as d:
         os.environ["OBSIDIAN_VAULT"] = d
+        os.environ["CLAUDE_CONFIG_DIR"] = d
+
+        def login(org):
+            Path(d, ".claude.json").write_text(
+                json.dumps({"oauthAccount": {"organizationName": org}}),
+                encoding="utf-8",
+            )
+
+        login("Recharge, Inc.")
 
         def ns(**kw):
             return argparse.Namespace(
@@ -382,7 +423,11 @@ def self_test():
 
         cmd_link(
             argparse.Namespace(
-                note=str(p1), url="https://claude.ai/artifact/A", rev=1, log=None
+                note=str(p1),
+                url="https://claude.ai/artifact/A",
+                rev=1,
+                log=None,
+                account="rc-team",
             )
         )
         cmd_link(
@@ -391,16 +436,48 @@ def self_test():
                 url="https://claude.ai/artifact/A",
                 rev=2,
                 log="split tokens out",
+                account=None,
             )
         )
         text = p1.read_text()
         assert text.count("artifact: https://claude.ai/artifact/A\n") == 1, text
-        assert "artifact_rev: 2\n---\n\n# Redis Keys & TTLs" in text, text
+        assert (
+            "artifact_rev: 2\nartifact_account: rc-inc\n---\n\n# Redis Keys & TTLs"
+            in text
+        ), text
         assert (
             text.rstrip().endswith("· split tokens out")
             and "## Artifact revisions\n\n- rev 2 · " in text
         ), text
-        assert parse_fm(p1)["artifact_rev"] == ["2"], parse_fm(p1)
+        fm = parse_fm(p1) or {}
+        assert fm["artifact_rev"] == ["2"] and fm["artifact_account"] == ["rc-inc"], fm
+        assert text.count("artifact_account:") == 1, text
+        assert cmd_account(argparse.Namespace(note=str(p1))) == "rc-inc"
+        cmd_link(
+            argparse.Namespace(
+                note=str(p1),
+                url="https://claude.ai/artifact/A",
+                rev=2,
+                log=None,
+                account="skio",
+            )
+        )
+        try:
+            cmd_account(argparse.Namespace(note=str(p1)))
+            raise AssertionError("account mismatch must exit")
+        except SystemExit as e:
+            assert "lives in skio" in str(e), e
+        assert cmd_account(argparse.Namespace(note=str(p2))) == "rc-inc"
+        for org, label in (
+            ("Recharge, Team", "rc-team"),
+            ("Skio Inc", "skio"),
+            ("Acme", "acme"),
+        ):
+            login(org)
+            assert claude_account() == label, (org, claude_account())
+        Path(d, ".claude.json").write_text("{}", encoding="utf-8")
+        assert claude_account() == ""
+        login("Recharge, Inc.")
 
         t1 = cmd_new(
             ns(
@@ -517,6 +594,13 @@ def main(argv=None):
     k.add_argument("--url", required=True)
     k.add_argument("--rev", required=True, type=int)
     k.add_argument("--log", help="one line for the note's revision log")
+    k.add_argument("--account", help="default: the logged-in claude.ai org label")
+    c = sub.add_parser("account", help="print the logged-in claude.ai org label")
+    c.add_argument(
+        "note",
+        nargs="?",
+        help="exit non-zero when its artifact lives in another account",
+    )
     a = ap.parse_args(argv)
     if a.test:
         return self_test()
@@ -528,6 +612,8 @@ def main(argv=None):
         return cmd_domains(a)
     if a.cmd == "link":
         return cmd_link(a)
+    if a.cmd == "account":
+        return cmd_account(a)
     if a.cmd == "bump":
         return cmd_bump(a)
     if a.cmd == "status":

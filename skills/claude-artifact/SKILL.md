@@ -1,18 +1,29 @@
 ---
 name: claude-artifact
-description: Rules for team-shared claude.ai Artifacts (the `Artifact` tool) - system overviews, design theory, feature details, decision cases written for other engineers. Every artifact carries a visible `Rev N · timestamp` stamp and never reads like a changelog or exposes the operator's working process. Links to the source Obsidian note when one exists. Auto-fires when the user says "share this", "share with the team", "make it an artifact", "claude artifact", "artifact this", "update the artifact", or before any Artifact publish of a document meant for other people. "publish" alone means the vault (`obsidian-note`), not this.
+description: Rules for team-shared claude.ai Artifacts (the `Artifact` tool) - system overviews, design theory, feature details, decision cases written for other engineers. Every artifact carries a visible `Rev N · timestamp` stamp and never reads like a changelog or exposes the operator's working process. Built from a vault note and linked back (artifact URL, rev, and claude.ai account in its frontmatter). Auto-fires when the user says "share this", "share with the team", "make it an artifact", "claude artifact", "artifact this", "artifact from note", "update the artifact", invokes /claude-artifact <note.md>, or before any Artifact publish of a document meant for other people. "publish" alone means the vault (`obsidian-note`), not this.
 ---
 <!-- caveman:compressed -->
 
-Vault note = working source, for the user. Artifact = distilled team view. Each publish is logged to the vault daily note by the `daily_note` hook; don't log it by hand.
+Vault note = working source, for the user. Artifact = distilled team view, always built from a note. Each publish is logged to the vault daily note by the `daily_note` hook; don't log it by hand.
 
 ## Route
 
 | Ask | Do |
 |---|---|
-| "publish", "note this", "write this up" | `obsidian-note` only |
-| "share", "for the team", "artifact" | artifact; also write or update the vault note first when the subject is durable |
+| "publish", "note this", "write this up", any durable doc | `obsidian-note` only. Never publish an artifact unasked; the user runs `/claude-artifact <note.md>` later |
+| "share", "for the team", "artifact" in a session | write or update the vault note, then `## From a note` on it |
+| `/claude-artifact <note.md>` | `## From a note` |
 | re-share a note whose frontmatter has `artifact:` | update that URL (read it first), never a new artifact |
+
+## From a note
+
+1. `python3 ~/.claude/skills/obsidian-note/scripts/note.py account <note.md>`. Prints the logged-in claude.ai org label (`rc-inc`, `rc-team`, `skio`); tell the user it before anything else. Non-zero exit = the note's artifact lives in another account: stop, relay the message.
+2. Read the whole note. `artifact:` present: read that URL, N = old stamp + 1, publish with `url`. Absent: N = 1, new artifact. Read not `writer` on a note with no `artifact_account` (linked before accounts were recorded): it lives in another account; stop and say so, never publish a second artifact.
+3. Build + publish per `## Build`, distilling per `## Content`. The note is the only source; no session context.
+4. `note.py link` per Build step 4. It records `artifact_account` from the login.
+5. Report: URL, account, rev. Nothing else.
+
+`scripts/from-note.sh [-y] <note.md>` opens this as an interactive session (tmux window, else a wezterm window) after an account confirm; nvim `<leader>oA` and Obsidian's Shell commands plugin call it. `claude -p` has no Artifact tool, so headless runs cannot publish.
 
 ## Build
 
@@ -23,7 +34,7 @@ Vault note = working source, for the user. Artifact = distilled team view. Each 
    ```bash
    python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "<what changed, one line>"
    ```
-   Writes `artifact:` + `artifact_rev:` frontmatter and appends `- rev N · <ts> · <log>` under the note's `## Artifact revisions`. The change history lives there, only there.
+   Writes `artifact:` + `artifact_rev:` + `artifact_account:` frontmatter and appends `- rev N · <ts> · <log>` under the note's `## Artifact revisions`. The change history lives there, only there.
 
 ## Content
 
