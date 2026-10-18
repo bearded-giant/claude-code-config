@@ -86,7 +86,7 @@
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime daily_note memory_ingest",
+            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook ensure_personal_claude session_prime doit_session_prime daily_note memory_ingest giantmem_vault",
             "timeout": 20
           },
           {

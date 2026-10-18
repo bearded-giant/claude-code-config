@@ -4,7 +4,7 @@ description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-
 ---
 <!-- caveman:compressed -->
 
-Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
+Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. `~/giantmem-vault` is a read-only Obsidian view of repo `.giantmem` dirs, never a target. Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
 
 ## Write
 

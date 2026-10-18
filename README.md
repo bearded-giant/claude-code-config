@@ -80,6 +80,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | SessionStart | `session_prime.py` | Injects giantmem workspace/feature primer, plus open MRs/PRs opened or touched by this project's sessions |
 | SessionStart | `doit_session_prime.py` | Surfaces the repo-qualified doit todo list for this session plus its pending items, so the running todo is in context from turn one (`claude:` assignment + `/burn`). Links the session's tmux window to that list when the window has no link or links to `daily`, so the doit chip shows the session's active item; a window linked to another project list keeps it |
 | SessionStart | `workspace_session_hook.py` | Bootstraps `.giantmem/`, injects workspace context |
+| SessionStart | `giantmem_vault.py` | Rebuilds `~/giantmem-vault`, a second Obsidian vault of symlinks mirroring `~/dev`: one link per repo `.giantmem` (nested ones as `<repo>--<subdir>`, `~/dev/.giantmem` as `_dev`), dead links pruned, real files and `.obsidian/` untouched |
 | SessionStart | `memory_ingest.py` | Detached `giantmem db ingest --source memory-md`: harness memory into archives.db (durable, backed up, survives a live.db rebuild) |
 | UserPromptSubmit | `giantmem_recall.py` | Injects top giantmem FTS5 hits for the prompt (cross-project recall) |
 | SessionEnd | `session_end_ingest.py` | Ingests the session transcript into giantmem |
@@ -91,7 +92,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |
 | PreToolUse | `artifact_gate.py` | Blocks an `Artifact` publish whose page lacks a visible `Rev N · YYYY-MM-DD HH:MM` stamp or carries a changelog-shaped heading (`claude-artifact` skill) |
 | PostToolUse | `greptile_rereview.py` | After a session `git push` to a GitLab MR branch in a Greptile repo, posts `@greptile review`, since Greptile reviews only on MR open |
-| PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories |
+| PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories, and writes through `~/giantmem-vault` (names the real `.giantmem` path instead) |
 | PreToolUse | `voice_gate.py` | Blocks MR/PR comments, thread replies, Jira comments, and Slack messages posted as the user that break `config/voice.md` (capitalized starts, first person, dashes, code outside backticks, length) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd, SubagentStart, SubagentStop | `claude_tmux_state.sh` | Sets the pane options `@claude_state` (`busy`/`ask`/`ready`, unset on exit), `@claude_state_at`, and `@claude_agents` (running subagent count) so tmux-sessionx and status bar formats can show what each Claude pane is doing; `err`/`errclear` (called by the statusline) set `@claude_err`; drops `@claude_attention` (set by `request_attention.py`) on prompt submit; `ask`, `ready`, and `err` post a tmux `display-message` toast when the pane is off screen. The statusline also writes `@claude_ctx` and `@claude_model` to the pane, and `usage-fetch.py` writes `usage.tmux` next to its cache for a status bar chip |
 
