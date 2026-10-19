@@ -21,7 +21,7 @@ Vault note = working source, for the user. Artifact = distilled team view, alway
 2. Read the whole note. `artifact:` present: read that URL, N = old stamp + 1, publish with `url`. Absent: N = 1, new artifact. Read not `writer` on a note with no `artifact_account` (linked before accounts were recorded): it lives in another account; stop and say so, never publish a second artifact.
 3. Build + publish per `## Build`, distilling per `## Content`. The note is the only source; no session context.
 4. `note.py link` per Build step 4. It records `artifact_account` from the login.
-5. Report: URL, account, rev. Nothing else.
+5. Report: URL, account, rev. Nothing else. No sharing advice: artifacts stay org-internal, never public or outside-org. rc-team vs rc-inc is an account limit; a move is a new artifact on the target account.
 
 `scripts/from-note.sh [-y] <note.md>` opens this as an interactive session (tmux window, else a wezterm window) after an account confirm; nvim `<leader>oA` and Obsidian's Shell commands plugin call it. `claude -p` has no Artifact tool, so headless runs cannot publish.
 
