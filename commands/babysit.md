@@ -1,5 +1,6 @@
 ---
 description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head.
+argument-hint: "[worktree path]"
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Skill, ToolSearch, ScheduleWakeup, CronList, CronDelete
 ---
 
@@ -7,7 +8,9 @@ Address open review comments on the MR for **this** worktree's branch.
 
 ## Worktree scoping model
 
-This command is worktree-scoped by design. One session/loop handles exactly one MR — the one matching the current branch. Run separate `/loop /babysit` instances in each worktree to cover multiple MRs in parallel.
+This command is worktree-scoped by design. One loop handles exactly one MR — the one matching the current branch of its worktree.
+
+Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call with `cd <path> &&`, so one session can loop several MRs across repos (`/loop 5m /babysit <path>` per MR). Empty → the session cwd.
 
 ## Preconditions
 
@@ -126,7 +129,7 @@ This command is worktree-scoped by design. One session/loop handles exactly one 
 
    **Stop loop** (deferred tools, load via ToolSearch first):
    - dynamic `/loop /babysit` → `ScheduleWakeup` with `stop: true` instead of the next wakeup.
-   - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is `/babysit`.
+   - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is this run's invocation (`/babysit` or `/babysit <path>`), never another path's job.
    - one-shot `/babysit` → nothing to stop; report the state.
 
    Dynamic loop cadence: working/greptile due/waiting → 300s; sign-off → 1800s.
