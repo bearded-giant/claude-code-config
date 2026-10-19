@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR and starts `/loop 5m /babysit`. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` in Greptile repos, or any GitLab repo in ship mode. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -22,7 +22,7 @@ This skill exists because the chain was previously a one-line rule in CLAUDE.md 
    - Triggered → look for grill `final.md` for this branch (feature grill dir per `grill` skill routing) newer than HEAD commit.
    - Found + rating SHIP IT → proceed, note `grill: SHIP IT (runs N)` in chat.
    - Found + rating BLOCK/NEEDS WORK → STOP, report rating + final.md path. User decides.
-   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Small/simple diffs never trigger — no gate friction on routine ships.
+   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Ship mode (CLAUDE.md `### Ship mode`) → run `/grill` without asking. Small/simple diffs never trigger — no gate friction on routine ships.
 
 ## Chain (execute in order, no breaks)
 
@@ -83,10 +83,10 @@ Skip when `glmon-jirad` is not on PATH or `glmon-jirad --status` prints `enabled
 2. Run `glmon-jirad --mr <mr-url> --summary-file <path>`. It creates a ticket in `jira.project` when the title carries no real key (a `PE-0000` placeholder is replaced in place), writes the key into the MR title, and syncs status. Excluded namespaces and already-keyed MRs are handled inside it, and it is idempotent, so an existing MR is safe.
 3. A non-zero exit or error never stops the chain. Keep its last log line (`<project>:<iid>: ticket PE-N, <outcome>`, or the skip / error line) for step 5. It may wait up to 90s for a running poller tick to finish.
 
-### Step 4b — Review handoff (GitLab repos with `.greptile/` or `greptile.json` at root; else skip)
+### Step 4b — Review handoff (GitLab only; skip on GitHub)
 
-1. MR existed before this run (step 4 skipped creation) and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
-2. No `/babysit` job in `CronList` → invoke the `loop` skill with `5m /babysit`. Babysit stops its own loop at READY or BLOCKED.
+1. Greptile repo (`.greptile/` or `greptile.json` at root), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
+2. Greptile repo, or any GitLab repo in ship mode: no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. Babysit stops its own loop at READY or BLOCKED.
 
 ### Step 5 — Final output
 
@@ -98,6 +98,8 @@ Print to chat in EXACTLY this order, nothing else:
 4. Only when step 4a ran: `glmon-jirad`'s last log line (created / retitled / skip / error)
 
 Then STOP. Do NOT add a closing summary. Do NOT offer next steps. Do NOT explain what happened — the description and URL are the report.
+
+In ship mode, STOP ends this chain only; continue with the next piece in scope.
 
 Inside a longer turn (several branches shipped, doc or doit work after): the turn's final message still ends with every MR URL, one per line as `<repo>!N <url>`, after all other output. `hooks/created_links_gate.py` opens new MRs in the browser; don't `open` them yourself.
 
@@ -124,5 +126,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed + `/loop 5m /babysit` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed; greptile repos or ship mode: `/loop 5m /babysit <worktree>` → print desc + URL
 ```

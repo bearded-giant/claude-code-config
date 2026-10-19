@@ -48,6 +48,17 @@ Own the repo you are in, not only the literal ask. Pieces found along the way ge
   3. Sequenced: SEQUENCE above, a `claude:` item on the working list.
 - Existing gates still hold: deletions confirm first, team-shared agent config, outward-facing and protected gates, rebuild-priced ambiguity.
 
+### Ship mode
+
+By default, MRs wait for "ship it" (`git_rules`). Ship mode removes that wait for a scope I hand over.
+
+- Trigger: I give a defined scope (a scoped task list, a plan or handoff I reviewed, named branches) and, in the same ask, tell you to ship it ("handle this and ship", "ship when done", "take these to MR", "ship mode"). That instruction is "ship it" for every branch the scope produces, given up front. If you can't tell whether an ask is ship mode, ask once with AskUserQuestion at the start, never at the end.
+- Run: take the pieces in priority order, most urgent first. Once a piece is tested, run the `ship-it` chain on its branch (commit, push, MR, Jira sync, babysit loop), then start the next piece. A pushed branch with no MR is unfinished work, never a stopping point.
+- Babysit is part of shipping. Every GitLab MR in scope gets `/loop 5m /babysit <worktree path>`, Greptile repo or not, and stays under watch until READY or BLOCKED. A GitHub PR has no babysit: run `gh pr checks <n> --watch`, fix anything red, and push until it is green.
+- Coverage: the scope's branches and any follow-up fixes that land on them. A follow-up that needs its own branch outside the scope still waits for "ship it".
+- Still gated: merge, deploy, pushes to shared main/master/stage, deletions, destructive or one-way-door changes, a grill sev-5, and babysit NEEDS-SIGN-OFF threads. The grill gate inside `ship-it` runs `/grill` without asking.
+- Report: after every MR has a running loop, the report leads with BLOCKED MRs and threads that need sign-off, and ends with each MR link. Ship mode lasts until every MR in scope is READY or BLOCKED, through compaction. A handoff written before then says `ship mode: on` and lists the MRs.
+
 ### Gitignored files are editable
 
 `.gitignore` controls what git *tracks*, not what you may *edit*. A gitignored file — or any file inside an ignored directory — is editable exactly like a tracked file. There is no instruction anywhere that bars editing ignored files; do not invent one. Read, edit, create, and delete them under the same gates as everything else (read-before-edit, confirm before destructive/outward-facing). Never stop, skip, or ask permission *solely because* a path is gitignored — that is not a reason to halt.
@@ -338,7 +349,7 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
-- commit without asking once a piece is tested: one commit per piece, caveman format. Push without asking when the branch is mine: a feature branch, or main of claude-code-config / dotfiles / do-it.nvim / giant-tooling. Shared main/master/stage never. Opening or updating an MR waits for "ship it". "Not committed" and "not pushed" are never open edges; a push that failed is
+- commit without asking once a piece is tested: one commit per piece, caveman format. Push without asking when the branch is mine: a feature branch, or main of claude-code-config / dotfiles / do-it.nvim / giant-tooling. Shared main/master/stage never. Opening or updating an MR waits for "ship it" or ship mode (`### Ship mode`). "Not committed" and "not pushed" are never open edges; a push that failed is
 - claude-code-config: no feature branches, no MR. Commit on `main`, push every commit to both remotes (`origin` GitLab and `github`) in the same turn
 - commits live in a checkout under ~/dev. Never a scratch clone or a clone in the scratchpad. A pinned checkout (handoff says do not switch branches) → say so in one line and ask for a worktree; cloning is not the workaround
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. GitLab with `glmon-jirad` enabled also creates or syncs the Jira ticket. Final output is the MR description markdown followed by the MR URL, plus the `glmon-jirad` result line when it ran, nothing else.
@@ -365,7 +376,7 @@ Worktrees use the giant-tooling layout (`~/dev/giant-tooling/git-worktrees/`): a
   - checked out in a base worktree (`main` / `master` / `develop` / `stage` dir, or a plain clone) and clean: `git switch <default> && git pull --ff-only`, then delete.
   - local tip differs from the MR/PR head sha (unpushed work), or the checkout is dirty: leave the branch, one line in the report.
 - Merged-branch sweep at wrap, for each repo touched: `git fetch --prune`, then delete every local branch whose upstream is `[gone]`, whose tip equals a merged MR/PR head (`glab mr list --source-branch <b> --merged -F json` → `sha`; `gh pr list --head <b> --state merged --json headRefOid`), and that no worktree has checked out. A branch with no merged MR/PR stays.
-- Commit landed on a protected default branch (push rejected): `git switch -c <branch>` carries it, `git branch -f <default> origin/<default>` resets the default, push the branch. The MR still waits for "ship it".
+- Commit landed on a protected default branch (push rejected): `git switch -c <branch>` carries it, `git branch -f <default> origin/<default>` resets the default, push the branch. The MR still waits for "ship it" or ship mode.
 - Another live session's uncommitted work: leave it, no ask.
 
 ## Concise Output Rules
