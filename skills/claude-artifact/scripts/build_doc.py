@@ -113,32 +113,72 @@ def build_html(note: Path, out: Path, args) -> None:
     print(f"{out}  {stamp}  toc={len(toc)} diagrams={len(diagrams)}")
 
 
-def bordered_reference(tmp: Path) -> Path:
-    base, ref = tmp / "ref.docx", tmp / "ref-bordered.docx"
+# Spark roles for the Google Docs import; Mackinac isn't a Google font, so Georgia stands in for display
+DOCX_RPR = {
+    "Heading1": '<w:rFonts w:ascii="Georgia" w:hAnsi="Georgia" /><w:color w:val="0129F1" /><w:sz w:val="52" /><w:szCs w:val="52" />',
+    "Heading2": '<w:rFonts w:ascii="Georgia" w:hAnsi="Georgia" /><w:color w:val="0129F1" /><w:sz w:val="34" /><w:szCs w:val="34" />',
+    "Heading3": '<w:rFonts w:ascii="Inter" w:hAnsi="Inter" /><w:b /><w:color w:val="006D58" /><w:sz w:val="26" /><w:szCs w:val="26" />',
+    "VerbatimChar": '<w:rFonts w:ascii="Inconsolata" w:hAnsi="Inconsolata" /><w:color w:val="006D58" /><w:shd w:val="clear" w:color="auto" w:fill="E3F1EE" /><w:sz w:val="22" />',
+    "Hyperlink": '<w:color w:val="0129F1" /><w:u w:val="single" />',
+}
+TBL_BORDERS = "<w:tblBorders>" + "".join(
+    f'<w:{side} w:val="single" w:sz="4" w:space="0" w:color="D8D4D1"/>'
+    for side in ("top", "left", "bottom", "right", "insideH", "insideV")
+) + "</w:tblBorders>"
+LABEL_RUN = '<w:r><w:rPr><w:b /><w:color w:val="0000BB" /></w:rPr><w:t'
+
+
+def house_reference(tmp: Path) -> Path:
+    base, ref = tmp / "ref.docx", tmp / "ref-house.docx"
     subprocess.run(["pandoc", "-o", str(base), "--print-default-data-file", "reference.docx"], check=True)
-    borders = "<w:tblBorders>" + "".join(
-        f'<w:{side} w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/>'
-        for side in ("top", "left", "bottom", "right", "insideH", "insideV")
-    ) + "</w:tblBorders>"
     with zipfile.ZipFile(base) as src, zipfile.ZipFile(ref, "w", zipfile.ZIP_DEFLATED) as dst:
         for item in src.infolist():
             data = src.read(item.filename)
             if item.filename == "word/styles.xml":
                 s = data.decode()
                 cut = s.index('<w:tblInd w:w="0" w:type="dxa" />', s.index('w:styleId="Table"'))
-                data = (s[:cut] + borders + s[cut:]).encode()
+                s = s[:cut] + TBL_BORDERS + s[cut:]
+                s = re.sub(r"(<w:rPrDefault>\s*<w:rPr>).*?(</w:rPr>)",
+                           r'\1<w:rFonts w:ascii="Inter" w:hAnsi="Inter" w:eastAsia="Inter" w:cs="Inter" />'
+                           r'<w:color w:val="262626" /><w:sz w:val="22" /><w:szCs w:val="22" />\2', s, count=1, flags=re.S)
+                for sid, rpr in DOCX_RPR.items():
+                    s, n = re.subn(rf'(<w:style [^>]*w:styleId="{sid}".*?<w:rPr>).*?(</w:rPr>)',
+                                   lambda m: m.group(1) + rpr + m.group(2), s, count=1, flags=re.S)
+                    assert n == 1, sid
+                data = s.encode()
             dst.writestr(item, data)
     return ref
+
+
+def style_tables(docx: Path) -> None:
+    def row(m):
+        tr = m.group(0)
+        if "<w:tblHeader" in tr:
+            tr = tr.replace("<w:tcPr />", '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="CFDCF9" /></w:tcPr>')
+            return tr.replace("<w:r><w:t", LABEL_RUN)
+        first, rest = tr.split("</w:tc>", 1)
+        return first.replace("<w:r><w:t", LABEL_RUN) + "</w:tc>" + rest
+
+    tmp = docx.with_suffix(".tmp.docx")
+    with zipfile.ZipFile(docx) as src, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename == "word/document.xml":
+                xml = data.decode().replace("<w:tblLook", TBL_BORDERS + "<w:tblLook")
+                data = re.sub(r"<w:tr>.*?</w:tr>", row, xml, flags=re.S).encode()
+            dst.writestr(item, data)
+    tmp.replace(docx)
 
 
 def build_docx(note: Path, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         subprocess.run(
-            ["pandoc", "-f", "gfm", "-o", str(out), "--reference-doc", str(bordered_reference(Path(tmp))),
+            ["pandoc", "-f", "gfm", "-o", str(out), "--reference-doc", str(house_reference(Path(tmp))),
              "--resource-path", str(note.parent)],
             input=body_of(note), text=True, check=True,
         )
+    style_tables(out)
     print(out)
 
 
