@@ -317,7 +317,8 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "node ~/.claude/hooks/statusline.js"
+    "command": "node ~/.claude/hooks/statusline.js",
+    "refreshInterval": 30
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
