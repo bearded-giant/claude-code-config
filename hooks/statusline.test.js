@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
   fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
+  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -179,4 +180,93 @@ test('fmtMr: renders iid + tag, empty when no MR', () => {
   const out = fmtMr({ iid: 1234, tag: 'GREEN', level: 'ok' });
   assert.ok(out.startsWith(GREEN));
   assert.ok(out.includes('!1234 GREEN'));
+});
+
+const ORGS = [
+  { label: 'rc-inc', spend_cap: { used_pct: 34 } },
+  {
+    label: 'rc-team',
+    five_hour: { used_pct: 98, resets_at: '2026-10-20T15:59:59.951319+00:00' },
+    seven_day: { used_pct: 36, resets_at: '2026-10-25T17:59:59.951342+00:00' },
+  },
+];
+const TEAM_LIMITS = {
+  five_hour: { used_percentage: 98, resets_at: Date.parse('2026-10-20T16:00:00Z') / 1000 },
+  seven_day: { used_percentage: 36, resets_at: Date.parse('2026-10-25T18:00:00Z') / 1000 },
+};
+
+test('matchOrg: session rate limits pick the org with matching reset times', () => {
+  assert.equal(matchOrg(TEAM_LIMITS, ORGS).label, 'rc-team');
+});
+
+test('matchOrg: no windows, no match, or ambiguous match returns null', () => {
+  assert.equal(matchOrg(undefined, ORGS), null);
+  assert.equal(matchOrg({ spend_limit: { used_percentage: 3 } }, ORGS), null);
+  const off = { five_hour: { resets_at: TEAM_LIMITS.five_hour.resets_at + 3600 } };
+  assert.equal(matchOrg(off, ORGS), null);
+  const twin = { ...ORGS[1], label: 'other' };
+  assert.equal(matchOrg({ five_hour: TEAM_LIMITS.five_hour }, [...ORGS, twin]), null);
+});
+
+test('matchOrg: one disagreeing window rules the org out', () => {
+  const mixed = { ...TEAM_LIMITS, seven_day: { resets_at: TEAM_LIMITS.seven_day.resets_at + 86400 } };
+  assert.equal(matchOrg(mixed, ORGS), null);
+});
+
+const TEAM = { name: 'recharge, team', type: 'claude_team' };
+const INC = { name: 'recharge, inc.', type: 'claude_enterprise' };
+
+test('pinAccount: first tick pins the global account', () => {
+  const state = {};
+  assert.equal(pinAccount(state, TEAM, 100, 1000), true);
+  assert.deepEqual(state.acctPin.account, TEAM);
+});
+
+test('pinAccount: another session switching accounts does not move the pin', () => {
+  const state = {};
+  pinAccount(state, TEAM, 100, 1000);
+  assert.equal(pinAccount(state, INC, 100, 2000), false);
+  assert.deepEqual(state.acctPin.account, TEAM);
+});
+
+test('pinAccount: a new claude process re-pins', () => {
+  const state = {};
+  pinAccount(state, TEAM, 100, 1000);
+  assert.equal(pinAccount(state, INC, 200, 2000), true);
+  assert.deepEqual(state.acctPin.account, INC);
+});
+
+test('pinAccount: own /login follows the global account once it changes', () => {
+  const state = {};
+  pinAccount(state, TEAM, 100, Date.parse('2026-10-20T10:00:00Z'));
+  state.loginAt = '2026-10-20T11:00:00Z';
+  const t = Date.parse(state.loginAt);
+  // login still in flight: global not written yet
+  assert.equal(pinAccount(state, TEAM, 100, t + 5000), false);
+  assert.equal(pinAccount(state, INC, 100, t + 30000), true);
+  assert.deepEqual(state.acctPin.account, INC);
+  // settled: a later switch elsewhere does not move it
+  assert.equal(pinAccount(state, TEAM, 100, t + 60000), false);
+  assert.deepEqual(state.acctPin.account, INC);
+});
+
+test('pinAccount: /login back into the same account settles after the follow window', () => {
+  const state = {};
+  pinAccount(state, TEAM, 100, Date.parse('2026-10-20T10:00:00Z'));
+  state.loginAt = '2026-10-20T11:00:00Z';
+  const t = Date.parse(state.loginAt);
+  assert.equal(pinAccount(state, TEAM, 100, t + 11 * 60000), true);
+  assert.equal(pinAccount(state, INC, 100, t + 12 * 60000), false);
+  assert.deepEqual(state.acctPin.account, TEAM);
+});
+
+test('badgeFor: oauth accounts and usage labels map to the same badges', () => {
+  const label = b => badgeFor(b, DEFAULT_BADGES).replace(/\x1b\[[0-9;]*m/g, '');
+  assert.equal(label(TEAM), '[T]');
+  assert.equal(label(INC), '[E]');
+  assert.equal(label({ name: 'rc-team', type: '' }), '[T]');
+  assert.equal(label({ name: 'rc-inc', type: '' }), '[E]');
+  assert.equal(label({ name: 'skio', type: '' }), '[S]');
+  assert.equal(label({ name: 'max', type: '' }), '');
+  assert.equal(label(null), '');
 });

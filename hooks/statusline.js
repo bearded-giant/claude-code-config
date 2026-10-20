@@ -251,52 +251,108 @@ const BADGE_COLORS = {
 
 // order matters: first match wins. override via statusline-config.json
 // "badges": [{"match": "skio", "label": "S", "color": "purple"}, ...] —
-// match is a regex tested against "name type" lowercased
+// match is a regex tested against "name type" lowercased; name is the
+// usage-fetch org label when the session was matched by its rate limits
 const DEFAULT_BADGES = [
   { match: 'skio', label: 'S', color: 'purple' },
   { match: 'team', label: 'T', color: 'green' },
   { match: 'enterprise|\\binc\\b', label: 'E', color: 'blinkRed' },
 ];
 
-function accountBadge(cfg) {
+// /login can finish well after its transcript line lands
+const LOGIN_FOLLOW_MS = 600000;
+const RESET_MATCH_SECS = 120;
+
+// ~/.claude.json is the last /login anywhere, not this session's login
+function globalAccount() {
   try {
     const src = path.join(os.homedir(), '.claude.json');
-    const badges = (cfg && cfg.badges) || DEFAULT_BADGES;
     // ~450KB of project history parsed per tick for one oauthAccount field;
-    // key a cache on the file's identity plus the badge rules
+    // key a cache on the file's identity
     const st = fs.statSync(src);
-    const stamp = `${st.mtimeMs}:${st.size}:${JSON.stringify(badges)}`;
+    const stamp = `${st.mtimeMs}:${st.size}`;
     const cacheFile = path.join(STATE_DIR, 'account-badge.json');
     try {
       const hit = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-      if (hit.stamp === stamp) return hit.badge;
+      if (hit.stamp === stamp && hit.account) return hit.account;
     } catch (e) {}
 
-    const badge = computeBadge(fs.readFileSync(src, 'utf8'), badges);
+    const oa = JSON.parse(fs.readFileSync(src, 'utf8')).oauthAccount || {};
+    const account = {
+      name: (oa.organizationName || '').toLowerCase(),
+      type: (oa.organizationType || '').toLowerCase(),
+    };
     try {
       fs.mkdirSync(STATE_DIR, { recursive: true });
-      fs.writeFileSync(cacheFile, JSON.stringify({ stamp, badge }));
+      fs.writeFileSync(cacheFile, JSON.stringify({ stamp, account }));
     } catch (e) {}
-    return badge;
-  } catch (e) { return ''; }
+    return account;
+  } catch (e) { return null; }
 }
 
-function computeBadge(raw, badges) {
-  try {
-    const j = JSON.parse(raw);
-    const oa = j.oauthAccount || {};
-    const type = (oa.organizationType || '').toLowerCase();
-    const name = (oa.organizationName || '').toLowerCase();
-    const haystack = `${name} ${type}`;
-    for (const b of badges) {
-      try {
-        if (new RegExp(b.match).test(haystack)) {
-          return `${BADGE_COLORS[b.color] || YELLOW}[${b.label}]${RST}`;
-        }
-      } catch (e) {}
+// stdin rate_limits come from this process's own API headers, so their reset
+// times identify the org it is billing against
+function matchOrg(rateLimits, orgs) {
+  if (!rateLimits) return null;
+  const hits = orgs.filter(org => {
+    let compared = 0;
+    for (const w of ['five_hour', 'seven_day']) {
+      const mine = rateLimits[w]?.resets_at;
+      const theirs = org[w]?.resets_at;
+      if (mine == null || theirs == null) continue;
+      const t = typeof theirs === 'string' ? Date.parse(theirs) / 1000 : theirs;
+      if (!(Math.abs(mine - t) <= RESET_MATCH_SECS)) return false;
+      compared++;
     }
-    if (type) return `${YELLOW}[${type[0].toUpperCase()}]${RST}`;
-    return '';
+    return compared > 0;
+  });
+  return hits.length === 1 ? hits[0] : null;
+}
+
+// a running claude keeps the token it started with, so pin per process
+// (ppid) and only follow the global account after this session's own /login
+function pinAccount(state, global, ppid, now) {
+  const pin = state.acctPin;
+  const loginAt = Date.parse(state.loginAt || '') || 0;
+  const changed = pin && (pin.account.name !== global.name || pin.account.type !== global.type);
+  const relogged = pin && loginAt > pin.at && (changed || now - loginAt > LOGIN_FOLLOW_MS);
+  if (pin && pin.ppid === ppid && !relogged) return false;
+  state.acctPin = { ppid, at: now, account: global };
+  return true;
+}
+
+function sessionAccount(data, state) {
+  if (data.rate_limits) {
+    let orgs = [];
+    try {
+      orgs = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json'), 'utf8')).orgs || [];
+    } catch (e) {}
+    const org = matchOrg(data.rate_limits, orgs);
+    if (org) return { name: org.label || '', type: '' };
+  }
+  const global = globalAccount();
+  if (!global || !data.session_id) return global;
+  if (pinAccount(state, global, process.ppid, Date.now())) saveState(data.session_id, state);
+  return state.acctPin.account;
+}
+
+function badgeFor(account, badges) {
+  if (!account) return '';
+  const haystack = `${account.name} ${account.type}`;
+  for (const b of badges) {
+    try {
+      if (new RegExp(b.match).test(haystack)) {
+        return `${BADGE_COLORS[b.color] || YELLOW}[${b.label}]${RST}`;
+      }
+    } catch (e) {}
+  }
+  if (account.type) return `${YELLOW}[${account.type[0].toUpperCase()}]${RST}`;
+  return '';
+}
+
+function accountBadge(cfg, data, state) {
+  try {
+    return badgeFor(sessionAccount(data, state), (cfg && cfg.badges) || DEFAULT_BADGES);
   } catch (e) { return ''; }
 }
 
@@ -650,6 +706,9 @@ function parseTranscript(transcriptPath, sessionId) {
       const isHuman = typeof msg.content === 'string' ||
         (Array.isArray(msg.content) && msg.content.some(b => b.type === 'text'));
       if (isHuman) state.messageCount++;
+      if (typeof msg.content === 'string' && msg.content.includes('<command-name>/login</command-name>')) {
+        state.loginAt = entry.timestamp;
+      }
       if (!Array.isArray(msg.content)) continue;
       for (const block of msg.content) {
         if (block.type === 'tool_result' && block.tool_use_id) {
@@ -926,7 +985,9 @@ const renderTick = () => {
       modelPart = `${inner} ${DIM}\u2502${RST} `;
     }
 
-    const acct = accountBadge(cfg);
+    const transcript = parseTranscript(data.transcript_path, data.session_id);
+
+    const acct = accountBadge(cfg, data, transcript);
     const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
 
     const width = termWidth() - 1;
@@ -941,7 +1002,6 @@ const renderTick = () => {
     let line1 = fit.line1;
     const spilled = fit.spilled;
 
-    const transcript = parseTranscript(data.transcript_path, data.session_id);
     syncPaneState(data, transcript);
 
     // minimal: one line only \u2014 keep usage on it, nothing else can carry it
@@ -1052,5 +1112,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr,
+  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES,
 };
