@@ -1,20 +1,24 @@
+import atexit
 import importlib.util
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
+from typing import Any
 
 spec = importlib.util.spec_from_file_location(
     "created_links_gate", Path(__file__).with_name("created_links_gate.py")
 )
 assert spec and spec.loader
-mod = importlib.util.module_from_spec(spec)
+mod: Any = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 TMP = Path(tempfile.mkdtemp())
+atexit.register(shutil.rmtree, TMP, ignore_errors=True)
 mod.STATE_DIR = TMP / "state"
 OPENED = []
 mod.open_url = OPENED.append

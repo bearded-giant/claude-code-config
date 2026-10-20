@@ -1,6 +1,8 @@
+import atexit
 import importlib.util
 import io
 import json
+import shutil
 import sys
 import tempfile
 import time
@@ -21,6 +23,7 @@ def load(name) -> Any:
 
 mod = load("auto_mode")
 tmp = Path(tempfile.mkdtemp())
+atexit.register(shutil.rmtree, tmp, ignore_errors=True)
 mod.STATE_DIR = tmp / "state"
 
 
@@ -33,7 +36,7 @@ class Prime:
 real_load = mod.load
 mod.load = lambda name: Prime if name == "doit_session_prime" else real_load(name)
 todos: list = []
-mod.session_todos = lambda cwd: ("proj", todos)
+mod.session_todos = lambda _cwd: ("proj", todos)
 mr_answers: dict = {}
 lookups: list = []
 
