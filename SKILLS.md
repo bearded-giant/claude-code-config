@@ -33,6 +33,8 @@
 | `/complete-feature {name}` | Mark feature complete |
 | `/abandon-feature {name}` | Abandon feature (no spec merge) + archive |
 | `/feature-report {name}` | Generate QA validation report |
+| `feature-management` | Feature folder lifecycle, "create a plan" disambiguation, feature-scoped output routing, feature doit items |
+| `/wrap` | Pre-exit gate: git and MR state, doit sync, feature or repo docs, running processes, handoff; ends with `safe to exit: yes\|no` (`--feature`, `--no-handoff`) |
 
 ## Todos
 
@@ -48,6 +50,7 @@
 | `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
+| `workspace-rules` | `.giantmem/` directory selection, format, verbosity, naming, handoff format; fires before any `.giantmem/**` write |
 | `obsidian-note` | Write Claude-authored md into the Obsidian vault `~/Recharge-Notes/areas/<area>/<domain>/` with the vault frontmatter contract plus `created`; `scripts/note.py new` (title, area, domain, tags, project auto from git), `list` (filter area/domain/project/tag/since), `domains`, `link` (note to artifact URL + rev). Fires on "publish", "note this", "write this up", "save to obsidian", any md deliverable that is not feature state. Never Desktop |
 | `claude-artifact` | Rules for team-shared claude.ai artifacts: visible `Rev N · timestamp` stamp (gated by `hooks/artifact_gate.py`), never a changelog or process detail, `source-note` meta + `note.py link` tie it to the vault note. Fires on "share this", "for the team", "make it an artifact" |
 
@@ -65,6 +68,7 @@
 | `/categorize-search {csv}` | Categorize `gl search code` results |
 | `knowledge-base` | Repo context from Greptile's per-repo Knowledge Base MCP (`recharge` and `skio` orgs): index routing table, invariants, subsystem docs, term search. Fires before "how does X work" / "where does Y live", on unfamiliar repos, and when planning in unread code; code wins on conflict |
 | `/local-cerebro` | Code-level questions about repos indexed in local cerebro without checking them out; also adds, removes, and lists those repos |
+| `/sec-ticket <KEY>` | Research a security or bug ticket against the code, write the review as a vault note, track it on `security-tickets`; `--fix` implements an approved note, `--queue` / `--sweep` manage the list |
 
 ## Git & CI
 
@@ -72,6 +76,11 @@
 |-------|---------|
 | `/server-logs <env> [N]` | Tail preprod/prestage server.log |
 | `/review-comment <mr-url>` | Session findings → human-voiced MR/PR comment, approve, post |
+| `/ship-it` | Commit, push, MR description (GitLab concise-kai, GitHub bullets), open MR, Jira sync via `glmon-jirad`, babysit loop |
+| `/grill [mr-url]` | Adversarial pre-ship loop: `greptile review --json` on the branch, triage and score each finding, auto-fix sev 2-4, sev-5 to human; MR URL runs read-only MR mode |
+| `/greploop` | Greptile CLI review of the local branch, fix what survives triage, re-review until clean or three rounds |
+| `greptile-cli` | Reference for the `greptile` CLI: `review`, `--json` findings, exit codes, auth, settings |
+| `/jira-status [branch\|mr]` | Read-only Jira ticket lookup for the current branch or an MR via `glmon-jirad --lookup` |
 | `/greptile [review [mr] [--force] \| init \| rule <note-url> \| sync [mr-url]]` | `review` posts `@greptile review` on the branch's MR (skips if head already reviewed). Own `.greptile/`: scaffold, invalid suggestion → repo rule (asks), auto-approve risk sync; babysit calls it for `greptile` threads |
 
 ## Development
