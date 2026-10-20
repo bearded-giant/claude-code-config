@@ -16,6 +16,9 @@ assert mod.push_dir("git push", CWD) == CWD
 assert mod.push_dir("git -C /other/repo push -u origin feat", CWD) == "/other/repo"
 assert mod.push_dir("cd /x/y && git push", CWD) == "/x/y"
 assert mod.push_dir("cd sub && git add -A && git commit -m x && git push", CWD) == "/repo/sub"
+# a pipe or ; between the cd and the push must not drop back to the session cwd (another repo)
+assert mod.push_dir("cd /x/y && git commit -m z 2>&1 | grep -E err; git log -1 && git push 2>&1 | tail -2", CWD) == "/x/y"
+assert mod.push_dir("cd /a && ls; cd /b && git push", CWD) == "/b"
 assert mod.push_dir("echo pushing", CWD) is None
 
 # pushes_branch: only branch pushes count, never tags or deletes

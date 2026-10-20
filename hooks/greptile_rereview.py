@@ -11,7 +11,7 @@ from pathlib import Path
 
 PROTECTED = {"main", "master", "stage", "HEAD"}
 PUSH_RE = re.compile(r"\bgit\s+(?:-C\s+(\S+)\s+)?push\b")
-CD_RE = re.compile(r"(?:^|[;&|]\s*)cd\s+(\S+)\s*&&[^;|]*\bgit\s+(?:-C\s+\S+\s+)?push\b")
+CD_RE = re.compile(r"(?:^|[;&|(]\s*)cd\s+(\S+)")
 SUMMARY_SHA_RE = re.compile(r"/commit/([0-9a-f]{7,40})")
 
 
@@ -21,8 +21,8 @@ def push_dir(command, cwd):
         return None
     target = m.group(1)
     if not target:
-        cd = CD_RE.search(command)
-        target = cd.group(1) if cd else None
+        cds = CD_RE.findall(command[: m.start()])
+        target = cds[-1] if cds else None
     if not target:
         return cwd
     p = Path(target.strip("'\"")).expanduser()
