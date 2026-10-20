@@ -71,6 +71,16 @@ Each new link opens once per session in the browser (macOS `open`). The hook the
 
 Skips `claude -p` children and `stop_hook_active` stops (a blocked report goes through on the second stop; opening still runs). `CREATED_LINKS_GATE=off` disables it. Tests: `python3 hooks/test_created_links_gate.py`.
 
+## auto_mode.py
+
+**Hook:** `UserPromptSubmit` and `Stop` (via dispatch)
+
+Backs CLAUDE.md `### Autonomous mode`. A prompt of `/auto <scope>` writes `/tmp/claude-auto-mode/<session>.json` (`started`, `scope`, `shipped`), and `/auto off` deletes it. While the file exists, every prompt gets a one-line reminder of the mode and its exit command, so the mode survives compaction. `python3 ~/.claude/hooks/auto_mode.py --on [scope]` / `--off` does the same from a Bash call, keyed on `CLAUDE_CODE_SESSION_ID`, for a session that enters the mode without typing `/auto`.
+
+At Stop it blocks once when either holds: a ready `claude:` item sits on the session doit list (pending, and every `(dep on #N)` it carries points at a done item), or a branch pushed since entry has no MR/PR. Pushes come from Bash results in the transcript: each `To <remote>` line followed by ` <flag> ... <src> -> <dst>`, skipping rejected refs and `main`/`master`/`stage`/`develop`/`HEAD`. The remote is normalized to `host/group/repo` (glab `-R` rejects the scp form) and checked live with `glab mr list --source-branch <b> --all` or `gh pr list --head <b> --state all`. A branch with an MR is cached in `shipped`; a failed lookup fails open. A blocked item drops out once it carries a dep on an open `gate` item, which is how the rule says to park it.
+
+Skips `claude -p` children and `stop_hook_active` stops. `AUTO_MODE_GATE=off` disables the Stop gate. Tests: `python3 hooks/test_auto_mode.py`.
+
 ## guard_protected_paths.py
 
 **Hook:** `PreToolUse` (matcher: Write, Edit, MultiEdit)
@@ -118,7 +128,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
 | SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest` | Yes (one-time, ~4.9KB) |
-| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above) |
+| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on) |
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
@@ -128,7 +138,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | Stop, PreCompact, SessionEnd | `session_bundle.py`: detached rsync of the session's `/private/tmp/claude-*/<slug>/<sid>/{scratchpad,tasks}` (purged by macOS) into `~/giantmem_archive/bundles/<slug>/<sid>/`, skipping `.venv`, `node_modules`, caches, binaries, files over 20MB, and symlinks. PreCompact and SessionEnd also copy `~/.claude/projects/<slug>/<sid>/{subagents,workflows,tool-results}` and the transcript into `claude/`. Writes `bundle.json` (cwd, branch, first prompt, resume command, file list with kinds). Archive only: files the session deletes stay. After the SessionEnd sync it re-runs `giantmem db ingest -s session-bundle`, so the final files are indexed even when `session_end_ingest` got there first. `--backfill [--from DIR]` sweeps existing tmp dirs or a saved copy. Tests: `python3 hooks/test_session_bundle.py` | No (file write only) |
 | SessionStart | `session_prime.py` renders `giantmem prime --json`: active feature, recent `.giantmem/` writes, and `open_mrs` (MRs/PRs this project's sessions opened or touched that are not merged or closed, one line each: `repo!N  state  opener  url`). Skips the prime only when all three are empty. Tests: `python3 hooks/test_session_prime.py` | Yes |
 | SessionStart | `doit_session_prime.py` also prints the session id + tmux `session:window` + `resume` line, the owed count, and `DRIFT` lines for owed twins out of sync with `daily`. Tests: `python3 hooks/test_doit_session_prime.py` | Yes |
-| Stop | dispatch: `debug_stop_check`, `open_edges_gate`, `doit_active_gate`, `created_links_gate` | No (JSON decision only; `created_links_gate` also opens created links in the browser) |
+| Stop | dispatch: `debug_stop_check`, `open_edges_gate`, `doit_active_gate`, `created_links_gate`, `auto_mode` | No (JSON decision only; `created_links_gate` also opens created links in the browser) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |
 

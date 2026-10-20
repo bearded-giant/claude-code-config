@@ -139,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check open_edges_gate doit_active_gate created_links_gate); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
+            "command": "out=$(python3 ~/.claude/hooks/dispatch.py --event Stop debug_stop_check open_edges_gate doit_active_gate created_links_gate auto_mode); printf %s \"$out\"; case $out in *'\"decision\": \"block\"'*) ;; *) bash ~/.claude/hooks/claude_tmux_state.sh ready;; esac",
             "timeout": 10
           },
           {
@@ -271,7 +271,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall",
+            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall auto_mode",
             "timeout": 10
           },
           {

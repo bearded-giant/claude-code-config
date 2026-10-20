@@ -48,16 +48,18 @@ Own the repo you are in, not only the literal ask. Pieces found along the way ge
   3. Sequenced: SEQUENCE above, a `claude:` item on the working list.
 - Existing gates still hold: deletions confirm first, team-shared agent config, outward-facing and protected gates, rebuild-priced ambiguity.
 
-### Ship mode
+### Autonomous mode
 
-By default, MRs wait for "ship it" (`git_rules`). Ship mode removes that wait for a scope I hand over.
+By default, MRs wait for "ship it" (`git_rules`) and a blocker stops the turn with a question. Autonomous mode replaces both with the rules of engagement below, for a scope I hand over.
 
-- Trigger: I give a defined scope (a scoped task list, a plan or handoff I reviewed, named branches) and, in the same ask, tell you to ship it ("handle this and ship", "ship when done", "take these to MR", "ship mode"). That instruction is "ship it" for every branch the scope produces, given up front. If you can't tell whether an ask is ship mode, ask once with AskUserQuestion at the start, never at the end.
-- Run: take the pieces in priority order, most urgent first. Once a piece is tested, run the `ship-it` chain on its branch (commit, push, MR, Jira sync, babysit loop), then start the next piece. A pushed branch with no MR is unfinished work, never a stopping point.
-- Babysit is part of shipping. Every GitLab MR in scope gets `/loop 5m /babysit <worktree path>`, Greptile repo or not, and stays under watch until READY or BLOCKED. A GitHub PR has no babysit: run `gh pr checks <n> --watch`, fix anything red, and push until it is green.
-- Coverage: the scope's branches and any follow-up fixes that land on them. A follow-up that needs its own branch outside the scope still waits for "ship it".
-- Still gated: merge, deploy, pushes to shared main/master/stage, deletions, destructive or one-way-door changes, a grill sev-5, and babysit NEEDS-SIGN-OFF threads. The grill gate inside `ship-it` runs `/grill` without asking.
-- Report: after every MR has a running loop, the report leads with BLOCKED MRs and threads that need sign-off, and ends with each MR link. Ship mode lasts until every MR in scope is READY or BLOCKED, through compaction. A handoff written before then says `ship mode: on` and lists the MRs.
+- Entry: `/auto <scope>`, where the scope is a reviewed plan, a task list, a handoff, a doit list, or named branches. If I hand over a defined scope and say to handle and ship it without typing `/auto`, run `python3 ~/.claude/hooks/auto_mode.py --on <scope>` first, then follow `commands/auto.md`. If you can't tell whether an ask means this, ask once with AskUserQuestion at the start. Exit: `/auto off`, or `auto_mode.py --off` once the scope is done.
+- Decide, don't ask. If the scope settles an ambiguity, take the option that fits it and log the call. If only I can settle it (a product choice, credentials, a fork costly enough to cause a rebuild), the item is BLOCKED: add a `gate` item naming the ask (a `decision` mirror when it comes from a doc's Open Questions), dep the work item on it, and move to the next item. No AskUserQuestion mid-run; for the run this overrides Wizard-Style Prompts and the ask in Strategy visibility.
+- Two failed attempts on an item → that item is BLOCKED the same way, with the evidence in its notes. Never a third variation, and never a stopped run.
+- Ship every tested piece through the `ship-it` chain on its branch, most urgent first, with no per-branch ask. The grill gate runs `/grill` without asking. A pushed branch with no MR is unfinished work. Every GitLab MR gets `/loop 5m /babysit <worktree path>`, Greptile repo or not, until READY or BLOCKED. A GitHub PR gets `gh pr checks <n> --watch` and fixes until green. Babysit sign-off threads stay deferred for the report. Don't pass `-q` to `git push`, because the gate reads its output.
+- Hard stops hold: merge, deploy, pushes to shared main/master/stage, deleting anything the session did not create, one-way doors (schema or data migration, public API or contract change), security-sensitive changes, and outward comms beyond the MR, its Jira sync, Greptile, and babysit replies. Each one blocks its own item, not the run.
+- Coverage: the scope's items and branches, plus follow-up fixes that land on those branches. A follow-up that needs its own branch outside the scope waits for "ship it".
+- Enforcement is `hooks/auto_mode.py`. On UserPromptSubmit it re-injects a one-line reminder while the mode is on, so the mode survives compaction. On Stop it blocks once while a ready `claude:` item (no open deps) is on the session list or a branch pushed since entry has no MR/PR.
+- Report at exit: BLOCKED items with their gate asks come first, then the decision log (`item | call | why`, one line per call made without asking), then every MR link. A handoff written mid-run says `auto mode: on` and carries the scope, the decision log, and the MR list.
 
 ### Gitignored files are editable
 
@@ -349,7 +351,7 @@ Applies to every Workflow script: ad hoc, ultracode, and `workflows/*.js`. Conte
 <git_rules>
 - never amend existing commits unless explicitly asked
 - never force-push to main/master/stage
-- commit without asking once a piece is tested: one commit per piece, caveman format. Push without asking when the branch is mine: a feature branch, or main of claude-code-config / dotfiles / do-it.nvim / giant-tooling. Shared main/master/stage never. Opening or updating an MR waits for "ship it" or ship mode (`### Ship mode`). "Not committed" and "not pushed" are never open edges; a push that failed is
+- commit without asking once a piece is tested: one commit per piece, caveman format. Push without asking when the branch is mine: a feature branch, or main of claude-code-config / dotfiles / do-it.nvim / giant-tooling. Shared main/master/stage never. Opening or updating an MR waits for "ship it" or autonomous mode (`### Autonomous mode`). "Not committed" and "not pushed" are never open edges; a push that failed is
 - claude-code-config: no feature branches, no MR. Commit on `main`, push every commit to both remotes (`origin` GitLab and `github`) in the same turn
 - commits live in a checkout under ~/dev. Never a scratch clone or a clone in the scratchpad. A pinned checkout (handoff says do not switch branches) → say so in one line and ask for a worktree; cloning is not the workaround
 - "ship it" / "ship this" / `/ship-it` → invoke the `ship-it` skill. Full chain: commit (caveman format) + push + MR description + open MR via `kai:open-mr` (GitLab) or `gh pr create` (GitHub). MR-description format is remote-keyed: GitLab→concise-kai (kai section headers at compressed caveman density, per `skills/ship-it/concise-kai-format.md`), GitHub→personal bullets (per `skills/ship-it/bullet-format.md`); override with `brief`/`short`/`--brief` (bullets) or `full`/`standard`/`--full` (verbose org kai template). No re-confirmation between steps. GitLab with `glmon-jirad` enabled also creates or syncs the Jira ticket. Final output is the MR description markdown followed by the MR URL, plus the `glmon-jirad` result line when it ran, nothing else.
@@ -376,7 +378,7 @@ Worktrees use the giant-tooling layout (`~/dev/giant-tooling/git-worktrees/`): a
   - checked out in a base worktree (`main` / `master` / `develop` / `stage` dir, or a plain clone) and clean: `git switch <default> && git pull --ff-only`, then delete.
   - local tip differs from the MR/PR head sha (unpushed work), or the checkout is dirty: leave the branch, one line in the report.
 - Merged-branch sweep at wrap, for each repo touched: `git fetch --prune`, then delete every local branch whose upstream is `[gone]`, whose tip equals a merged MR/PR head (`glab mr list --source-branch <b> --merged -F json` → `sha`; `gh pr list --head <b> --state merged --json headRefOid`), and that no worktree has checked out. A branch with no merged MR/PR stays.
-- Commit landed on a protected default branch (push rejected): `git switch -c <branch>` carries it, `git branch -f <default> origin/<default>` resets the default, push the branch. The MR still waits for "ship it" or ship mode.
+- Commit landed on a protected default branch (push rejected): `git switch -c <branch>` carries it, `git branch -f <default> origin/<default>` resets the default, push the branch. The MR still waits for "ship it" or autonomous mode.
 - Another live session's uncommitted work: leave it, no ask.
 
 ## Concise Output Rules

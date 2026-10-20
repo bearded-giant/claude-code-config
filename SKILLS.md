@@ -41,6 +41,7 @@
 | Skill | Purpose |
 |-------|---------|
 | `/burn` | Burn down `claude:`-marked doit todos, sequence-first then priority (`--list`, `--priority`, `--max`, `--dry-run`) |
+| `/auto <scope> \| off` | Autonomous mode: work a reviewed scope end to end without mid-run questions, ship each tested piece, babysit every MR, log each call made alone; `hooks/auto_mode.py` enforces it at Stop |
 | `/doit-prune` | Verify a doit list against live code, MR state, and its docs: complete landed items and resolved decisions, keep `decision` items 1:1 with doc Open Questions, delete stale items and noise, rewrite drifted ones, offer to delete an emptied list (`--list`, `--all`, `--mr`, `--auto`, `--dry-run`) |
 
 ## Workspace
