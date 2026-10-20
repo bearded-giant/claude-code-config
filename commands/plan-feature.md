@@ -32,6 +32,7 @@ From the proposal + specs, identify the bounded code areas the feature touches (
 
 Grounding source depends on whether the repo is checked out in this session:
 
+- **Either case, first:** the `knowledge-base` skill (Greptile KB). Match each area's paths in the repo's `index.md` routing table, read those docs and the invariants list, and hand the doc names to the explorer or cerebro prompt. The KB is a dated snapshot; live code wins on conflict.
 - **Repo is checked out here (the common case):** launch a `code-explorer` agent per area (run in parallel for multiple areas). It reads the live tree, so it is never stale. Ask each agent for: entry points, key files + what they export, data flow, and -- most important -- **gotchas and non-obvious design decisions** (the WHY that isn't recoverable from reading the code).
 - **Repo is NOT checked out here** (planning against frost / customcheckout / a dapr service you don't have in this tree): use the `local-cerebro` skill (`~/.claude/skills/local-cerebro/scripts/cerebro-ask.sh "... in <repo>, cite files"`). Cerebro reads its own indexed checkout live -- also never stale. One question per call.
 

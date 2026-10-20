@@ -63,6 +63,8 @@
 | Skill | Purpose |
 |-------|---------|
 | `/categorize-search {csv}` | Categorize `gl search code` results |
+| `knowledge-base` | Repo context from Greptile's per-repo Knowledge Base MCP (`recharge` and `skio` orgs): index routing table, invariants, subsystem docs, term search. Fires before "how does X work" / "where does Y live", on unfamiliar repos, and when planning in unread code; code wins on conflict |
+| `/local-cerebro` | Code-level questions about repos indexed in local cerebro without checking them out; also adds, removes, and lists those repos |
 
 ## Git & CI
 
