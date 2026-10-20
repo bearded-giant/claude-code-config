@@ -25,7 +25,7 @@ frost,/Users/bryan/dev/skio/frost-wt,
 merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
 mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
 monitor,/Users/bryan/dev/ai/monitor,ai-tooling/monitor; greptile auto-approves here
-inspector|inspector-agent,/Users/bryan/dev/ai/investigator-agent-wt,
+investigator|inv|investigator-agent|inspector|inspector-agent,/Users/bryan/dev/ai/investigator-agent-wt,churn investigator; worktree layout
 auth-session-sync|session-sync,/Users/bryan/dev/python/dapr/auth-session-sync,
 zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
