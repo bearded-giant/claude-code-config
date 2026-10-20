@@ -28,6 +28,13 @@ Vault note = working source, for the user. Artifact = distilled team view, alway
 ## Build
 
 1. Load `artifact-design` (and `artifact-diagramming` when a picture shows the mechanism). Author HTML.
+   Doc-shaped note (sections, tables, prose): default to the house doc template, sticky TOC sidebar + Spark role colors (blue band and h2, teal h3 and code, lime number chips, tinted table heads). Never a monochrome page.
+   ```bash
+   python3 ~/.claude/skills/claude-artifact/scripts/build_doc.py <note.md> --out <scratchpad>/<stem>.html --rev N \
+     [--doc-title "<Name>"] [--eyebrow "<Area · Kind>"] [--companion-url <url> --companion-name "<bold text in note>"] \
+     [--replace "<note-only line>" "<artifact line>"] [--docx <note dir>/gdoc/<stem>.docx]
+   ```
+   Renders into `doc-template/template.html`, stamps Rev N, sets `source-note`, builds the TOC from `## N. Title` / `## A. Title` headings. Diagrams: `![alt](diagrams/x.png)` in the note with a sibling `x.mmd`; the page gets the raw mermaid source and the host renders it natively. Don't theme or card it: forced themes fight the host's dark mode and look worse. `--docx` writes a Google Docs import with the PNGs embedded, frontmatter and `## Artifact revisions` stripped. Republish = same `--out` path. Mackinac face reads from the recharge-auth checkout (`$ARTIFACT_DISPLAY_FONT` overrides); never commit the font, the github remote is public.
 2. Stamp, directly under the `<h1>`, visible: `Rev N · YYYY-MM-DD HH:MM TZ`. First publish N=1. Republish: read the artifact, parse the old stamp, N+1. Time = publish time, local tz. `hooks/artifact_gate.py` blocks any publish without it.
 3. Source link, when a vault note exists: `<meta name="source-note" content="areas/<area>/<domain>/<stem>.md">` in `<head>`. Vault-relative, invisible to readers.
 4. Publish. Then, when a note exists:

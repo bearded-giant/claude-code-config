@@ -1,0 +1,204 @@
+<title>{{DOCTITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="source-note" content="{{SOURCE}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inconsolata:wght@500;600&family=Space+Mono&display=swap">
+<style>
+{{FONT_FACE}}/* layout: Spark-blue title band, then one reading column with a sticky section index; the index folds above the text on phones.
+   color roles from Spark 2.0: blue = structure (band, h2, table heads, row labels), teal = identifiers (h3, code), lime = markers */
+:root {
+  --bg: #f8f4f1;
+  --surface: #ffffff;
+  --surface-alt: #fcfaf9;
+  --ink: #000000;
+  --text: #262626;
+  --muted: #666666;
+  --faint: #808080;
+  --rule: #ede9e6;
+  --rule-strong: #d8d4d1;
+  --blue: #0129f1;
+  --blue-deep: #0000bb;
+  --blue-wash: #cfdcf9;
+  --blue-tint: #e7edfc;
+  --teal: #006d58;
+  --teal-wash: rgba(9, 134, 113, 0.10);
+  --lime: #dcec5a;
+  --lime-ink: #000000;
+  --band: #0129f1;
+  --band-ink: #ffffff;
+  --band-muted: #cfdcf9;
+  --link-line: rgba(1, 41, 241, 0.35);
+  --f-display: "Mackinac Pro", Georgia, "Times New Roman", serif;
+  --f-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-label: "Space Mono", ui-monospace, Menlo, monospace;
+  --f-code: Inconsolata, "Space Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1a1a; --surface: #242424; --surface-alt: #2b2b2b;
+    --ink: #ffffff; --text: #e2deda; --muted: #cecac7; --faint: #b0aca9;
+    --rule: #333333; --rule-strong: #4d4d4d;
+    --blue: #8fa6f5; --blue-deep: #b9c8ff; --blue-wash: #2a3557; --blue-tint: rgba(143, 166, 245, 0.14);
+    --teal: #5fcdb8; --teal-wash: rgba(34, 160, 139, 0.18);
+    --lime: #a6b624; --lime-ink: #000000;
+    --band: #1d34b8; --band-ink: #ffffff; --band-muted: #b9c8ff;
+    --link-line: rgba(143, 166, 245, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a1a; --surface: #242424; --surface-alt: #2b2b2b;
+  --ink: #ffffff; --text: #e2deda; --muted: #cecac7; --faint: #b0aca9;
+  --rule: #333333; --rule-strong: #4d4d4d;
+  --blue: #8fa6f5; --blue-deep: #b9c8ff; --blue-wash: #2a3557; --blue-tint: rgba(143, 166, 245, 0.14);
+  --teal: #5fcdb8; --teal-wash: rgba(34, 160, 139, 0.18);
+  --lime: #a6b624; --lime-ink: #000000;
+  --band: #1d34b8; --band-ink: #ffffff; --band-muted: #b9c8ff;
+  --link-line: rgba(143, 166, 245, 0.5);
+  color-scheme: dark;
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.gutter {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.band { background: var(--band); color: var(--band-ink); }
+.masthead { display: grid; gap: 14px; padding-block: 44px 36px; }
+.eyebrow, .stamp, .toc-label, .toc-num, th, .h2-num {
+  font-family: var(--f-label);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.eyebrow { margin: 0; font-size: 12px; color: var(--band-muted); }
+h1 {
+  margin: 0;
+  max-width: 22ch;
+  font-family: var(--f-display);
+  font-weight: 350;
+  font-size: clamp(34px, 5.2vw, 56px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.meta { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.stamp { margin: 0; padding: 3px 8px; font-size: 12px; background: var(--lime); color: var(--lime-ink); border-radius: 4px; }
+.companion { font-weight: 500; font-size: 15px; color: var(--band-ink); text-decoration-color: var(--lime); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.companion:hover { text-decoration-color: var(--band-ink); }
+.page { padding-block: 40px 96px; }
+.layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 56px; align-items: start; }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); font-size: 14px; line-height: 1.35; }
+.toc-label { margin: 0 0 10px; font-size: 11px; color: var(--faint); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc a { display: flex; gap: 10px; padding: 7px 8px; border-radius: 6px; color: var(--text); text-decoration: none; }
+.toc a:hover { background: var(--blue-tint); color: var(--blue-deep); }
+.toc a:focus-visible, .doc a:focus-visible, .companion:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.toc-num { min-width: 1.3em; font-size: 12px; color: var(--blue); padding-top: 1px; }
+.doc { min-width: 0; max-width: 800px; }
+.doc > p, .doc > ul, .doc > ol { max-width: 68ch; }
+.doc h2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 56px 0 16px;
+  padding-top: 28px;
+  border-top: 1px solid var(--rule-strong);
+  font-family: var(--f-display);
+  font-weight: 350;
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--blue);
+  text-wrap: balance;
+  scroll-margin-top: 24px;
+}
+.doc > h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.h2-num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  font-size: 15px;
+  letter-spacing: 0;
+  background: var(--lime);
+  color: var(--lime-ink);
+  border-radius: 6px;
+}
+.doc h3 { margin: 36px 0 8px; font-size: 18px; font-weight: 600; line-height: 1.35; color: var(--teal); text-wrap: balance; scroll-margin-top: 24px; }
+.doc h3 code { color: inherit; }
+.doc p, .doc ul, .doc ol { margin: 0 0 16px; }
+.doc ul, .doc ol { padding-left: 1.4em; }
+.doc li + li { margin-top: 8px; }
+.doc li::marker { color: var(--blue); font-weight: 600; }
+.doc strong { color: var(--ink); font-weight: 600; }
+.doc a { color: var(--blue); text-decoration-color: var(--link-line); text-underline-offset: 3px; }
+.doc a strong { color: inherit; }
+.doc p.audience { padding: 10px 14px; border-left: 3px solid var(--teal); background: var(--teal-wash); border-radius: 0 6px 6px 0; color: var(--ink); font-size: 15px; }
+code { font-family: var(--f-code); font-weight: 600; font-size: 0.93em; color: var(--teal); background: var(--teal-wash); padding: 0.08em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-left: 3px solid var(--teal);
+  border-radius: 8px;
+  font-family: var(--f-code);
+  font-size: 14px;
+  line-height: 1.5;
+}
+pre code { color: var(--text); background: none; padding: 0; font-weight: 500; overflow-wrap: normal; }
+.table-wrap { margin: 0 0 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 11px; color: var(--blue-deep); background: var(--blue-wash); }
+th, td { padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tbody tr:nth-child(even) td { background: var(--surface-alt); }
+tbody tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; color: var(--blue-deep); }
+td code { white-space: nowrap; overflow-wrap: normal; }
+.diagram { margin: 8px 0 28px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; padding: 0; background: none; border: 0; }
+@media (max-width: 860px) {
+  .masthead { padding-block: 32px 28px; }
+  .page { padding-block: 28px 64px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .toc { position: static; padding: 14px; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 8px; }
+  .doc h2 { font-size: 26px; }
+}
+</style>
+<header class="band">
+  <div class="gutter masthead">
+    <p class="eyebrow">{{EYEBROW}}</p>
+    <h1>{{TITLE}}</h1>
+    <div class="meta">
+      <p class="stamp">{{STAMP}}</p>
+      <a class="companion" href="{{COMPANION_URL}}">Companion: {{COMPANION_NAME}}</a>
+    </div>
+  </div>
+</header>
+<div class="gutter page">
+  <div class="layout">
+    <nav class="toc" aria-label="Sections">
+      <p class="toc-label">On this page</p>
+      <ol>
+{{TOC}}
+      </ol>
+    </nav>
+    <article class="doc">
+{{BODY}}
+    </article>
+  </div>
+</div>
