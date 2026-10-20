@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
   fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
-  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES,
+  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -183,8 +183,9 @@ test('fmtMr: renders iid + tag, empty when no MR', () => {
 });
 
 const ORGS = [
-  { label: 'rc-inc', spend_cap: { used_pct: 34 } },
+  { id: 'inc-uuid', label: 'rc-inc', spend_cap: { used_pct: 34, limit: 300000 } },
   {
+    id: 'team-uuid',
     label: 'rc-team',
     five_hour: { used_pct: 98, resets_at: '2026-10-20T15:59:59.951319+00:00' },
     seven_day: { used_pct: 36, resets_at: '2026-10-25T17:59:59.951342+00:00' },
@@ -213,8 +214,8 @@ test('matchOrg: one disagreeing window rules the org out', () => {
   assert.equal(matchOrg(mixed, ORGS), null);
 });
 
-const TEAM = { name: 'recharge, team', type: 'claude_team' };
-const INC = { name: 'recharge, inc.', type: 'claude_enterprise' };
+const TEAM = { name: 'recharge, team', type: 'claude_team', uuid: 'team-uuid' };
+const INC = { name: 'recharge, inc.', type: 'claude_enterprise', uuid: 'inc-uuid' };
 
 test('pinAccount: first tick pins the global account', () => {
   const state = {};
@@ -269,4 +270,28 @@ test('badgeFor: oauth accounts and usage labels map to the same badges', () => {
   assert.equal(label({ name: 'skio', type: '' }), '[S]');
   assert.equal(label({ name: 'max', type: '' }), '');
   assert.equal(label(null), '');
+});
+
+test('pinAccount: legacy pin without uuid borrows it only from the same account', () => {
+  const legacy = () => ({ acctPin: { ppid: 100, at: 1000, account: { name: INC.name, type: INC.type } } });
+  const same = legacy();
+  assert.equal(pinAccount(same, INC, 100, 2000), true);
+  assert.equal(same.acctPin.account.uuid, 'inc-uuid');
+  const other = legacy();
+  assert.equal(pinAccount(other, TEAM, 100, 2000), false);
+  assert.equal(other.acctPin.account.uuid, undefined);
+});
+
+test('pickOrgs: known session org shows only that org, ignoring the switch filter', () => {
+  assert.deepEqual(pickOrgs(ORGS, 'inc-uuid', ['rc-team']).map(o => o.label), ['rc-inc']);
+  assert.deepEqual(pickOrgs(ORGS, 'team-uuid', ['rc-inc']).map(o => o.label), ['rc-team']);
+});
+
+test('pickOrgs: known org missing from the cache shows nothing, not another account', () => {
+  assert.deepEqual(pickOrgs(ORGS, 'skio-uuid', ['rc-team']), []);
+});
+
+test('pickOrgs: unknown session org falls back to the switch filter', () => {
+  assert.deepEqual(pickOrgs(ORGS, '', ['rc-team']).map(o => o.label), ['rc-team']);
+  assert.deepEqual(pickOrgs(ORGS, '', null).map(o => o.label), ['rc-inc', 'rc-team']);
 });

@@ -1,11 +1,13 @@
 ---
-description: "Rotate which account's usage the statusline displays (rc-team → rc-inc → skio). Display only — does not switch accounts."
+description: "Rotate the fallback usage org (rc-team → rc-inc → skio) for the tmux strip and for sessions whose account can't be matched. Display only — does not switch accounts."
 argument-hint: ""
 ---
 
-Rotate statusline usage display through `rc-team` → `rc-inc` → `skio`.
+Rotate the fallback usage display through `rc-team` → `rc-inc` → `skio`.
 
-Display-only: this flips the `visible` filter in `~/.cache/claude-usage/config.json`, which controls which org's numbers the statusline renders. It does NOT change which account Claude Code bills usage to — run `/login` for that. Typical flow: `/login` into the account, then this command to point the statusline at it.
+Display-only: this flips the `visible` filter in `~/.cache/claude-usage/config.json`. It does NOT change which account Claude Code bills usage to — run `/login` for that.
+
+Each session's statusline already shows its own account's usage, matched by org, and ignores this filter. The filter applies to the tmux strip (`usage.tmux`) and to a session whose org can't be matched yet.
 
 ## Steps
 

@@ -8,6 +8,7 @@ Pulls Claude.ai usage data (5h/7d rate limits) from the browser and displays it 
 2. Calls `claude.ai/api/organizations/{orgId}/usage` for each chat-capable org
 3. Writes results to `~/.cache/claude-usage/cache.json` (60s TTL)
 4. `statusline.js` reads the cache synchronously and spawns a background refresh when stale
+5. Each session renders only its own org: matched by the session's rate-limit reset times, else by the `organizationUuid` it was logged into at start. The `visible` filter covers sessions it can't place
 
 ## Statusline output
 

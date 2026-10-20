@@ -274,13 +274,14 @@ function globalAccount() {
     const cacheFile = path.join(STATE_DIR, 'account-badge.json');
     try {
       const hit = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-      if (hit.stamp === stamp && hit.account) return hit.account;
+      if (hit.stamp === stamp && hit.account && 'uuid' in hit.account) return hit.account;
     } catch (e) {}
 
     const oa = JSON.parse(fs.readFileSync(src, 'utf8')).oauthAccount || {};
     const account = {
       name: (oa.organizationName || '').toLowerCase(),
       type: (oa.organizationType || '').toLowerCase(),
+      uuid: oa.organizationUuid || '',
     };
     try {
       fs.mkdirSync(STATE_DIR, { recursive: true });
@@ -316,24 +317,31 @@ function pinAccount(state, global, ppid, now) {
   const loginAt = Date.parse(state.loginAt || '') || 0;
   const changed = pin && (pin.account.name !== global.name || pin.account.type !== global.type);
   const relogged = pin && loginAt > pin.at && (changed || now - loginAt > LOGIN_FOLLOW_MS);
-  if (pin && pin.ppid === ppid && !relogged) return false;
+  if (pin && pin.ppid === ppid && !relogged) {
+    // pins written before uuid was tracked: same account, so borrow it
+    if (pin.account.uuid !== undefined || changed) return false;
+    pin.account.uuid = global.uuid;
+    return true;
+  }
   state.acctPin = { ppid, at: now, account: global };
   return true;
 }
 
 function sessionAccount(data, state) {
-  if (data.rate_limits) {
-    let orgs = [];
-    try {
-      orgs = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json'), 'utf8')).orgs || [];
-    } catch (e) {}
-    const org = matchOrg(data.rate_limits, orgs);
-    if (org) return { name: org.label || '', type: '' };
-  }
-  const global = globalAccount();
-  if (!global || !data.session_id) return global;
-  if (pinAccount(state, global, process.ppid, Date.now())) saveState(data.session_id, state);
-  return state.acctPin.account;
+  try {
+    if (data.rate_limits) {
+      let orgs = [];
+      try {
+        orgs = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json'), 'utf8')).orgs || [];
+      } catch (e) {}
+      const org = matchOrg(data.rate_limits, orgs);
+      if (org) return { name: org.label || '', type: '', uuid: org.id || '' };
+    }
+    const global = globalAccount();
+    if (!global || !data.session_id) return global;
+    if (pinAccount(state, global, process.ppid, Date.now())) saveState(data.session_id, state);
+    return state.acctPin.account;
+  } catch (e) { return null; }
 }
 
 function badgeFor(account, badges) {
@@ -348,12 +356,6 @@ function badgeFor(account, badges) {
   }
   if (account.type) return `${YELLOW}[${account.type[0].toUpperCase()}]${RST}`;
   return '';
-}
-
-function accountBadge(cfg, data, state) {
-  try {
-    return badgeFor(sessionAccount(data, state), (cfg && cfg.badges) || DEFAULT_BADGES);
-  } catch (e) { return ''; }
 }
 
 // --- git info ---
@@ -471,7 +473,15 @@ function isStale(tool) {
   return Number.isFinite(started) && Date.now() - started > TOOL_STALE_MS;
 }
 
-function usageGauges(compact, showModels = true) {
+// a session whose org is known shows only that org, never another account's
+// numbers; the /usage-switch filter covers sessions that can't be placed
+function pickOrgs(orgs, orgId, visible) {
+  const withData = orgs.filter(o => o.five_hour || o.seven_day || o.spend_cap || o.models);
+  if (orgId) return withData.filter(o => o.id === orgId);
+  return withData.filter(o => !visible || visible.includes(o.label));
+}
+
+function usageGauges(compact, showModels = true, orgId = '') {
   const countdown = compact ? () => '' : fmtCountdown;
   try {
     const cacheFile = path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json');
@@ -507,9 +517,7 @@ function usageGauges(compact, showModels = true) {
       if (Array.isArray(cfg.visible)) visibleFilter = cfg.visible;
     } catch (e) {}
 
-    const orgs = (cache.orgs || [])
-      .filter(o => o.five_hour || o.seven_day || o.spend_cap || o.models)
-      .filter(o => !visibleFilter || visibleFilter.includes(o.label));
+    const orgs = pickOrgs(cache.orgs || [], orgId, visibleFilter);
     if (!orgs.length) return [];
 
     const out = [];
@@ -987,16 +995,18 @@ const renderTick = () => {
 
     const transcript = parseTranscript(data.transcript_path, data.session_id);
 
-    const acct = accountBadge(cfg, data, transcript);
+    const account = sessionAccount(data, transcript);
+    const acct = badgeFor(account, cfg.badges || DEFAULT_BADGES);
     const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
+    const orgId = (account && account.uuid) || '';
 
     const width = termWidth() - 1;
     const seg = {
       acctPart, modelPart, branchPart, ctx,
       displayPath,
       shortPath: pathParts[pathParts.length - 1] || displayPath,
-      usage: usageGauges(false, cfg.models),
-      usageCompact: usageGauges(true, cfg.models),
+      usage: usageGauges(false, cfg.models, orgId),
+      usageCompact: usageGauges(true, cfg.models, orgId),
     };
     const fit = fitLine1(width, seg);
     let line1 = fit.line1;
@@ -1112,5 +1122,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES,
+  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs,
 };
