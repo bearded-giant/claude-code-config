@@ -1,0 +1,24 @@
+{
+  "cdp": "http://localhost:9222",
+  "url": "https://tylers-16d-prints-grimes-sp.admin.stage.rechargeapps.com/merchant/chats/{id}",
+  "pre": {
+    "url": "https://tylers-16d-prints-grimes-sp.admin.stage.rechargeapps.com/merchant/home",
+    "js": "remi-stage.pre.js"
+  },
+  "action": {
+    "fill_placeholder": "Ask a follow-up",
+    "message": "why did my churn change last month? investigate it",
+    "submit": "enter"
+  },
+  "log_url_regex": "/agent_chat/(stream|token)",
+  "tee_url_regex": "/agent_chat/stream",
+  "done_event": "message",
+  "tail_seconds": 8,
+  "max_seconds": 90,
+  "maximize": true,
+  "scroll_top": true,
+  "watch": {
+    "panel_marker": "\nActivity\n",
+    "waiting_phrases": ["Charging up", "Wiring it together", "Thinking", "Working on it", "Looking into it", "Generating a spark", "Running the numbers", "Amping up", "Processing", "Brewing an answer", "Lighting up", "Circuiting", "Powering through"]
+  }
+}
