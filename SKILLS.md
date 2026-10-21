@@ -51,6 +51,7 @@
 | `/ws-init` | Bootstrap .giantmem/ structure |
 | `/ws-archive` | Archive .giantmem/ to ~/giantmem_archive/ |
 | `/rules` | Re-inject output rules mid-session |
+| `/eod-status [--days N] [--dry-run]` | Draft the EOD status DM to my manager from Slack, GitLab MRs and reviews, GitHub PRs, release-central deploys carrying my MRs, and the Claude activity in the vault daily notes; sends to my self-DM only. `--days 3`/`7` writes a rollup. Learns rules from `eod:` self-DMs and edits to sent updates |
 | `workspace-rules` | `.giantmem/` directory selection, format, verbosity, naming, handoff format; fires before any `.giantmem/**` write |
 | `obsidian-note` | Write Claude-authored md into the Obsidian vault `~/Recharge-Notes/areas/<area>/<domain>/` with the vault frontmatter contract plus `created`; `scripts/note.py new` (title, area, domain, tags, project auto from git), `list` (filter area/domain/project/tag/since), `domains`, `link` (note to artifact URL + rev). Fires on "publish", "note this", "write this up", "save to obsidian", any md deliverable that is not feature state. Never Desktop |
 | `claude-artifact` | Rules for team-shared claude.ai artifacts: visible `Rev N · timestamp` stamp (gated by `hooks/artifact_gate.py`), never a changelog or process detail, `source-note` meta + `note.py link` tie it to the vault note. `scripts/build_doc.py` renders a doc note into the house template (TOC sidebar, Spark role colors, native mermaid from sibling `.mmd`, optional Google Docs `.docx`). Fires on "share this", "for the team", "make it an artifact" |
