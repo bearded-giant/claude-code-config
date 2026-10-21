@@ -19,6 +19,10 @@ assert mod.push_dir("cd sub && git add -A && git commit -m x && git push", CWD) 
 # a pipe or ; between the cd and the push must not drop back to the session cwd (another repo)
 assert mod.push_dir("cd /x/y && git commit -m z 2>&1 | grep -E err; git log -1 && git push 2>&1 | tail -2", CWD) == "/x/y"
 assert mod.push_dir("cd /a && ls; cd /b && git push", CWD) == "/b"
+# cds chain: each resolves against the directory the previous one left, `..` included
+assert mod.push_dir("cd /x/y/sub && pre-commit run; cd ../.. && git add f && git commit -m z; git push", CWD) == "/x"
+assert mod.push_dir("cd /x && cd sub && git push", CWD) == "/x/sub"
+assert mod.push_dir("cd /x && git -C sub push", CWD) == "/x/sub"
 assert mod.push_dir("echo pushing", CWD) is None
 
 # pushes_branch: only branch pushes count, never tags or deletes

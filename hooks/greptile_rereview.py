@@ -19,14 +19,12 @@ def push_dir(command, cwd):
     m = PUSH_RE.search(command)
     if not m:
         return None
-    target = m.group(1)
-    if not target:
-        cds = CD_RE.findall(command[: m.start()])
-        target = cds[-1] if cds else None
-    if not target:
-        return cwd
-    p = Path(target.strip("'\"")).expanduser()
-    return str(p if p.is_absolute() else Path(cwd) / p)
+    # each cd resolves against the directory the previous one left: `cd sub && ...; cd ../..`
+    d = cwd
+    for target in [*CD_RE.findall(command[: m.start()]), *([m.group(1)] if m.group(1) else [])]:
+        p = Path(target.strip("'\"")).expanduser()
+        d = os.path.normpath(p if p.is_absolute() else Path(d) / p)
+    return d
 
 
 def pushes_branch(command, branch):
