@@ -1,4 +1,5 @@
 import argparse
+import importlib.util
 import itertools
 import json
 import logging
@@ -25,6 +26,8 @@ LESSONS_FILE = HOME / "lessons.md"
 PROPOSALS_FILE = HOME / "proposals.json"
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")).expanduser()
 SCRIPT_DIR = Path(__file__).parent
+REPO = Path(__file__).resolve().parents[3]
+VOICE_FILE = REPO / "config/voice.md"
 PROMPT_FILE = SCRIPT_DIR / "prompt.md"
 RUN_SCRIPT = SCRIPT_DIR / "run.sh"
 NETWORK_ATTEMPTS = 4
@@ -62,7 +65,8 @@ SECTIONS = [
     "Exploration",
 ]
 BULLET = "\u2022 "
-EMPTY = BULLET + "Nothing new here"
+EMPTY = BULLET + "nothing new here"
+STATUS_WORDS = re.compile(r"\b(deployed|merged|closed|handled)\b", re.IGNORECASE)
 SESSION_LINE = re.compile(r"^- (\d\d:\d\d) (\S+)")
 LINK_LINE = re.compile(r"^- (\d\d:\d\d) (.*?)(?: · s:\w+)?$")
 VAULT_LINK = re.compile(r"\[\[([^\]|]+)")
@@ -101,6 +105,19 @@ SEND_SCHEMA = {
 logger = logging.getLogger("eod-status")
 
 
+def load_voice_gate():
+    spec = importlib.util.spec_from_file_location(
+        "voice_gate", REPO / "hooks/voice_gate.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+voice_gate = load_voice_gate()
+
+
 def load_config(path: Path | None = None) -> dict[str, str]:
     path = path or CONFIG_FILE
     try:
@@ -110,6 +127,8 @@ def load_config(path: Path | None = None) -> dict[str, str]:
     missing = [k for k in CONFIG_KEYS if not cfg.get(k)]
     if missing:
         raise RuntimeError(f"{path} is missing {', '.join(missing)}")
+    if {cfg["self_dm"], cfg["self_user"]} & {cfg["manager_dm"], cfg["manager_user"]}:
+        raise RuntimeError(f"{path}: self ids must differ from the manager's")
     return cfg
 
 
@@ -642,24 +661,58 @@ def evidence_errors(result: dict) -> list[str]:
     return []
 
 
-def compose(prompt: str, first_line: str = OPENER) -> dict:
+def voice_text(path: Path = VOICE_FILE) -> str:
+    return path.read_text().split("\n## Bypass")[0].strip()
+
+
+def voice_errors(message: str) -> list[str]:
+    errors = []
+    for line in message.splitlines():
+        if line.startswith(TLDR_PREFIX):
+            text = line[len(TLDR_PREFIX) :]
+        elif line.startswith(BULLET) and line != EMPTY:
+            text = line[len(BULLET) :]
+        else:
+            continue
+        found = voice_gate.violations(text, "slack")
+        if words := sorted({w.lower() for w in STATUS_WORDS.findall(text)}):
+            found.append(
+                f"status words ({', '.join(words)}): say what the work does and what it "
+                "waits on, never its lifecycle"
+            )
+        errors += [f"'{text[:40]}': {v}" for v in found]
+    return errors
+
+
+def draft(prompt: str) -> dict:
     result = run_claude(prompt, COMPOSE_SCHEMA, compose_tools())
     result["message"] = normalize(result["message"])
-    errors = validate(result["message"], first_line) + evidence_errors(result)
-    if errors:
-        logger.warning("template violations, retrying: %s", errors)
+    return result
+
+
+def draft_errors(result: dict, first_line: str) -> tuple[list[str], list[str]]:
+    hard = validate(result["message"], first_line) + evidence_errors(result)
+    return hard, voice_errors(result["message"])
+
+
+def compose(prompt: str, first_line: str = OPENER) -> dict:
+    result = draft(prompt)
+    hard, voice = draft_errors(result, first_line)
+    if hard or voice:
+        logger.warning("draft violations, retrying: %s", hard + voice)
         fix = (
-            f"{prompt}\n\n## Your previous attempt broke the template\n"
-            + "\n".join(f"- {e}" for e in errors)
+            f"{prompt}\n\n## Your previous attempt broke the template or the voice rules\n"
+            + "\n".join(f"- {e}" for e in hard + voice)
             + f"\n\nPrevious attempt:\n```\n{result['message']}\n```\n"
             + "Redo the full gather (read Slack again) and rewrite, fixing these issues "
             + "without dropping any supported content."
         )
-        result = run_claude(fix, COMPOSE_SCHEMA, compose_tools())
-        result["message"] = normalize(result["message"])
-        errors = validate(result["message"], first_line) + evidence_errors(result)
-        if errors:
-            raise RuntimeError(f"draft breaks template: {'; '.join(errors)}")
+        result = draft(fix)
+        hard, voice = draft_errors(result, first_line)
+        if hard:
+            raise RuntimeError(f"draft breaks template: {'; '.join(hard)}")
+    # the draft is edited by hand before it goes anywhere, so voice drift warns instead of failing
+    result["voice_warnings"] = voice
     return result
 
 
@@ -790,7 +843,6 @@ def main() -> int:
     now = datetime.now(timezone.utc)
     today = now.astimezone(ET).date()
     since = window_start(now, args.days)
-    first_line = opener(args.days)
     if args.days == 1:
         draft_path = DRAFTS_DIR / f"{today.isoformat()}.md"
     else:
@@ -808,6 +860,7 @@ def main() -> int:
 
     try:
         CFG.update(load_config())
+        first_line = opener(args.days)
         mrs = my_mrs(since)
         releases = soft(
             "release central", release_central, since, {mr["url"] for mr in mrs}
@@ -844,6 +897,7 @@ def main() -> int:
                 "github": as_json(soft("github", github_prs, since)),
                 "releases": as_json(releases),
                 "claude": soft("claude activity", claude_activity, since, today),
+                "voice": voice_text(),
                 "previous_draft": (
                     previous_draft(today)
                     if args.days == 1
@@ -868,6 +922,8 @@ def main() -> int:
     draft_path.write_text(result["message"] + "\n")
     print(result["message"])
     logger.info("asks addressed: %s", result["asks_addressed"])
+    for warning in result.get("voice_warnings", []):
+        logger.warning("voice: %s", warning)
     for item in result["evidence"]:
         logger.info("evidence: %s <- %s", item["bullet"], item["source"])
     if args.dry_run:

@@ -5,7 +5,7 @@ You are drafting {{name}}'s status DM to {{name}}'s manager, {{manager}} (Slack 
 1. Read the DM {{manager_dm}} back to {{since}} (oldest={{since_epoch}}). Note every ask, request, or question from {{manager}} that is still relevant.
 2. Search messages from {{manager}} since then across DMs and group DMs: filters `from:<@{{manager_user}}> after:{{since_date}}`. Pick up asks aimed at {{name}}.
 3. Search {{name}}'s own messages since then: filters `from:<@{{self_user}}> after:{{since_date}}`. This is what {{name}} actually worked on and said. Read threads where needed. Skip the `eod:` notes, past EOD drafts, and rule suggestions in the self-DM {{self_dm}}: those are instructions about the update, not work.
-Skip people/HR chatter; status is about work only. When a topic shows up, read its thread to the end: if it was resolved, decided, or handed off there, it is closed and does not go in the update.
+Skip people/HR chatter; status is about work only. When a topic shows up, read its thread to the end: if it was resolved, decided, or handed off there, leave it out.
 
 ## Standing rules from {{name}} (override everything below except the TEMPLATE format)
 {{name}} taught these through `eod: ...` self-DMs or by accepting suggested rules. Follow every one. When two conflict, the later-dated rule wins.
@@ -29,7 +29,7 @@ GitHub PRs {{name}} authored or reviewed, updated since {{since}}:
 {{github}}
 ```
 
-Release central (it deploys customcheckout and release-central only): releases deployed in this window that carry {{name}}'s MRs, plus {{name}}'s own release central actions:
+Release central (customcheckout and release-central only; most of {{name}}'s repos release elsewhere): releases in this window that carry {{name}}'s MRs, plus {{name}}'s own release central actions:
 ```json
 {{releases}}
 ```
@@ -40,13 +40,13 @@ Claude session activity from {{name}}'s daily notes: workstreams by session coun
 ```
 
 How to use these facts:
-- Merged != deployed. Claim a deploy only from `releases_with_my_mrs` above or a Slack message that shows it. Other repos deploy outside release central, so say "merged" for them unless Slack shows the deploy.
+- Never state the lifecycle of an MR or a change. The words `deployed`, `merged`, `closed`, and `handled` are banned (code rejects them), and so are stand-ins like shipped, landed, went out, live, resolved, done. Most of {{name}}'s repos release outside release central, so none of these facts prove where a change stands. Say what the work does and what it waits on: in review, needs an approval, blocked on X, or testing on stage when Slack says so.
 - A release above with a rollback or `rollout_status: unstable` goes in *Emerging Concerns* as a watch item. The release carries other people's changes too, so never blame {{name}}'s MR unless Slack ties the problem to it.
 - Describe MR review state only from `detailed_merge_status` / `approved_by` above, never by guessing.
 - Reviews of other people's MRs: one rolled-up bullet at most (e.g. "reviewed 4 MRs, approved the auth ones"), unless {{manager}} asked about one.
 - GitHub PRs on personal repos are *Exploration* material unless Slack ties them to work.
 - Claude activity is context, not news. Never report session counts or that sessions ran. Workstream labels show what {{name}} worked on; an excerpt that states a result (a design, an investigation finding, a write-up) can back a bullet, cited as its vault note, artifact, or handoff. Never put vault links, local paths, or claude.ai links in the message (they are private); describe the finding instead.
-- A fact block that says `unavailable` means that source failed this run: say nothing about it, and claim no deploys when release central is unavailable.
+- A fact block that says `unavailable` means that source failed this run: say nothing about it.
 
 Previous update {{name}} already sent (DO NOT repeat it):
 ```
@@ -57,24 +57,16 @@ Previous update {{name}} already sent (DO NOT repeat it):
 - Except for standing-rule items, every bullet must be backed by activity inside this window: an MR or PR above, a release above, a Claude excerpt above, or a Slack message {{name}} wrote or a thread {{name}} took part in since {{since}}. If you cannot cite it, drop it.
 - Never restate a previous-update item unless something new happened to it in this window, and then say only what's new (e.g. "auth MR got approved", not the whole backstory).
 - No filler about how the day went ("quiet day", "heads down on planning"). No people named unless a cited message shows them involved.
-- A thin day gets a short update. Every section always appears; a section with nothing new in this window gets exactly one bullet: `• Nothing new here` (never mixed with other bullets, no evidence entry needed).
+- A thin day gets a short update. Every section always appears; a section with nothing new in this window gets exactly one bullet: `• nothing new here` (never mixed with other bullets, no evidence entry needed).
 
 ## Write
-{{name}}'s voice, from hand-typed Slack messages:
-- lowercase. capitals only for `I`, names, acronyms (MR, CI, API, UI), and code. The fixed template lines below keep their own casing.
-- first person is normal here (`I'll`, `I have`).
-- lead with the point. no preamble, praise, or sign-off.
-- code in backticks: identifiers, files, flags, env vars, commands.
-- fragments fine. `imo`, `fwiw`, `rn`, `IDK` fine. one hedge max.
-- no emoji, no em or en dashes (comma, semicolon, or a new sentence).
+Every bullet and the TL;DR follow {{name}}'s voice file below, as a Slack message: first person is normal, 80 words max per bullet. Code checks each bullet against these rules and sends violations back for a rewrite. The fixed template lines (the opener, the `*TL;DR* - ` prefix, the divider, the `*Section*` headers, the `• ` bullets) are the only exception to its no-headers, no-bold rule. Match the samples' voice, never reuse their content.
 
-Tone samples ({{name}}'s own Slack messages; match the voice, never reuse the content):
-```
-there is a 20s cap on the snowflake queries and I'm trying to triage
-the orch investigator will be coming out of that code tomorrow-ish, so that'll be in the next backport to remi
-which serializes the calls. IDK if that's the play here but might help
-that's how it works now.  orchestrator -> CC internal route with a scoped service token.
-```
+<voice>
+{{voice}}
+</voice>
+
+{{name}} edits this draft and sends it by hand the next morning, so never write "today", "tonight", or "tomorrow" about the window's work: name the weekday or leave the time out.
 
 Answer {{manager}}'s open asks first (in *Immediate Priorities*). Each bullet 1-3 short sentences. A daily update stays under about 250 words: fold small items into one `small stuff:` bullet or drop them. Say what an MR does, not its ref; at most one MR link per bullet, only where {{manager}} would click it, as a Slack link `<url>`. Italic asides with `_..._` are fine.
 
@@ -83,7 +75,7 @@ TEMPLATE (strict, validated by code; a violation means a rewrite):
 - Line 2: `*TL;DR* - ` then 1-3 short sentences.
 - Line 3 exactly: `----------------`
 - Then ALL four sections in this order, header line is the name wrapped in single asterisks:
-  1. `*Immediate Priorities*` (required): what shipped/landed and what's in review.
+  1. `*Immediate Priorities*` (required): what moved and what it waits on (review, an approval, a decision).
   2. `*Emerging Concerns*` (required): risks, problems, process issues worth {{manager}}'s attention.
   3. `*On the horizon*` (required): upcoming work with target dates.
   4. `*Exploration*` (required): tinkering, tools, experiments.
@@ -97,10 +89,10 @@ Shape (format only; the angle brackets are placeholders):
 *TL;DR* - <1-3 short sentences>
 ----------------
 *Immediate Priorities*
-• <topic>: <answer to an open ask, or what landed / is in review>
+• <topic>: <answer to an open ask, or what moved and what it waits on>
 • <topic>: <next most important>
 *Emerging Concerns*
-• Nothing new here
+• nothing new here
 *On the horizon*
 • <topic>: <what's next, with a target date when one exists>
 *Exploration*
@@ -108,4 +100,4 @@ Shape (format only; the angle brackets are placeholders):
 ```
 
 ## Return
-`message`: the exact status text. `asks_addressed`: {{manager}}'s asks you covered, short phrases. `evidence`: one entry per bullet (skip `Nothing new here` bullets), in message order: the bullet's first few words and its source (MR/PR ref, release version, vault note / artifact / handoff name, Slack permalink/timestamp, or `standing rule`). Do not create any Slack draft or send anything.
+`message`: the exact status text. `asks_addressed`: {{manager}}'s asks you covered, short phrases. `evidence`: one entry per bullet (skip `nothing new here` bullets), in message order: the bullet's first few words and its source (MR/PR ref, release version, vault note / artifact / handoff name, Slack permalink/timestamp, or `standing rule`). Do not create any Slack draft or send anything.

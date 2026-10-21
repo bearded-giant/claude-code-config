@@ -26,7 +26,7 @@ SENT = """About to wind down for the day. EOD Update from me:
 ----------------
 *Immediate Priorities*
 • auth multi-store: MR up for review, should merge tomorrow after stage testing.
-• remi streaming: merged the response streaming MRs, running on stage now. prod waits on the next release.
+• remi streaming: response streaming MRs are in, running on stage now. prod waits on the next release.
 *Emerging Concerns*
 • snowflake queries: there is a 20s cap on the analytics queries and a few runs hit it. _triaging, might need a bigger warehouse_
 *On the horizon*
@@ -84,6 +84,90 @@ def test_load_config_requires_every_key(tmp_path):
         eod.load_config(path)
     path.write_text(json.dumps(TEST_CFG))
     assert eod.load_config(path) == TEST_CFG
+
+
+def test_load_config_refuses_manager_as_self(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({**TEST_CFG, "self_dm": "DMGR"}))
+    with pytest.raises(RuntimeError, match="manager"):
+        eod.load_config(path)
+    path.write_text(json.dumps({**TEST_CFG, "self_user": "UMGR"}))
+    with pytest.raises(RuntimeError, match="manager"):
+        eod.load_config(path)
+
+
+def test_voice_text_drops_bypass_section():
+    text = eod.voice_text()
+    assert "## Rules" in text and "lowercase" in text
+    assert "VOICE_GATE=off" not in text and "## Bypass" not in text
+
+
+def test_voice_errors_clean_fixture():
+    assert eod.voice_errors(SENT) == []
+    assert eod.voice_errors(eod.normalize(MINIMAL)) == []
+
+
+def test_voice_errors_flags_voice_and_status_words():
+    bad = SENT.replace(
+        "• investigator v2: second vercel app",
+        "• investigator v2: Merged the `concierge_job` clone and deployed it. Second vercel app",
+    ).replace("*TL;DR* - auth", "*TL;DR* - Handled auth")
+    errors = eod.voice_errors(bad)
+    assert any("status words (deployed, merged)" in e for e in errors), errors
+    assert any("status words (handled)" in e for e in errors), errors
+    assert any("capitalized sentence start" in e for e in errors), errors
+    assert not any("code not in backticks" in e for e in errors), errors
+    assert any(
+        "code not in backticks: concierge_job" in e
+        for e in eod.voice_errors(
+            SENT.replace("snowflake queries:", "snowflake concierge_job queries:")
+        )
+    )
+
+
+def drafts(*messages):
+    calls = []
+
+    def run(prompt, *a, **k):
+        calls.append(prompt)
+        bullets = sum(
+            l.startswith(eod.BULLET) and l != eod.EMPTY
+            for l in messages[len(calls) - 1].splitlines()
+        )
+        return {
+            "message": messages[len(calls) - 1],
+            "asks_addressed": [],
+            "evidence": [{"bullet": "x", "source": "s"}] * bullets,
+        }
+
+    return calls, run
+
+
+def test_compose_retries_voice_then_returns_warnings(monkeypatch):
+    bad = SENT.replace("• eod status: ported", "• eod status: Closed out and ported")
+    calls, run = drafts(bad, bad)
+    monkeypatch.setattr(eod, "run_claude", run)
+    result = eod.compose("PROMPT")
+    assert (
+        len(calls) == 2 and "status words (closed)" in calls[1] and "voice" in calls[1]
+    )
+    assert result["message"] == bad and any(
+        "closed" in w for w in result["voice_warnings"]
+    )
+
+
+def test_compose_clean_draft_has_no_retry(monkeypatch):
+    calls, run = drafts(SENT)
+    monkeypatch.setattr(eod, "run_claude", run)
+    assert eod.compose("PROMPT")["voice_warnings"] == [] and len(calls) == 1
+
+
+def test_compose_raises_when_template_stays_broken(monkeypatch):
+    broken = SENT.replace("----------------", "---")
+    calls, run = drafts(broken, broken)
+    monkeypatch.setattr(eod, "run_claude", run)
+    with pytest.raises(RuntimeError, match="line 3"):
+        eod.compose("PROMPT")
 
 
 def test_opener_and_rollup_rules():
@@ -383,9 +467,12 @@ def test_prompt_template_fully_filled():
     assert "{{" not in filled
 
 
-def test_prompt_grounds_deploys_and_hides_private_links():
+def test_prompt_bans_status_words_and_hides_private_links():
     template = eod.PROMPT_FILE.read_text()
-    assert "Merged != deployed" in template and "releases_with_my_mrs" in template
+    assert "Merged != deployed" not in template and "{{voice}}" in template
+    assert all(
+        f"`{w}`" in template for w in ("deployed", "merged", "closed", "handled")
+    )
     assert "Never report session counts" in template and "claude.ai links" in template
     assert "Josh" not in template and "Mike" not in template
 
@@ -587,11 +674,21 @@ def test_rollup_writes_its_own_file_and_skips_previous_draft(monkeypatch, tmp_pa
         and "older daily draft" not in prompt
     )
     assert "Rollup from me for the last 3 days:" in prompt
+    assert eod.voice_text() in prompt
     (rollup,) = (tmp_path / "rollups").iterdir()
     assert rollup.name.endswith("-3d.md") and rollup.read_text().startswith(
         "Rollup from me"
     )
     assert [p.name for p in (tmp_path / "drafts").iterdir()] == ["2026-01-01.md"]
+
+
+def test_config_opener_reaches_prompt(monkeypatch, tmp_path):
+    stub_sources(monkeypatch, tmp_path, prompts := [])
+    monkeypatch.setattr(eod, "load_config", lambda: {**TEST_CFG, "opener": "yesterday things:"})
+    monkeypatch.setattr(sys, "argv", ["eod.py", "--dry-run", "--no-notify"])
+    assert eod.main() == 0
+    assert "Line 1 exactly: `yesterday things:`" in prompts[0]
+    assert (tmp_path / "dry-run.md").read_text().startswith("yesterday things:")
 
 
 def test_days_must_be_positive(monkeypatch):

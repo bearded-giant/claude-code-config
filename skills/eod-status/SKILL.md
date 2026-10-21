@@ -1,6 +1,6 @@
 ---
 name: eod-status
-description: Draft the end-of-day status DM to my manager from Slack (manager DM, the manager's asks, my own messages), my GitLab MRs and reviews, my GitHub PRs, release-central deploys that carry my MRs, and the Claude activity (workstreams, vault notes, artifacts, handoffs) in the vault daily notes. Sends the draft to my self-DM only, for a hand copy to the manager. `--days N` writes a rollup for the last N days (3, 7). Learns standing rules from `eod: <rule>` self-DMs and from edits to sent updates. Auto-fires when user says "eod status", "eod update", "draft my eod", "end of day update", "status for mike", "rollup for the last N days", "weekly rollup", or invokes /eod-status. Flags: --days, --dry-run, --no-notify.
+description: Draft the end-of-day status DM to my manager from Slack (manager DM, the manager's asks, my own messages), my GitLab MRs and reviews, my GitHub PRs, release-central deploys that carry my MRs, and the Claude activity (workstreams, vault notes, artifacts, handoffs) in the vault daily notes. Sends the draft to my self-DM only, for a hand edit and copy to the manager; nothing ever posts to the manager. `--days N` writes a rollup for the last N days (3, 7). Learns standing rules from `eod: <rule>` self-DMs and from edits to sent updates. Auto-fires when user says "eod status", "eod update", "draft my eod", "end of day update", "status for mike", "rollup for the last N days", "weekly rollup", or invokes /eod-status. Flags: --days, --dry-run, --no-notify.
 ---
 
 # eod-status
@@ -37,7 +37,7 @@ Ported from a teammate's EOD drafter. One script gathers the facts, a headless `
 | release central | MCP over curl: releases in the window whose risk report lists my MRs (author name or MR URL), rollout status, my own ship/rollback actions | marked unavailable, no deploy claims |
 | Claude activity | vault `daily/<date>.md` `## CLAUDE SESSIONS` (counts per workstream) and `## CLAUDE LINKS` (vault notes and handoffs with a 400-char excerpt, artifact titles) | empty |
 
-The compose prompt (`scripts/prompt.md`) holds the template, grounding rules, and my Slack voice from `config/voice.md`. Every bullet needs a cited source; code rejects a draft that breaks the template or cites fewer sources than bullets, retries once, then fails.
+The compose prompt (`scripts/prompt.md`) holds the template and grounding rules, and loads `config/voice.md` at run time. Every bullet needs a cited source; code rejects a draft that breaks the template or cites fewer sources than bullets, retries once, then fails. Each bullet and the TL;DR also run through `hooks/voice_gate.py`'s `violations(text, "slack")`, plus a ban on `deployed`, `merged`, `closed`, and `handled` (most of my repos release outside release central, so lifecycle words are guesses). Those trigger the same retry; anything left after it is logged as `voice:` warnings and the draft still goes out, since I edit it by hand.
 
 ## Config and state
 
@@ -54,7 +54,7 @@ The compose prompt (`scripts/prompt.md`) holds the template, grounding rules, an
 
 ## Schedule
 
-Weekdays 8:30am via launchd (system time), optional. A morning run covers the previous weekday from 8:30am; set `opener` in `config.json` to a line that fits a morning send. Install:
+Weekdays 6pm via launchd (system time), optional. The draft covers the day; I edit it and send it the next morning, so `opener` in `config.json` should read as yesterday's update. Install:
 
 ```
 sed "s|__HOME__|$HOME|g" ~/.claude/skills/eod-status/scripts/eod-status.plist > ~/Library/LaunchAgents/local.eod-status.plist
