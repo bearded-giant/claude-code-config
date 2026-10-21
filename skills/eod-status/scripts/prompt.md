@@ -57,10 +57,10 @@ Previous update {{name}} already sent (DO NOT repeat it):
 - Except for standing-rule items, every bullet must be backed by activity inside this window: an MR or PR above, a release above, a Claude excerpt above, or a Slack message {{name}} wrote or a thread {{name}} took part in since {{since}}. If you cannot cite it, drop it.
 - Never restate a previous-update item unless something new happened to it in this window, and then say only what's new (e.g. "auth MR got approved", not the whole backstory).
 - No filler about how the day went ("quiet day", "heads down on planning"). No people named unless a cited message shows them involved.
-- A thin day gets a short update. Every section always appears; a section with nothing new in this window gets exactly one bullet: `• nothing new here` (never mixed with other bullets, no evidence entry needed).
+- A thin day gets a short update. Every section always appears; a section with nothing new in this window gets exactly one bullet: `• Nothing new here` (never mixed with other bullets, no evidence entry needed).
 
 ## Write
-Every bullet and the TL;DR follow {{name}}'s voice file below, as a Slack message: first person is normal, 80 words max per bullet. Code checks each bullet against these rules and sends violations back for a rewrite. The fixed template lines (the opener, the `*TL;DR* - ` prefix, the divider, the `*Section*` headers, the `• ` bullets) are the only exception to its no-headers, no-bold rule. Match the samples' voice, never reuse their content.
+Write the TL;DR and every bullet in {{name}}'s doc voice: the writing rules below, from {{name}}'s own config. This update counts as a published doc for a colleague: casual and informal, normal sentence case, first person is fine. Apply the rules to the message text only; skip anything about chat replies or asking the user questions. Code rejects inflated words, emoji, and the banned status words, and sends the draft back for a rewrite.
 
 <voice>
 {{voice}}
@@ -92,7 +92,7 @@ Shape (format only; the angle brackets are placeholders):
 • <topic>: <answer to an open ask, or what moved and what it waits on>
 • <topic>: <next most important>
 *Emerging Concerns*
-• nothing new here
+• Nothing new here
 *On the horizon*
 • <topic>: <what's next, with a target date when one exists>
 *Exploration*
@@ -100,4 +100,4 @@ Shape (format only; the angle brackets are placeholders):
 ```
 
 ## Return
-`message`: the exact status text. `asks_addressed`: {{manager}}'s asks you covered, short phrases. `evidence`: one entry per bullet (skip `nothing new here` bullets), in message order: the bullet's first few words and its source (MR/PR ref, release version, vault note / artifact / handoff name, Slack permalink/timestamp, or `standing rule`). Do not create any Slack draft or send anything.
+`message`: the exact status text. `asks_addressed`: {{manager}}'s asks you covered, short phrases. `evidence`: one entry per bullet (skip `Nothing new here` bullets), in message order: the bullet's first few words and its source (MR/PR ref, release version, vault note / artifact / handoff name, Slack permalink/timestamp, or `standing rule`). Do not create any Slack draft or send anything.

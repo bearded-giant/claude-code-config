@@ -96,10 +96,18 @@ def test_load_config_refuses_manager_as_self(tmp_path):
         eod.load_config(path)
 
 
-def test_voice_text_drops_bypass_section():
-    text = eod.voice_text()
-    assert "## Rules" in text and "lowercase" in text
-    assert "VOICE_GATE=off" not in text and "## Bypass" not in text
+def test_doc_voice_reads_claude_md_sections():
+    text = eod.doc_voice()
+    assert text.startswith("### Tone") and "### Prose Style" in text
+    assert "### Writing for humans" in text and "senior dev to colleague" in text
+    assert "### Posting as me" not in text and "voice.md" not in text
+
+
+def test_doc_voice_missing_heading_raises(tmp_path):
+    path = tmp_path / "CLAUDE.md"
+    path.write_text("## Communication Style\n\n### Format\n")
+    with pytest.raises(RuntimeError, match="### Tone"):
+        eod.doc_voice(path)
 
 
 def test_voice_errors_clean_fixture():
@@ -107,22 +115,23 @@ def test_voice_errors_clean_fixture():
     assert eod.voice_errors(eod.normalize(MINIMAL)) == []
 
 
-def test_voice_errors_flags_voice_and_status_words():
+def test_voice_errors_allow_sentence_case():
+    cased = SENT.replace("*TL;DR* - auth", "*TL;DR* - The auth").replace(
+        "• remi streaming: response", "• Remi streaming: Response"
+    )
+    assert eod.voice_errors(cased) == []
+
+
+def test_voice_errors_flags_status_filler_and_emoji():
     bad = SENT.replace(
         "• investigator v2: second vercel app",
-        "• investigator v2: Merged the `concierge_job` clone and deployed it. Second vercel app",
+        "• investigator v2: Merged a robust clone and deployed it \U0001f680. Second vercel app",
     ).replace("*TL;DR* - auth", "*TL;DR* - Handled auth")
     errors = eod.voice_errors(bad)
     assert any("status words (deployed, merged)" in e for e in errors), errors
     assert any("status words (handled)" in e for e in errors), errors
-    assert any("capitalized sentence start" in e for e in errors), errors
-    assert not any("code not in backticks" in e for e in errors), errors
-    assert any(
-        "code not in backticks: concierge_job" in e
-        for e in eod.voice_errors(
-            SENT.replace("snowflake queries:", "snowflake concierge_job queries:")
-        )
-    )
+    assert any("inflated words (robust)" in e for e in errors), errors
+    assert any("emoji" in e for e in errors), errors
 
 
 def drafts(*messages):
@@ -674,7 +683,7 @@ def test_rollup_writes_its_own_file_and_skips_previous_draft(monkeypatch, tmp_pa
         and "older daily draft" not in prompt
     )
     assert "Rollup from me for the last 3 days:" in prompt
-    assert eod.voice_text() in prompt
+    assert eod.doc_voice() in prompt
     (rollup,) = (tmp_path / "rollups").iterdir()
     assert rollup.name.endswith("-3d.md") and rollup.read_text().startswith(
         "Rollup from me"
@@ -684,7 +693,9 @@ def test_rollup_writes_its_own_file_and_skips_previous_draft(monkeypatch, tmp_pa
 
 def test_config_opener_reaches_prompt(monkeypatch, tmp_path):
     stub_sources(monkeypatch, tmp_path, prompts := [])
-    monkeypatch.setattr(eod, "load_config", lambda: {**TEST_CFG, "opener": "yesterday things:"})
+    monkeypatch.setattr(
+        eod, "load_config", lambda: {**TEST_CFG, "opener": "yesterday things:"}
+    )
     monkeypatch.setattr(sys, "argv", ["eod.py", "--dry-run", "--no-notify"])
     assert eod.main() == 0
     assert "Line 1 exactly: `yesterday things:`" in prompts[0]

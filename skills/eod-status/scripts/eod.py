@@ -27,7 +27,9 @@ PROPOSALS_FILE = HOME / "proposals.json"
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")).expanduser()
 SCRIPT_DIR = Path(__file__).parent
 REPO = Path(__file__).resolve().parents[3]
-VOICE_FILE = REPO / "config/voice.md"
+VOICE_FILE = REPO / "CLAUDE.md"
+VOICE_START = "### Tone"
+VOICE_END = "### Posting as me"
 PROMPT_FILE = SCRIPT_DIR / "prompt.md"
 RUN_SCRIPT = SCRIPT_DIR / "run.sh"
 NETWORK_ATTEMPTS = 4
@@ -65,7 +67,7 @@ SECTIONS = [
     "Exploration",
 ]
 BULLET = "\u2022 "
-EMPTY = BULLET + "nothing new here"
+EMPTY = BULLET + "Nothing new here"
 STATUS_WORDS = re.compile(r"\b(deployed|merged|closed|handled)\b", re.IGNORECASE)
 SESSION_LINE = re.compile(r"^- (\d\d:\d\d) (\S+)")
 LINK_LINE = re.compile(r"^- (\d\d:\d\d) (.*?)(?: · s:\w+)?$")
@@ -661,8 +663,13 @@ def evidence_errors(result: dict) -> list[str]:
     return []
 
 
-def voice_text(path: Path = VOICE_FILE) -> str:
-    return path.read_text().split("\n## Bypass")[0].strip()
+def doc_voice(path: Path = VOICE_FILE) -> str:
+    text = path.read_text()
+    for heading in (VOICE_START, VOICE_END):
+        if f"\n{heading}" not in text:
+            raise RuntimeError(f"{path} has no {heading} section for the doc voice")
+    start = text.index(f"\n{VOICE_START}") + 1
+    return text[start : text.index(f"\n{VOICE_END}", start)].strip()
 
 
 def voice_errors(message: str) -> list[str]:
@@ -674,7 +681,13 @@ def voice_errors(message: str) -> list[str]:
             text = line[len(BULLET) :]
         else:
             continue
-        found = voice_gate.violations(text, "slack")
+        found = []
+        if filler := sorted(
+            {m.group(0).lower() for m in voice_gate.FILLER.finditer(text)}
+        ):
+            found.append(f"inflated words ({', '.join(filler)}): cut them")
+        if voice_gate.EMOJI.search(text):
+            found.append("unicode emoji: drop it")
         if words := sorted({w.lower() for w in STATUS_WORDS.findall(text)}):
             found.append(
                 f"status words ({', '.join(words)}): say what the work does and what it "
@@ -897,7 +910,7 @@ def main() -> int:
                 "github": as_json(soft("github", github_prs, since)),
                 "releases": as_json(releases),
                 "claude": soft("claude activity", claude_activity, since, today),
-                "voice": voice_text(),
+                "voice": doc_voice(),
                 "previous_draft": (
                     previous_draft(today)
                     if args.days == 1
