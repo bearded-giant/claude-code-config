@@ -141,7 +141,9 @@ def learn_start(last_run: datetime | None, since: datetime) -> datetime:
 
 
 def opener(days: int) -> str:
-    return OPENER if days == 1 else f"Rollup from me for the last {days} days:"
+    if days == 1:
+        return CFG.get("opener") or OPENER
+    return f"Rollup from me for the last {days} days:"
 
 
 def window_rules(days: int) -> str:
@@ -748,7 +750,7 @@ def learn_rules(since: datetime, dry_run: bool) -> tuple[str, list[dict]]:
             CFG["self_dm"],
             CFG["manager_dm"],
             CFG["self_user"],
-            OPENER,
+            opener(1),
             int(since.timestamp()),
         ),
         learn.GATHER_SCHEMA,

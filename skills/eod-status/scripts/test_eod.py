@@ -89,6 +89,9 @@ def test_load_config_requires_every_key(tmp_path):
 def test_opener_and_rollup_rules():
     assert eod.opener(1) == eod.OPENER and eod.window_rules(1) == ""
     assert eod.opener(3) == "Rollup from me for the last 3 days:"
+    eod.CFG["opener"] = "Morning, update from yesterday:"
+    assert eod.opener(1) == "Morning, update from yesterday:"
+    assert eod.opener(3) == "Rollup from me for the last 3 days:"
     assert "7-day rollup" in eod.window_rules(7)
     rollup = SENT.replace(eod.OPENER, eod.opener(3))
     assert eod.validate(rollup, eod.opener(3)) == []

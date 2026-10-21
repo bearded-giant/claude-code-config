@@ -167,7 +167,9 @@ def paths(monkeypatch, tmp_path):
 
 def fake_claude(gathered):
     def run(prompt, schema, tools, model=None):
-        assert "DSELF" in prompt or schema is not learn.GATHER_SCHEMA
+        assert schema is not learn.GATHER_SCHEMA or "DSELF" in prompt
+        if schema is learn.GATHER_SCHEMA and "opener" in eod.CFG:
+            assert eod.CFG["opener"] in prompt
         assert not any("send" in t for t in tools)
         return gathered if schema is learn.GATHER_SCHEMA else {"rules": []}
 
@@ -176,6 +178,7 @@ def fake_claude(gathered):
 
 def test_learn_rules_persists(monkeypatch, tmp_path):
     paths(monkeypatch, tmp_path)
+    eod.CFG["opener"] = "Morning, update from yesterday:"
     gathered = {"notes": [{"ts": TS_OCT15, "text": JAMES_NOTE}], "sent": []}
     monkeypatch.setattr(eod, "run_claude", fake_claude(gathered))
     lessons, new = eod.learn_rules(

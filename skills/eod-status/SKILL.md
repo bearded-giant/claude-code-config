@@ -43,7 +43,7 @@ The compose prompt (`scripts/prompt.md`) holds the template, grounding rules, an
 
 `~/.config/eod-status/` (`EOD_STATUS_HOME` overrides):
 
-- `config.json`: `name`, `gitlab_user`, `email`, `self_user`, `self_dm`, `manager`, `manager_user`, `manager_dm`. Slack IDs stay out of the repo. `self_dm` must match the channel the send returns, or the run errors.
+- `config.json`: `name`, `gitlab_user`, `email`, `self_user`, `self_dm`, `manager`, `manager_user`, `manager_dm`, and optional `opener` (line 1 of a daily update; default `About to wind down for the day. EOD Update from me:`). Slack IDs stay out of the repo. `self_dm` must match the channel the send returns, or the run errors. Learning finds sent updates by `opener`, so changing it skips edits to updates sent under the old line.
 - `lessons.md`: standing rules, one per line, plain text. Edit or delete by hand.
 - `proposals.json`, `state.json`, `drafts/<date>.md`, `rollups/<date>-<N>d.md`, `dry-run.md`, `logs/`.
 
@@ -54,7 +54,7 @@ The compose prompt (`scripts/prompt.md`) holds the template, grounding rules, an
 
 ## Schedule
 
-Weekdays 3pm ET via launchd, optional:
+Weekdays 8:30am via launchd (system time), optional. A morning run covers the previous weekday from 8:30am; set `opener` in `config.json` to a line that fits a morning send. Install:
 
 ```
 sed "s|__HOME__|$HOME|g" ~/.claude/skills/eod-status/scripts/eod-status.plist > ~/Library/LaunchAgents/local.eod-status.plist
