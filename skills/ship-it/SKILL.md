@@ -63,6 +63,8 @@ Two formats exist. Pick ONE deterministically, generate it, write it to disk. Th
 
 Either branch ends with a description file on disk and its path printed.
 
+**Paired MRs (any format):** when the change spans repos (frontend + customcheckout, remi + monolith) or depends on another open MR, the description opens with an H1 naming every partner and the deploy order, then one line on what breaks or degrades between the two deploys: `# Pairs with frontend!17058 + frontend!17062: frontend ships first, this deploys after`. The pairing never lives only in `## Related Issues` or `## Post Deploy Action`. A partner opened later gets the same H1 on every MR in the set (update the earlier ones). Ask the user for the deploy order when it is not obvious; never assume backend first.
+
 Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — this and the grill gate are the only acceptable interruptions in the chain. Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
 
 ### Step 4 — Open MR
@@ -72,6 +74,8 @@ Pick the host based on remote:
 - `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`
 
 Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Do NOT prefix with "MR:" or "PR:".
+
+Paired MRs: open the one that deploys later as Draft (`glab mr create --draft`, `gh pr create --draft`), so it cannot merge before its partner ships. A customcheckout MR in a pair opens as Draft. The user marks it ready.
 
 If the MR/PR already exists for this branch: skip creation, capture the existing URL.
 
