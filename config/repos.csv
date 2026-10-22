@@ -25,7 +25,8 @@ frost,/Users/bryan/dev/skio/frost-wt,
 merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
 mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
 monitor,/Users/bryan/dev/ai/monitor,ai-tooling/monitor; greptile auto-approves here
-investigator|inv|investigator-agent|inspector|inspector-agent,/Users/bryan/dev/ai/investigator-agent-wt,churn investigator; worktree layout
+investigator|inv|investigator-agent|inv-agent,/Users/bryan/dev/ai/investigator-agent-wt,churn investigator; deep-dive analytics investigator agents; worktree layout
+investigator-v2|inv-v2|inv2,/Users/bryan/dev/ai/investigator-v2-wt,churn investigator v2 (ai-tooling/investigator-v2, Vercel project investigator-v2); fork of investigator-agent; worktree layout
 auth-session-sync|session-sync,/Users/bryan/dev/python/dapr/auth-session-sync,
 zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
