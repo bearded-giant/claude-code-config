@@ -3,6 +3,7 @@ project = "my-app"
 gitlab = "ai-tooling/my-app"          # omit for a project with no GitLab CI
 framework = "nextjs"                  # vercel preset: nextjs, fastapi, python, node, ...
 node = "24.x"
+domains = ["rc-my-app.vercel.app"]    # production domains; *.vercel.app names are global, so `my-app.vercel.app` is often taken
 # team = "rechargeapps"
 # fluid = true
 # release_tag = "*.*.*"               # protected tag so the protected VERCEL_TOKEN reaches release pipelines

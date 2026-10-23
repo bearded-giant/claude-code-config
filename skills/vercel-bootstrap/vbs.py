@@ -125,6 +125,17 @@ def ensure_project(cfg, apply):
         vercel(team, f"/v1/projects/{proj['id']}/protection-bypass", "PATCH", {"generate": {"note": "ci and scripts"}})
         proj = vercel(team, f"/v9/projects/{proj['id']}")
     step("automation bypass", "ok" if has_bypass else "fixed" if apply else "missing")
+
+    if cfg.get("domains"):
+        have = {d["name"] for d in vercel(team, f"/v9/projects/{proj['id']}/domains").get("domains", [])}
+        missing = [d for d in cfg["domains"] if d not in have]
+        for name in missing if apply else []:
+            vercel(team, f"/v10/projects/{proj['id']}/domains", "POST", {"name": name})
+        step(
+            "domains",
+            "fixed" if missing and apply else "missing" if missing else "ok",
+            ", ".join(missing or cfg["domains"]),
+        )
     return proj
 
 
@@ -310,8 +321,11 @@ def env_sync(cfg, apply, force):
     if not job:
         step(job_name, "missing", f"not in pipeline {pipeline[0]['id']}")
         return
-    if job["status"] == "success" and not force:
-        step(job_name, "ok", f"job {job['id']}")
+    # every main pipeline starts with the sync manual, so judge by the latest run of it anywhere
+    ran = glab(f"projects/{gl}/jobs?per_page=100&scope[]=success&scope[]=failed&scope[]=canceled")
+    last = next((j for j in ran if j["name"] == job_name), None)
+    if last and last["status"] == "success" and not force:
+        step(job_name, "ok", f"job {last['id']}")
         return
     if not apply:
         step(job_name, "missing", f"job {job['id']} {job['status']}")

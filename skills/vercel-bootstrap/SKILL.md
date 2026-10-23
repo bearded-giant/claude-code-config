@@ -13,7 +13,7 @@ Needs `vercel` (logged in, team scope rechargeapps), `glab`, `vault` (token with
 
 ## Project bootstrap
 
-1. Config: `projects/<vercel project>.toml` next to this file (copy `projects/example.toml`). Keys: `project`, `gitlab`, `framework`, `node`, `env_sync_job`, `[tokens]`, `[vault]` (`path`, `generate`, `bypass`, `[vault.copy]`), `[[stores]]`.
+1. Config: `projects/<vercel project>.toml` next to this file (copy `projects/example.toml`). Keys: `project`, `gitlab`, `framework`, `node`, `domains`, `env_sync_job`, `[tokens]`, `[vault]` (`path`, `generate`, `bypass`, `[vault.copy]`), `[[stores]]`.
 2. Run from the repo root (so `.gitlab-ci.yml` VERCEL_PROJECT_ID gets checked):
    ```
    python3 $VBS check <project>    # read-only, exit 1 lists what is not ready
@@ -56,4 +56,5 @@ Change: project name, `rc-vault:` refs to the new vault path, the key lists in `
 
 - GitLab CI `load-secrets` reads `secret/ai-tools/prod/*` for ai-tooling projects with no extra vault policy (proven on investigator-v2 and agent-hub). A 403 in the env-sync trace from `vercel env POST` is a dead Vercel token, not vault.
 - `vercel integration add` / `vercel blob create-store` connect to the linked project; vbs links through `VERCEL_ORG_ID` + `VERCEL_PROJECT_ID` in a temp dir, so it never writes `.vercel/` into the repo.
+- `*.vercel.app` names are global across all Vercel accounts: `agent-hub.vercel.app` and `agent-hub-preview.vercel.app` belonged to someone else, so the project got a random production domain and the CI alias failed with `alias_in_use`. Use `rc-<project>` names in `domains` and for the preview alias, and claim the preview alias once with `vercel alias set <deployment> rc-<project>-preview.vercel.app --scope rechargeapps` before CI moves it.
 - Neon/Upstash default env names have no prefix (`DATABASE_URL`, `KV_REST_API_URL`); set `prefix` when one store serves several apps with different names.
