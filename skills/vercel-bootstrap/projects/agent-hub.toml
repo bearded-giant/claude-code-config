@@ -1,0 +1,21 @@
+project = "agent-hub"
+gitlab = "ai-tooling/agent-hub"
+framework = "nextjs"
+node = "24.x"
+env_sync_job = "vercel-env-sync"
+
+[tokens]
+deploy = "vercel_token"
+preview = "vercel_preview_token"
+
+[vault]
+path = "secret/ai-tools/prod/agent-hub"
+generate = ["service_tokens", "eve_jwt_secret", "cron_secret"]
+bypass = "vercel_bypass"
+
+[vault.copy]
+"secret/ai-tools/prod/investigator-agent" = ["service_token", "semantic_engine_token"]
+
+[[stores]]
+kind = "neon"
+name = "neon-investigator"

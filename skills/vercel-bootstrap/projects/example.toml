@@ -1,0 +1,39 @@
+# copy to projects/<vercel project>.toml; every section but the top four keys is optional
+project = "my-app"
+gitlab = "ai-tooling/my-app"          # omit for a project with no GitLab CI
+framework = "nextjs"                  # vercel preset: nextjs, fastapi, python, node, ...
+node = "24.x"
+# team = "rechargeapps"
+# fluid = true
+# release_tag = "*.*.*"               # protected tag so the protected VERCEL_TOKEN reaches release pipelines
+env_sync_job = "vercel-env-sync"      # manual job on main that copies vault into the Vercel env
+
+[tokens]                              # GitLab CI var -> vault key; dead or missing tokens get minted project-scoped
+deploy = "vercel_token"               # VERCEL_TOKEN, protected + masked
+preview = "vercel_preview_token"      # VERCEL_PREVIEW_TOKEN, masked
+
+[vault]
+path = "secret/ai-tools/prod/my-app"
+generate = ["service_tokens", "cron_secret"]   # 32-byte hex, written once, never rotated by this tool
+bypass = "vercel_bypass"                       # copies the project's automation bypass secret
+
+[vault.copy]                          # source path = keys, "src_key:dst_key" renames
+"secret/ai-tools/prod/investigator-agent" = ["service_token", "semantic_engine_token:engine_token"]
+
+[[stores]]                            # an existing store by this name is connected, a missing one is created
+kind = "neon"                         # neon | upstash | blob
+name = "neon-my-app"
+# plan = "launch_v3"                  # create only; default pay-as-you-go; `vercel integration add neon --help` lists plans
+# prefix = "MYAPP_"                   # env names, e.g. MYAPP_DATABASE_URL
+# environments = ["production", "preview"]
+
+[[stores]]
+kind = "upstash"
+name = "redis-my-app"
+# plan = "paid"                       # default pay-as-you-go; fixed_250mb .. fixed_100gb also exist
+# metadata = { primaryRegion = "iad1" }  # default iad1, next to the functions
+
+[[stores]]
+kind = "blob"
+name = "blob-my-app"
+access = "private"
