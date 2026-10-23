@@ -32,3 +32,4 @@ zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
 db-schema,/Users/bryan/dev/db-schema,liquibase schema repo; DDL MRs for every mysql db incl. concierge
 semantic-layer|sem-layer|recharge-semantic-layer,/Users/bryan/dev/data-eng/recharge-semantic-layer,DE-owned; pypi + Vercel service
+semantic-engine|engine-fork,/Users/bryan/dev/ai/semantic-engine,POC fork of recharge-semantic-layer (ai-tooling/semantic-engine); main deploys to vercel project recharge-semantic-layer
