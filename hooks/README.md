@@ -43,6 +43,12 @@ On `startup` in a dir without `.giantmem/`, runs `workspace_init` from `workspac
 
 On `clear`, warns `FULL RESTART REQUIRED` when `~/.claude/plugins/installed_plugins.json` is newer than the running `claude` process, since `/clear` does not reload plugins. Finds the process by walking the parent chain; no `claude` ancestor means no warning.
 
+## clear_capsule.py
+
+**Hook:** `SessionStart` (via dispatch)
+
+`/clear` keeps the `claude` process and starts a new session id, so every SessionStart records `{session_id, transcript_path, lstart}` in `/tmp/claude-clear-capsule-<claude pid>.json`. On `source: clear` it reads the entry left by the session that was just cleared and injects a capsule of about 300 tokens: the `claude --resume <id>` line, the last three user asks, the files edited, and the last 700 characters of the final reply. Keying on the pid avoids depending on SessionEnd finishing first. The process start time in the marker rejects one left by a dead process that had the same pid. Skips `claude -p` children. Tests: `python3 hooks/test_clear_capsule.py`.
+
 ## agent_model_default.py
 
 **Hook:** `PreToolUse` (matcher: Agent, Task)
@@ -133,7 +139,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest` | Yes (one-time, ~4.9KB) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest`, `giantmem_vault` | Yes (one-time, ~4.9KB; `clear_capsule` adds ~1.2KB after `/clear` only) |
 | UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on) |
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
