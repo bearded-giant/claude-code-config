@@ -322,7 +322,7 @@ snake_case, not kebab-case. Example: `/api/admin/auth/validate_credentials` (cor
 ## Agent Tool Use
 
 <agent_triggers>
-Spawn Explore subagents in parallel when the work splits into independent searches, or when a trace would flood main context. Work directly when a handful of tool calls finishes it; symbol usages go through LSP findReferences. Never spawn a subagent only to double-check your own work.
+Spawn Explore subagents in parallel when the work splits into independent searches, or when a trace would flood main context. Work directly when a handful of tool calls finishes it; symbol usages go through LSP findReferences. Never spawn a subagent only to double-check your own work. Explore and general-purpose run on Sonnet unless the call passes `model` (`hooks/agent_model_default.py`); pass `model: "opus"` for design, wide debugging, or judge work.
 
 Spawn a debugger subagent for stack traces, test failures, or unexplained behavior that needs a wide multi-file trace.
 

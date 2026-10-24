@@ -43,6 +43,12 @@ On `startup` in a dir without `.giantmem/`, runs `workspace_init` from `workspac
 
 On `clear`, warns `FULL RESTART REQUIRED` when `~/.claude/plugins/installed_plugins.json` is newer than the running `claude` process, since `/clear` does not reload plugins. Finds the process by walking the parent chain; no `claude` ancestor means no warning.
 
+## agent_model_default.py
+
+**Hook:** `PreToolUse` (matcher: Agent, Task)
+
+Fills in `model: sonnet` for `Explore` and `general-purpose` calls that pass no `model`, through `updatedInput`. Both otherwise inherit the session model. `CLAUDE_CODE_SUBAGENT_MODEL` can't do this: built-in Explore is pinned to `inherit` and ignores it. An explicit `model` on the call always wins, and agent types outside the table keep their frontmatter. Tests: `python3 hooks/test_agent_model_default.py`.
+
 ## debug_stop_check.py
 
 **Hook:** `Stop`
@@ -132,6 +138,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | PreCompact | timestamp file, then `precompact_capture.py` | No (stderr + file) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |
+| PreToolUse | `agent_model_default.py` (Agent/Task) | No (`updatedInput` only) |
 | PreToolUse | `voice_gate.py` (Bash, Slack send/draft/schedule, Jira comment) | No (JSON decision only) |
 | PostToolUse | `greptile_rereview.py` (Bash, `git push` only) | Yes (one line after it posts) |
 | SessionStart, PostToolUse | `daily_note.py` (Artifact, Write/Edit/MultiEdit, Bash `note.py new`): appends to the vault daily note `daily/<date>.md`, creating it from `templates/dailytemplate.md`. One `## CLAUDE SESSIONS` line per interactive session (repo list, tmux, `claude --resume <id>`; headless `sdk-cli` runs skipped), one `## CLAUDE LINKS` line per artifact publish, vault note write, or `.giantmem/**/handoff.md` write. flock-guarded, section-scoped dedupe. Tests: `python3 hooks/test_daily_note.py` | No (file write only) |
