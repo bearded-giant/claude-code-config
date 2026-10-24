@@ -4,7 +4,7 @@ Worktree-scoped command for GitLab MR lifecycle. One MR per loop: the branch che
 
 ## `/babysit`
 
-Address open review threads on the worktree's MR. Loop: `/loop 5m /babysit [<worktree path>]`; it stops itself at READY (pipeline green, and on Greptile MRs, Greptile has reviewed the head, posting `@greptile review` itself, max 3 rounds) or BLOCKED (red pipeline, conflict, round cap, Greptile silent 15 min).
+Address open review threads on the worktree's MR. Runs as a forked subagent, so a loop fire costs a fresh context, not the host session's. Loop: `/loop 5m /babysit [<worktree path>]`; it stops itself at READY (pipeline green, and on Greptile MRs, Greptile has reviewed the head, posting `@greptile review` itself, max 3 rounds) or BLOCKED (red pipeline, conflict, round cap, Greptile silent 15 min).
 
 Resolves MR via `glab --source-branch=$BRANCH --state=opened`. Fetches unresolved discussions (`resolved=false`, author != self).
 
@@ -13,7 +13,7 @@ Classifies + acts:
 | Class | Action |
 |---|---|
 | `actionable_simple` (rename / typo / nit / null check) | fix |
-| `actionable_complex` (design / ambiguous) | defer to chat (no MR note), skip; sign off in chat |
+| `actionable_complex` (design / ambiguous) | defer to the output (no MR note), skip; sign off with `/babysit <path> signoff <n>` |
 | `informational` | skip |
 
 Flow: rebase → edit → `py-check`/`ts-check` → commit `review: ...` → push → reply one line per addressed item (`config/voice.md`) → resolve. Max 5 threads/run. Skip Draft MRs unless `[babysit-ok]` in description.

@@ -1,16 +1,20 @@
 ---
 description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head.
-argument-hint: "[worktree path]"
+argument-hint: "[worktree path] [signoff <n>[: plan edits]]..."
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Skill, ToolSearch, ScheduleWakeup, CronList, CronDelete
+context: fork
+background: false
 ---
 
 Address open review comments on the MR for **this** worktree's branch.
+
+Runs as a forked subagent: a `/loop` fire costs a fresh context instead of re-reading the host session's (an idle run was 2 requests at 300-730k tokens each). The fork sees this command and its arguments, never the session's chat, so sign-offs arrive as arguments.
 
 ## Worktree scoping model
 
 This command is worktree-scoped by design. One loop handles exactly one MR — the one matching the current branch of its worktree.
 
-Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call with `cd <path> &&`, so one session can loop several MRs across repos (`/loop 5m /babysit <path>` per MR). Empty → the session cwd.
+Arguments: `$ARGUMENTS`. First token, when it is a path, is the worktree: start every Bash call with `cd <path> &&`, so one session can loop several MRs across repos (`/loop 5m /babysit <path>` per MR). No path → the session cwd. Each `signoff <n>` that follows signs off deferred thread `n` (numbered as in the last output); text after `signoff <n>:` up to the next `signoff` edits that thread's plan.
 
 ## Preconditions
 
@@ -36,18 +40,18 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
    ```
    Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Exception: Greptile edits its `<!-- greptile_outside_diff -->` note in place on each re-review, so keep a thread whose first note is by `greptile` and has `updated_at` later than the `created_at` of your last note in that thread. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
 
-   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
+   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {n, reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). `n` is the thread's number in the output, assigned once (next unused, including for older entries that lack one) and never reused. Skip any kept thread already in it unless this run's arguments sign it off. Zero kept threads → skip to step 9.
 
-   **Never run the sign-off handshake through MR comments.** No `[babysit]` notes, no asking the user to reply on a thread. Deferrals go to the state file and to chat; the user signs off in chat.
+   **Never run the sign-off handshake through MR comments.** No `[babysit]` notes, no asking the user to reply on a thread. Deferrals go to the state file and to the output; the user signs off with `/babysit <path> signoff <n>`.
 
 3. **Classify each kept thread** before touching code. Read the thread context (file path + line if present). Bucket into:
-   - `signed_off` — a deferred thread the user approved in chat (`signed off`, `do it`, or edits to the plan). Implement the plan as approved. Highest priority, overrides the buckets below; drop its state-file entry once pushed.
+   - `signed_off` — a deferred thread whose `n` this run's arguments name (`signoff <n>`, plan edits after the colon). Implement the plan as approved. Highest priority, overrides the buckets below; drop its state-file entry once pushed.
    - `actionable_simple` — rename, typo, missing test case, obvious null check, dead code, lint-style nit. Safe to one-shot.
    - `actionable_complex` — design or refactor request. Split by how concrete the direction is:
      - **concrete direction** (reviewer named the target, e.g. "use request hooks for `internal_chat_api_bp`", "move to its own blueprint") → attempt it, scoped strictly to what was asked.
      - **ambiguous / open question** (e.g. "is this the right layer?", "should this live elsewhere?") → defer: state file + chat, with the open question and 1–3 options. No thread reply.
    - `informational` — "looks good", "nit just FYI", no requested change. Skip.
-   - `contradicts_design` — the ask runs counter to a design decision or known reason established in **this session / branch work**. Do not implement. The thread still gets a one-line decline-with-reason reply (step 6.7). Only use this when a concrete established reason actually exists — never fabricate a rationale to dodge work; absent a real reason, fall back to `actionable_*`.
+   - `contradicts_design` — the ask runs counter to a design decision or known reason recorded in the **branch work**: its commits (`git log <base>..HEAD`), the active feature's docs and handoff under `.giantmem/`, or the repo's CLAUDE.md. Do not implement. The thread still gets a one-line decline-with-reason reply (step 6.7). Only use this when a concrete established reason actually exists — never fabricate a rationale to dodge work; absent a real reason, fall back to `actionable_*`.
 
    Thread author `greptile` that you decline → also run the `greptile` skill's **rule** step; its proposal rides the state file + chat sign-off, never AskUserQuestion. After the final push, run its **sync** step once if the repo has `.greptile/`.
 
@@ -77,7 +81,7 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
       - One short, plain sentence per item you actually addressed in this thread. Reviewer note bundles N findings → N bullets; single finding → one sentence, no bullet.
       - Style: `` `foo` handled in tests now ``, `` `_hello_world` guard added ``. One line per item, ~15 words. No preamble ("I have addressed…"), no restating the finding verbatim, no file/doc-path citations (`CLAUDE.md → …`), no justification the reviewer didn't ask for, no sha dump, no blanket paragraph.
       - **Omit** any item you didn't touch (out of scope, silently skipped) — never mention it.
-      - For an item you deliberately did **not** do (contradicts a design decision / known reason from this session, or you're keeping as-is), add one bullet stating the decision + one reason, nothing more. Examples: `` `app.logger` is the repo standard, leaving as-is for now ``, `` email-in-logs intentional for rollout; TODO already flags it for revisit ``, `schema migration not needed: already handled`.
+      - For an item you deliberately did **not** do (contradicts a design decision / known reason from the branch work, or you're keeping as-is), add one bullet stating the decision + one reason, nothing more. Examples: `` `app.logger` is the repo standard, leaving as-is for now ``, `` email-in-logs intentional for rollout; TODO already flags it for revisit ``, `schema migration not needed: already handled`.
 
       Write the body (newline-separated bullets) to `<scratchpad>/reply-<discussion_id>.md`, then:
       ```
@@ -128,11 +132,9 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
    "Greptile due" fires while the pipeline runs, so review and CI overlap. A red pipeline from babysit's own push is already BLOCKED via step 8, so that is the only path that wastes a Greptile run.
 
    **Stop loop** (deferred tools, load via ToolSearch first):
-   - dynamic `/loop /babysit` → `ScheduleWakeup` with `stop: true` instead of the next wakeup.
-   - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is this run's invocation (`/babysit` or `/babysit <path>`), never another path's job.
+   - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is `/babysit` plus this run's path (`/babysit` or `/babysit <path>`), never another path's job. A fork sees and deletes the session's jobs.
+   - dynamic `/loop /babysit` → the loop runner owns `ScheduleWakeup`, not this fork: the output's tail state tells it to stop (`READY`, `BLOCKED`) or the cadence (working/greptile due/waiting → 300s, sign-off → 1800s).
    - one-shot `/babysit` → nothing to stop; report the state.
-
-   Dynamic loop cadence: working/greptile due/waiting → 300s; sign-off → 1800s.
 
 ## Safety rails
 
@@ -150,9 +152,9 @@ Single line:
 ```
 remi!1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
 ```
-`READY` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message.
+`READY` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message. A skip or clean exit (preconditions, failure modes) prints its one reason line and nothing else.
 Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
-Below it, one numbered entry per deferred thread: URL, why it was deferred, the plan or open question with options. The user signs off in chat by number (`signed off 1`, or plan edits); the next run picks it up as `signed_off`.
+Below it, one entry per deferred thread, numbered by its state-file `n`: URL, why it was deferred, the plan or open question with options. Close with the sign-off line: `/babysit <path> signoff <n>[: plan edits]`. That run picks the thread up as `signed_off`.
 
 ## Failure modes — exit clean, never error
 
