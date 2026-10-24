@@ -99,6 +99,15 @@
         "installedAt": "2026-05-19T12:44:08.434Z",
         "lastUpdated": "2026-10-09T22:12:06.593Z",
         "gitCommitSha": "b073ebc2fc500b52e781f5fd17ebb9ad462363dc"
+      },
+      {
+        "scope": "project",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/slack/1.4.1",
+        "version": "1.4.1",
+        "installedAt": "2026-10-21T20:14:52.853Z",
+        "lastUpdated": "2026-10-21T20:14:52.853Z",
+        "gitCommitSha": "b073ebc2fc500b52e781f5fd17ebb9ad462363dc",
+        "projectPath": "/Users/bryan/dev/claude-code-config/skills/eod-status/scripts"
       }
     ],
     "clangd-lsp@claude-plugins-official": [
