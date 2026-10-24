@@ -1,5 +1,6 @@
 {
   "cleanupPeriodDays": 3650,
+  "autoCompactWindow": 300000,
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
@@ -109,6 +110,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/precompact_capture.py",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "cat ~/.claude/config/compact-instructions.md",
+            "timeout": 5
           },
           {
             "type": "command",
