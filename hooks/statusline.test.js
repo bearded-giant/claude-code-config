@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
   fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
-  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs,
+  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotOrg,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -207,6 +207,17 @@ test('matchOrg: no windows, no match, or ambiguous match returns null', () => {
   assert.equal(matchOrg(off, ORGS), null);
   const twin = { ...ORGS[1], label: 'other' };
   assert.equal(matchOrg({ five_hour: TEAM_LIMITS.five_hour }, [...ORGS, twin]), null);
+});
+
+test('slotOrg: keychain tier maps to the usage org sharing its badge', () => {
+  assert.equal(slotOrg('enterprise', ORGS, DEFAULT_BADGES).id, 'inc-uuid');
+  assert.equal(slotOrg('team', ORGS, DEFAULT_BADGES).id, 'team-uuid');
+});
+
+test('slotOrg: empty or unbadged tier matches nothing', () => {
+  assert.equal(slotOrg('', ORGS, DEFAULT_BADGES), null);
+  assert.equal(slotOrg('pro', ORGS, DEFAULT_BADGES), null);
+  assert.equal(slotOrg('enterprise', [], DEFAULT_BADGES), null);
 });
 
 test('matchOrg: one disagreeing window rules the org out', () => {

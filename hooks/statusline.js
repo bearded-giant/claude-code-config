@@ -327,15 +327,47 @@ function pinAccount(state, global, ppid, now) {
   return true;
 }
 
-function sessionAccount(data, state) {
+const SLOT_TTL_MS = 60000;
+
+function slotTier(dir) {
   try {
+    const hash = require('crypto').createHash('sha256').update(dir.normalize('NFC')).digest('hex').slice(0, 8);
+    const raw = execFileSync('security', ['find-generic-password', '-s', `Claude Code-credentials-${hash}`, '-w'], {
+      encoding: 'utf8', timeout: 1000, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return JSON.parse(raw).claudeAiOauth?.subscriptionType || '';
+  } catch (e) { return ''; }
+}
+
+// slot tier is "team"/"enterprise", usage org labels are "rc-team"/"rc-inc":
+// the badge config is what already ties the two together
+function slotOrg(tier, orgs, badges) {
+  const want = tier && badgeFor({ name: tier, type: '' }, badges);
+  return (want && orgs.find(o => badgeFor({ name: o.label || '', type: '' }, badges) === want)) || null;
+}
+
+function sessionAccount(data, state, badges) {
+  try {
+    let orgs = [];
+    try {
+      orgs = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json'), 'utf8')).orgs || [];
+    } catch (e) {}
     if (data.rate_limits) {
-      let orgs = [];
-      try {
-        orgs = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.cache', 'claude-usage', 'cache.json'), 'utf8')).orgs || [];
-      } catch (e) {}
       const org = matchOrg(data.rate_limits, orgs);
       if (org) return { name: org.label || '', type: '', uuid: org.id || '' };
+    }
+    // a CLAUDE_SECURESTORAGE_CONFIG_DIR slot owns its token, so ~/.claude.json
+    // can name the other account's last /login
+    const slotDir = process.env.CLAUDE_SECURESTORAGE_CONFIG_DIR;
+    if (slotDir && data.session_id) {
+      const pin = state.slotPin;
+      if (!pin || pin.ppid !== process.ppid || Date.now() - pin.at > SLOT_TTL_MS) {
+        state.slotPin = { ppid: process.ppid, at: Date.now(), tier: slotTier(slotDir) };
+        saveState(data.session_id, state);
+      }
+      const tier = state.slotPin.tier;
+      const org = slotOrg(tier, orgs, badges);
+      if (tier) return { name: org ? org.label : tier, type: '', uuid: org ? org.id : '' };
     }
     const global = globalAccount();
     if (!global || !data.session_id) return global;
@@ -995,8 +1027,9 @@ const renderTick = () => {
 
     const transcript = parseTranscript(data.transcript_path, data.session_id);
 
-    const account = sessionAccount(data, transcript);
-    const acct = badgeFor(account, cfg.badges || DEFAULT_BADGES);
+    const badges = cfg.badges || DEFAULT_BADGES;
+    const account = sessionAccount(data, transcript, badges);
+    const acct = badgeFor(account, badges);
     const acctPart = acct ? `${acct} ${DIM}\u2502${RST} ` : '';
     const orgId = (account && account.uuid) || '';
 
@@ -1122,5 +1155,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs,
+  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotOrg,
 };
