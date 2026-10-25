@@ -1,6 +1,5 @@
 {
   "cleanupPeriodDays": 3650,
-  "autoCompactWindow": 300000,
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
