@@ -20,12 +20,14 @@ ASKS = 3
 EXTRACT_HEAD = 20_000
 EXTRACT_MAX = 240_000
 FALLBACK_TAIL = 6_000
+THINKING_CHARS = 1_500
 SUMMARY_TIMEOUT = 300
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 PROMPT = (
     "Write a handoff note for the next Claude Code session, which starts empty after /clear. "
     "Below is an extract of the cleared session: the summary of any compacted earlier part, "
-    "user asks, assistant replies, and one line per tool call (tool output dropped). "
+    "user asks, assistant replies and thinking, and one line per tool call (tool output dropped). "
+    "Thinking may hold hypotheses the session later dropped: mark a claim from thinking alone as inferred. "
     "Markdown, terse, no preamble.\n\n"
 )
 
@@ -131,6 +133,10 @@ def extract(rows: list[dict]) -> str:
                     continue
                 if b.get("type") == "text" and b.get("text", "").strip():
                     parts.append(f"ASSISTANT: {b['text'].strip()}")
+                # transcripts drop many text blocks; the thinking often holds the finding
+                elif b.get("type") == "thinking" and b.get("thinking", "").strip():
+                    thought = b["thinking"].strip()[:THINKING_CHARS]
+                    parts.append(f"ASSISTANT (thinking): {thought}")
                 elif b.get("type") == "tool_use":
                     parts.append(_tool_line(b))
     if not any(p.startswith(("USER:", "ASSISTANT:", "COMPACTED")) for p in parts):

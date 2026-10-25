@@ -43,6 +43,8 @@ def write_transcript(path):
             "type": "assistant",
             "message": {
                 "content": [
+                    {"type": "thinking", "thinking": ""},
+                    {"type": "thinking", "thinking": "auth bug confirmed"},
                     {"type": "text", "text": "editing auth"},
                     {
                         "type": "tool_use",
@@ -92,6 +94,8 @@ def check_extract(tp):
     assert "old ask before compact" not in text and "pre-compact reply" not in text
     assert "USER: fix the login redirect" in text and "USER: now add a test" in text
     assert "ASSISTANT: editing auth" in text and "ASSISTANT: DONE" in text
+    assert "ASSISTANT (thinking): auth bug confirmed" in text
+    assert "ASSISTANT (thinking): \n" not in text
     assert "TOOL Bash: git commit -m 'fix: redirect'" in text
     assert "TOOL OUTPUT" not in text and "subagent chatter" not in text
     assert "meta noise" not in text and "/model" not in text
