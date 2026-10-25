@@ -341,9 +341,13 @@ function slotTier(dir) {
 
 // slot tier is "team"/"enterprise", usage org labels are "rc-team"/"rc-inc":
 // the badge config is what already ties the two together
-function slotOrg(tier, orgs, badges) {
-  const want = tier && badgeFor({ name: tier, type: '' }, badges);
-  return (want && orgs.find(o => badgeFor({ name: o.label || '', type: '' }, badges) === want)) || null;
+function slotAccount(tier, orgs, badges) {
+  if (!tier) return null;
+  const want = badgeFor({ name: tier, type: '' }, badges);
+  const org = want && orgs.find(o => badgeFor({ name: o.label || '', type: '' }, badges) === want);
+  if (org) return { name: org.label, type: '', uuid: org.id };
+  // account is known but uncached: an id no org carries keeps other accounts' usage off this line
+  return { name: tier, type: '', uuid: `slot:${tier}` };
 }
 
 function sessionAccount(data, state, badges) {
@@ -365,9 +369,8 @@ function sessionAccount(data, state, badges) {
         state.slotPin = { ppid: process.ppid, at: Date.now(), tier: slotTier(slotDir) };
         saveState(data.session_id, state);
       }
-      const tier = state.slotPin.tier;
-      const org = slotOrg(tier, orgs, badges);
-      if (tier) return { name: org ? org.label : tier, type: '', uuid: org ? org.id : '' };
+      const account = slotAccount(state.slotPin.tier, orgs, badges);
+      if (account) return account;
     }
     const global = globalAccount();
     if (!global || !data.session_id) return global;
@@ -1155,5 +1158,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotOrg,
+  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount,
 };

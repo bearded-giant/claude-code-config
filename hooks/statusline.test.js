@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
   fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
-  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotOrg,
+  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -209,15 +209,21 @@ test('matchOrg: no windows, no match, or ambiguous match returns null', () => {
   assert.equal(matchOrg({ five_hour: TEAM_LIMITS.five_hour }, [...ORGS, twin]), null);
 });
 
-test('slotOrg: keychain tier maps to the usage org sharing its badge', () => {
-  assert.equal(slotOrg('enterprise', ORGS, DEFAULT_BADGES).id, 'inc-uuid');
-  assert.equal(slotOrg('team', ORGS, DEFAULT_BADGES).id, 'team-uuid');
+test('slotAccount: keychain tier maps to the usage org sharing its badge', () => {
+  assert.deepEqual(slotAccount('enterprise', ORGS, DEFAULT_BADGES), { name: 'rc-inc', type: '', uuid: 'inc-uuid' });
+  assert.deepEqual(slotAccount('team', ORGS, DEFAULT_BADGES), { name: 'rc-team', type: '', uuid: 'team-uuid' });
 });
 
-test('slotOrg: empty or unbadged tier matches nothing', () => {
-  assert.equal(slotOrg('', ORGS, DEFAULT_BADGES), null);
-  assert.equal(slotOrg('pro', ORGS, DEFAULT_BADGES), null);
-  assert.equal(slotOrg('enterprise', [], DEFAULT_BADGES), null);
+test('slotAccount: no tier means no slot account', () => {
+  assert.equal(slotAccount('', ORGS, DEFAULT_BADGES), null);
+});
+
+test('slotAccount: known tier with no cached org still badges and shows no other org', () => {
+  const inc = slotAccount('enterprise', [], DEFAULT_BADGES);
+  assert.equal(badgeFor(inc, DEFAULT_BADGES), badgeFor({ name: 'rc-inc', type: '' }, DEFAULT_BADGES));
+  assert.deepEqual(pickOrgs(ORGS, inc.uuid, null), []);
+  const pro = slotAccount('pro', ORGS, DEFAULT_BADGES);
+  assert.deepEqual(pickOrgs(ORGS, pro.uuid, null), []);
 });
 
 test('matchOrg: one disagreeing window rules the org out', () => {
