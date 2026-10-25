@@ -125,7 +125,7 @@ Prints `config/standing-constraints.md` to re-assert scope / artifact-vs-executi
 
 It does not fire every prompt. UserPromptSubmit context accumulates in the transcript, so injecting 1.6KB per turn cost roughly 40k tokens by turn 100, re-stating rules CLAUDE.md already holds in the system prompt for the whole session. What actually erodes those rules is compaction, so it now fires on the first prompt, on the first prompt after each compact (reading the marker the PreCompact hook writes), and every 25 prompts as a drift backstop. Per-session counters live in `$TMPDIR/claude-standing-constraints/`.
 
-Edit the md file to change the injected rules, keeping it in sync with the matching CLAUDE.md sections. Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing.
+Edit the md file to change the injected rules, keeping it in sync with the matching CLAUDE.md sections. Keep it under about 7,000 characters: Claude Code saves any hook stdout over 10,000 characters to a file and shows the model only a 2,000-character preview, and dispatch prints these rules in the same stdout as the giantmem recall hits. Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing. Tests: `python3 hooks/test_standing_constraints.py`.
 
 ## giantmem_recall.py
 
