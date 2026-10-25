@@ -186,10 +186,10 @@ def summarize_session(session_file: Path) -> None:
         "--disable-slash-commands",
         "--tools",
         "",
+        # no setting sources: the child loads no CLAUDE.md and runs no hooks
+        "--setting-sources",
+        "",
     ]
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        # --bare skips hooks outright but reads no oauth/keychain credential
-        args.insert(1, "--bare")
     body = session_file.read_text()
     proc = subprocess.run(
         args,
