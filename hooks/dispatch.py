@@ -7,6 +7,8 @@ Output modes:
   --event NAME hooks that emit hookSpecificOutput JSON; every additionalContext
                is merged into one object, since two JSON objects on one stdout
                is not parseable
+  notice       a hook's {"systemMessage", additionalContext} JSON joins the merge;
+               any notice turns the output into one JSON object for the event
 
 A control object (decision / permissionDecision / continue) wins outright and is
 printed alone: a block reason is the whole payload or it is nothing. Several
@@ -61,7 +63,8 @@ def run(name, raw):
 
 
 def classify(chunk):
-    """text | context (mergeable additionalContext) | control (wins alone)."""
+    """text | context (mergeable additionalContext) | notice (user message plus
+    context) | control (wins alone)."""
     try:
         obj = json.loads(chunk)
     except (json.JSONDecodeError, ValueError):
@@ -69,12 +72,34 @@ def classify(chunk):
     if not isinstance(obj, dict):
         return "text", chunk
     block = obj.get("hookSpecificOutput")
+    if isinstance(obj.get("systemMessage"), str) and set(obj) <= {
+        "systemMessage",
+        "hookSpecificOutput",
+    }:
+        block = block or {}
+        if isinstance(block, dict) and set(block) <= {
+            "hookEventName",
+            "additionalContext",
+        }:
+            context = block.get("additionalContext")
+            return "notice", (
+                obj["systemMessage"],
+                context.strip() if isinstance(context, str) else "",
+            )
     if isinstance(block, dict) and set(obj) == {"hookSpecificOutput"}:
         context = block.get("additionalContext")
         steering = set(block) - {"hookEventName", "additionalContext"}
         if isinstance(context, str) and context.strip() and not steering:
             return "context", context.strip()
     return "control", obj
+
+
+def _event_name(raw):
+    try:
+        name = json.loads(raw).get("hook_event_name")
+    except (ValueError, AttributeError):
+        return None
+    return name if isinstance(name, str) else None
 
 
 def main():
@@ -88,7 +113,7 @@ def main():
     headless = event == "Stop" and os.environ.get(
         "CLAUDE_CODE_ENTRYPOINT", "cli"
     ).startswith("sdk")
-    texts, control = [], None
+    texts, notices, control = [], [], None
     for name in argv:
         chunk = run(name, raw)
         if not chunk:
@@ -114,14 +139,31 @@ def main():
                     "reason": f"{control.get('reason', '')}\n\n{value.get('reason', '')}",
                 }
             continue
+        if kind == "notice":
+            message, value = value
+            notices.append(message)
+            if not value:
+                continue
         texts.append(value)
 
     if control is not None:
         print(json.dumps(control))
         return
-    if not texts:
+    if not texts and not notices:
         return
     merged = "\n\n".join(texts)
+    name = event or _event_name(raw)
+    if notices and name:
+        out = {"systemMessage": "\n".join(notices)}
+        if merged:
+            out["hookSpecificOutput"] = {
+                "hookEventName": name,
+                "additionalContext": merged,
+            }
+        print(json.dumps(out))
+        return
+    if not merged:
+        return
     if event:
         print(
             json.dumps(
