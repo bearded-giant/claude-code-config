@@ -12,11 +12,11 @@ So the payoff depends on how many calls run before the next compaction. With the
 
 ## Compacting on purpose
 
-The better lever is compacting at a task boundary yourself with `/compact next: <task>`. Context shrinks right away like it does with `/clear`, but the next task starts from a summary instead of from nothing, and the compaction lands where the work actually changes instead of in the middle of a task.
+The better lever is compacting at a task boundary yourself with `/compact next: <task>`. Context shrinks right away like it does with `/clear`, but the summary sits in context for the next task instead of in a file it has to read, and the compaction lands where the work actually changes instead of in the middle of a task.
 
 ## What the summary keeps
 
-The PreCompact hook in `settings.json` prints `config/compact-instructions.md`. Claude Code takes the stdout of PreCompact hooks as the compaction's custom instructions and merges it with any `/compact <args>`. The instructions ask the summary to keep every file touched, findings marked verified or inferred, commits and MRs and doit items, decisions and the user's corrections, the open state with the next step, and identifiers word for word. It runs on every compaction, manual or auto. It doesn't run on `/clear`.
+The PreCompact hook in `settings.json` prints `config/compact-instructions.md`. Claude Code takes the stdout of PreCompact hooks as the compaction's custom instructions and merges it with any `/compact <args>`. The instructions ask the summary to keep every file touched, findings marked verified or inferred, commits and MRs and doit items, decisions and the user's corrections, the open state with the next step, and identifiers word for word. It runs on every compaction, manual or auto. `/clear` doesn't compact, so `clear_capsule.py` feeds the same instructions to a background writer that saves a handoff file instead.
 
 That only works while every other PreCompact hook keeps its stdout empty. Anything a PreCompact hook prints ends up in the compaction prompt.
 
@@ -37,6 +37,6 @@ Valid values are `100000` to `1000000`, or `"auto"`.
 | Situation | Do |
 |---|---|
 | Next task builds on this one | `/compact next: <task>` at the boundary, so context shrinks now and the summary points at what comes next |
-| Next task is unrelated | `/clear`. The `clear_capsule.py` hook carries over a small capsule of the cleared session (its last few asks, the files it edited, an excerpt of the last reply) and the `claude --resume <id>` line |
+| Next task is unrelated | `/clear`. The `clear_capsule.py` hook writes a handoff of the cleared session in the background and shows its path; the new session gets the path, the last few asks, and the `claude --resume <id>` line |
 | Picking the same work back up later | `claude --continue` (latest session in the directory) or `claude --resume <id>` |
 | Handing off to someone else, or to a session started much later | `/wrap` writes the full handoff |

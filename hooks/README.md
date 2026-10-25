@@ -47,7 +47,11 @@ On `clear`, warns `FULL RESTART REQUIRED` when `~/.claude/plugins/installed_plug
 
 **Hook:** `SessionStart` (via dispatch)
 
-`/clear` keeps the `claude` process and starts a new session id, so every SessionStart records `{session_id, transcript_path, lstart}` in `/tmp/claude-clear-capsule-<claude pid>.json`. On `source: clear` it reads the entry left by the session that was just cleared and injects a capsule of about 300 tokens: the `claude --resume <id>` line, the last three user asks, the files edited, and the last 700 characters of the final reply. Keying on the pid avoids depending on SessionEnd finishing first. The process start time in the marker rejects one left by a dead process that had the same pid. Skips `claude -p` children. Tests: `python3 hooks/test_clear_capsule.py`.
+`/clear` keeps the `claude` process and starts a new session id, so every SessionStart records `{session_id, transcript_path, lstart}` in `/tmp/claude-clear-capsule-<claude pid>.json`. On `source: clear` it reads the entry left by the session that was just cleared and starts a detached `clear_capsule.py --handoff <id> <transcript> <out>`, so the hook returns at once. The handoff lands in `<repo>/.giantmem/handoff-clear/<YYYYMMDD_HHMMSS>_<id8>.md` when a `.giantmem/` sits at or above the cwd (below `$HOME`), else in `~/giantmem_archive/handoff-clear/`. It never touches the `.giantmem/handoff.md` that `/wrap` writes. The hook prints a `systemMessage` with the path, which the terminal shows as `SessionStart:clear says: handoff for cleared session <id8>: <path>`. The new session also gets a short reminder with the path, the `claude --resume <id>` line, and the last three user asks.
+
+The writer builds an extract of the transcript. It starts with the last compaction summary, then lists each later user ask, assistant reply, thinking block (first 1,500 chars; transcripts drop many text blocks, and the thinking often holds the finding), and tool call (one line, tool output dropped), then every edited file, capped at 240k chars with the head and tail kept. The prompt tells the writer to mark claims found only in thinking as inferred. It sends the extract and `config/compact-instructions.md` to `claude -p --model sonnet` with `--setting-sources ""` and a one-line system prompt, so the child loads no CLAUDE.md and runs no hooks. The note gets handoff frontmatter (`status: ready`, `lifecycle: candidate`) and ends with `## Start here`. A small session is written in seconds and a long one in about a minute. When the summarizer fails, the file holds the tail of the extract, so the path always points at something.
+
+Keying on the pid avoids depending on SessionEnd finishing first. The process start time in the marker rejects one left by a dead process that had the same pid. Skips `claude -p` children. Tests: `python3 hooks/test_clear_capsule.py`.
 
 ## agent_model_default.py
 
@@ -133,13 +137,13 @@ UserPromptSubmit hook. Two arms run concurrently: a keyword OR-query through `gi
 
 ## Hook Wiring Summary
 
-Most events run through `dispatch.py`, which loads several modules in one process so an event pays one interpreter start instead of N. It calls each module's `main()` with the same stdin, merges every `additionalContext` into one object, and lets a control object (a block or permission decision) win alone. It catches everything a module raises, including `SystemExit`, and logs the traceback to `~/.cache/giantmem/hook.log` — without that log a crashing hook is indistinguishable from a quiet one.
+Most events run through `dispatch.py`, which loads several modules in one process so an event pays one interpreter start instead of N. It calls each module's `main()` with the same stdin, merges every `additionalContext` into one object, joins any `systemMessage` notices into that object, and lets a control object (a block or permission decision) win alone. It catches everything a module raises, including `SystemExit`, and logs the traceback to `~/.cache/giantmem/hook.log` — without that log a crashing hook is indistinguishable from a quiet one.
 
 The caveman plugin registers its own SessionStart and UserPromptSubmit hooks through its `plugin.json`, so `settings.json` is not the whole picture.
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest`, `giantmem_vault` | Yes (one-time, ~4.9KB; `clear_capsule` adds ~1.2KB after `/clear` only) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest`, `giantmem_vault` | Yes (one-time, ~4.9KB; `clear_capsule` adds up to ~1KB after `/clear` only, plus a `systemMessage` naming the handoff file) |
 | UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on) |
 | PreCompact | timestamp file, then `precompact_capture.py`, then `cat ~/.claude/config/compact-instructions.md` | Yes: PreCompact stdout becomes the compaction's custom instructions (merged with `/compact <args>`), so the summary keeps files, findings, commits, decisions, and open state for the next task. Every other PreCompact hook must keep stdout empty. The window stays at each model's default (`docs/autocompact.md`) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |

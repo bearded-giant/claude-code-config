@@ -88,7 +88,7 @@ When neither `.giantmem/` nor `scratch/` exists the hook creates a minimal `.gia
 
 ### Summarizer
 
-The child runs `claude -p --model haiku --output-format text --no-session-persistence --strict-mcp-config --disable-slash-commands --tools ""` over the first 12000 chars of the session file (`--bare` added when `ANTHROPIC_API_KEY` is set), with a 180 second timeout and `GIANTMEM_SUMMARY_CHILD=1` so the nested session's own SessionEnd hook exits immediately. The prompt asks for:
+The child runs `claude -p --model haiku --output-format text --no-session-persistence --strict-mcp-config --disable-slash-commands --tools "" --setting-sources ""` over the first 12000 chars of the session file, with a 180 second timeout and `GIANTMEM_SUMMARY_CHILD=1` so the nested session's own SessionEnd hook exits immediately. The prompt asks for:
 
 ```
 TOPIC: <one lowercase tag, 1-2 words, hyphenated>
