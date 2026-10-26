@@ -147,6 +147,21 @@ path = write(
 )
 assert mod.scan(path)[0] == [("remi!45", MR)]
 
+# reading a file that quotes glab output mid-line creates nothing
+path = write(
+    "read",
+    [
+        prompt("how is it tested?"),
+        use("u1", "Bash", {"command": "sed -n 150,215p tooluse_test.go"}),
+        result(
+            "u1",
+            f'\t\tresult("c1", false, "Creating merge request for b into main\\n\\n{MR}"),\n',
+        ),
+        say("ok"),
+    ],
+)
+assert mod.scan(path)[0] == [], mod.scan(path)
+
 # GitHub PR label
 path = write(
     "gh",

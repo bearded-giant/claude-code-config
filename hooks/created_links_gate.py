@@ -12,7 +12,8 @@ STATE_DIR = Path("/tmp/claude-created-links")
 TAIL_LINES = 12
 
 MR_CREATE_CMD = re.compile(r"\bglab\s+mr\s+create\b|\bgh\s+pr\s+create\b")
-MR_CREATE_OUT = re.compile(r"Creating (?:merge|pull) request for")
+# glab starts the line with it; mid-line it is a file or log quoting glab
+MR_CREATE_OUT = re.compile(r"^Creating (?:merge|pull) request for", re.M)
 MR_URL = re.compile(
     r"https://[^\s\"'<>)\]]+?/-/merge_requests/\d+"
     r"|https://github\.com/[^/\s\"'<>]+/[^/\s\"'<>]+/pull/\d+"
