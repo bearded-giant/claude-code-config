@@ -63,7 +63,7 @@ Fires per Greptile thread you judge wrong for this repo.
 3. **Draft, smallest change first:** narrow an existing rule's `scope`/text > path-scoped `config.json` rule > one clause on rules.md's "Things that look wrong but are not" line (repo-wide). New rule text: "`<pattern>` in <scope> is deliberate: <reason>. Not a finding." No `severity` on not-a-finding rules. Rule goes in the nearest `.greptile/` above the flagged file.
 4. **Ask.**
    - Interactive: one AskUserQuestion per run, one question per thread (max 4). Question: `Greptile: "<title>" at <file:line> is wrong here because <reason>. Add rule?` Options: `Add rule (Recommended)` with the JSON diff as preview, `Add to rules.md`, `One-off, no rule`.
-   - Inside `/babysit` or any `/loop`: never AskUserQuestion. Write `greptile_rule: {target, diff}` into that discussion's babysit state entry, list it under the deferred threads in the output. User signs off with `/babysit <path> signoff <n>`.
+   - Inside `/babysit` or any `/loop`: never AskUserQuestion. Write `greptile_rule: {target, diff}` into that discussion's babysit state entry, list it in chat under the deferred threads. User signs off in chat.
 5. **Apply** on yes: edit, json-validate (init step 4), commit `review: greptile rule <id>` on the MR branch.
 6. **Train Greptile** (any branch of step 2, once the thread is declined): decline-with-reason reply per babysit 6.5 style, plus a thumbs-down award on the Greptile note:
    ```bash
