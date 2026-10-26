@@ -1,5 +1,5 @@
 ---
-description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head.
+description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head; in a repo whose CLAUDE.md carries a standing merge grant it then merges, tags, watches the tag pipeline and smokes per that grant.
 argument-hint: "[worktree path] [signoff <n>[: plan edits]]..."
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Skill, ToolSearch, ScheduleWakeup, CronList, CronDelete
 context: fork
@@ -30,7 +30,7 @@ Arguments: `$ARGUMENTS`. First token, when it is a path, is the worktree: start 
    BRANCH="$(git branch --show-current)"
    glab mr list --source-branch="$BRANCH" -F json   # opened is the default state
    ```
-   - Zero results → `glab mr list --source-branch="$BRANCH" --merged -F json`. Merged MR found → run the `doit-prune` skill with `--mr <iid> --auto`, stop the loop (step 9 **Stop loop**), exit: `<repo>!<iid> merged, doit <n> closed` plus the MR `web_url` on its own line. None → exit clean: `no open MR for branch <BRANCH>`
+   - Zero results → `glab mr list --source-branch="$BRANCH" --merged -F json`. Merged MR found → run the `doit-prune` skill with `--mr <iid> --auto`; with a standing grant (step 10) and no tag on its merge commit (`git tag --points-at <merge_commit_sha>` empty after `git fetch origin`), run step 10 from its tag step, since the user merged by hand; then stop the loop (step 9 **Stop loop**), exit: `<repo>!<iid> merged, doit <n> closed[, released <tag>]` plus the MR `web_url` on its own line. None → exit clean: `no open MR for branch <BRANCH>`
    - Multiple results → exit clean: `ambiguous: <n> MRs from this branch — manual triage needed`
    - One result → proceed. Capture `iid`, `project_id`, `web_url`.
 
@@ -125,7 +125,7 @@ Arguments: `$ARGUMENTS`. First token, when it is a path, is the worktree: start 
    | sign-off | deferred state-file threads remain | continue, slow cadence |
    | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha`, and a summary note exists or the MR is 15+ min old | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
    | waiting | pipeline neither green nor red, `requested_sha == head` and not yet reviewed, or greptile-aware with no summary note on an MR under 15 min old (Greptile reviews on open) | continue |
-   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | run the `doit-prune` skill with `--mr <iid> --auto` (no owed merge item: glmon and `giantmem mr list` show READY MRs), raise attention `<repo>!<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]` with the MR `web_url` on its own line as the last line, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
+   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | run the `doit-prune` skill with `--mr <iid> --auto` (no owed merge item: glmon and `giantmem mr list` show READY MRs), raise attention `<repo>!<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]` with the MR `web_url` on its own line as the last line, then step 10; without a grant, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
 
    Greptile's new findings arrive as fresh unresolved discussions; the next run handles them through steps 2-8 like any reviewer's. Approved = a note with `<!-- greptile_auto_approval_sha:<head> -->`. A sub-5 score with no open Greptile threads is still READY; report the score.
 
@@ -135,6 +135,20 @@ Arguments: `$ARGUMENTS`. First token, when it is a path, is the worktree: start 
    - interval `/loop <n> /babysit` → `CronList`, then `CronDelete` the job whose prompt is `/babysit` plus this run's path (`/babysit` or `/babysit <path>`), never another path's job. A fork sees and deletes the session's jobs.
    - dynamic `/loop /babysit` → the loop runner owns `ScheduleWakeup`, not this fork: the output's tail state tells it to stop (`READY`, `BLOCKED`) or the cadence (working/greptile due/waiting → 300s, sign-off → 1800s).
    - one-shot `/babysit` → nothing to stop; report the state.
+
+10. **Release under a standing grant** — runs only after READY (or from the merged-MR path in step 1). Grant = a `## Merge and release: standing user grant` section in a `CLAUDE.md` at the worktree path or any parent directory up to `$HOME` (worktree-base CLAUDE.md). No grant → step 9 already stopped the loop; nothing here. The fork runs this because its READY output never reaches the host session's turn (`context: fork`), so a grant that waits for the host would wait forever.
+
+   Merge preconditions, live from `glab api "projects/<project_id>/merge_requests/<iid>"` this run: `detailed_merge_status == "mergeable"`, `blocking_discussions_resolved == true`, head pipeline `success`, and approved (`approved == true`, or a note `<!-- greptile_auto_approval_sha:<head> -->`). Any unmet → tail state `READY, merge pending: <what>` and **continue** the loop (do not stop); the next tick merges.
+
+   All met → follow the grant's own numbered steps from its merge step on, verbatim (its merge command, its tag form and bump rule, its smoke command, its report shape), with these fixed rules:
+   - `git fetch origin` first; tag the MR's `merge_commit_sha`, never the worktree HEAD. Next version above `git tag --sort=-v:refname | head -1`: minor when an MR commit subject starts with `feat`, else patch. Push only the tag.
+   - Tag pipeline: `glab api "projects/<project_id>/pipelines?ref=<tag>&per_page=1"`, poll every 30 s, give up after 20 min as BLOCKED `tag pipeline still running`.
+   - Smoke only when the pipeline is `success`; run the grant's smoke command from the worktree. Red pipeline or non-zero smoke → report, never roll back or redeploy (grant's last step).
+   - Worktree on the merged branch and its directory is a base checkout (`main`/`master`/`develop`/`stage`) → `git switch <default> && git pull --ff-only && git branch -D <branch>`; a branch in its own worktree stays (the user sweeps it).
+   - Release note: vault, via `python3 ~/.claude/skills/obsidian-note/scripts/note.py new --area ai-tooling --domain <domain> --project <repo> --tags <repo>,release,smoke --body-file <scratchpad body>`; domain = the one whose notes already hold this repo's `*-release-smoke` notes (`note.py list --tag release`), else the repo name. Body = the stamp table (tag, merge sha, MR, prod version, tag pipeline URL and jobs, smoke datetime and command, session id) and the smoke lines verbatim, as the existing release-smoke notes do.
+   - Append `released <tag> <merge sha>, pipeline <status>, smoke exit <n>` to the doit item `doit-prune` closed, when it named one.
+
+   Tail state after the chain: `RELEASED <tag>` (pipeline green, smoke 0) or `BLOCKED: <red job | smoke exit n | tag pipeline still running>`; either stops the loop. Line below the state line: `merge <sha> · tag <tag> · pipeline <url> · smoke <exit> · note <vault path>`.
 
 ## Safety rails
 
@@ -153,7 +167,7 @@ Single line:
 remi!1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
 ```
 `READY` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message. A skip or clean exit (preconditions, failure modes) prints its one reason line and nothing else.
-Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
+Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `READY, merge pending: <what>`, `BLOCKED: <reason>`) or, after step 10, `RELEASED <tag>` with its merge/tag/pipeline/smoke/note line beneath.
 Below it, one entry per deferred thread, numbered by its state-file `n`: URL, why it was deferred, the plan or open question with options. Close with the sign-off line: `/babysit <path> signoff <n>[: plan edits]`. That run picks the thread up as `signed_off`.
 
 ## Failure modes — exit clean, never error

@@ -4,7 +4,7 @@ Worktree-scoped command for GitLab MR lifecycle. One MR per loop: the branch che
 
 ## `/babysit`
 
-Address open review threads on the worktree's MR. Runs as a forked subagent, so a loop fire costs a fresh context, not the host session's. Loop: `/loop 5m /babysit [<worktree path>]`; it stops itself at READY (pipeline green, and on Greptile MRs, Greptile has reviewed the head, posting `@greptile review` itself, max 3 rounds) or BLOCKED (red pipeline, conflict, round cap, Greptile silent 15 min).
+Address open review threads on the worktree's MR. Runs as a forked subagent, so a loop fire costs a fresh context, not the host session's. Loop: `/loop 5m /babysit [<worktree path>]`; it stops itself at READY (pipeline green, and on Greptile MRs, Greptile has reviewed the head, posting `@greptile review` itself, max 3 rounds) or BLOCKED (red pipeline, conflict, round cap, Greptile silent 15 min). In a repo whose worktree-base `CLAUDE.md` carries a `## Merge and release: standing user grant` section, READY continues into that grant's merge, tag, tag-pipeline watch and smoke steps inside the fork (the forked run's output never reaches the host turn, so the host cannot do it), ending `RELEASED <tag>` or `BLOCKED`.
 
 Resolves MR via `glab --source-branch=$BRANCH --state=opened`. Fetches unresolved discussions (`resolved=false`, author != self).
 
