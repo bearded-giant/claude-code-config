@@ -1,6 +1,8 @@
 import importlib.util
 import io
 import json
+import os
+import subprocess
 import sys
 import tempfile
 from contextlib import redirect_stdout
@@ -112,15 +114,14 @@ def check_extract(tp):
 def check_paths(d):
     now = datetime(2026, 10, 24, 9, 30, 5, tzinfo=timezone.utc)
     repo = Path(d) / "repo"
-    (repo / ".giantmem").mkdir(parents=True)
-    (repo / "sub").mkdir()
+    (repo / "sub").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    # the repo, not the subdir the session started in, names the project
     got = mod.handoff_path(str(repo / "sub"), "abcdef123456", now)
-    assert (
-        got == (repo / ".giantmem/handoff-clear/20261024_093005_abcdef12.md").resolve()
-    )
-    vars(mod).update(ARCHIVE=Path(d) / "archive")
-    assert mod.handoff_path(d, "abcdef123456", now) == (
-        Path(d) / "archive/20261024_093005_abcdef12.md"
+    assert got == Path(d) / "vault/handoffs/repo/clear/20261024_093005_abcdef12.md"
+    (Path(d) / "loose").mkdir()
+    assert mod.handoff_path(str(Path(d) / "loose"), "abcdef123456", now) == (
+        Path(d) / "vault/handoffs/loose/clear/20261024_093005_abcdef12.md"
     )
 
 
@@ -131,7 +132,7 @@ def check_writer(d, tp):
         seen["prompt"] = prompt
         return "## Start here\nship it"
 
-    out = Path(d) / "repo/.giantmem/handoff-clear/h.md"
+    out = Path(d) / "vault/handoffs/repo/clear/h.md"
     vars(mod).update(summarize=fake)
     mod.write_handoff("abcdef123456", str(tp), out)
     note = out.read_text()
@@ -139,14 +140,15 @@ def check_writer(d, tp):
     assert "lifecycle: candidate\nsession: abcdef123456\n" in note
     assert "`claude --resume abcdef123456`" in note and "## Start here\nship it" in note
     assert "Drop tool output that was read once" in seen["prompt"]
+    assert "never copy a secret" in seen["prompt"]
     assert "<session>\nCOMPACTED EARLIER PART" in seen["prompt"]
     assert not list(out.parent.glob("*.tmp"))
 
     vars(mod).update(summarize=lambda _prompt: "")
-    fallback = Path(d) / "archive/f.md"
+    fallback = out.with_name("f.md")
     mod.write_handoff("abcdef123456", str(tp), fallback)
     note = fallback.read_text()
-    assert "repo: none" in note and "Summarizer failed" in note
+    assert "Summarizer failed" in note
     assert "USER: now add a test" in note
 
 
@@ -172,7 +174,7 @@ def check_main(d, tp):
             }
         )
     )
-    path = str((Path(d) / "repo/.giantmem/handoff-clear").resolve())
+    path = str(Path(d) / "vault/handoffs/repo/clear")
     assert out["systemMessage"].startswith(
         f"handoff for cleared session old-sid: {path}/"
     )
@@ -204,6 +206,7 @@ def check_main(d, tp):
 
 def main():
     with tempfile.TemporaryDirectory() as d:
+        os.environ["OBSIDIAN_VAULT"] = str(Path(d) / "vault")
         tp = Path(d) / "old.jsonl"
         write_transcript(tp)
         check_extract(tp)

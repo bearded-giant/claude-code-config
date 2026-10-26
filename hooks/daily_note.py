@@ -193,9 +193,10 @@ def links_for(data):
         return []
     out = []
     for p in paths:
-        if p.endswith("handoff.md") and "/.giantmem/" in p:
+        rel = in_vault(p)
+        if rel and rel.parts[0] == "handoffs":
             out.append(("handoff", f"[handoff]({p})", p))
-        elif in_vault(p):
+        elif rel:
             stem = Path(p).stem
             out.append(("vault", f"[[{stem}]]", f"[[{stem}]]"))
     return out

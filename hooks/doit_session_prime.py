@@ -9,6 +9,11 @@ import time
 
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 SESSION_FILE = os.path.expanduser("~/.local/share/nvim/doit/session.json")
+# outside the repo so a worktree can be removed without stranding its handoff
+HANDOFFS = os.path.join(
+    os.path.expanduser(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")),
+    "handoffs",
+)
 # tmux format separator; window names can hold tabs and spaces
 TMUX_SEP = "\x1f"
 PRIORITY_RANK = {"critical": 0, "urgent": 1, "important": 2}
@@ -311,20 +316,55 @@ def read_ready(path: str):
     return path, meta.get("updated") or "?"
 
 
+def project(root: str) -> str:
+    common = ""
+    with contextlib.suppress(Exception):
+        out = subprocess.run(
+            [
+                "git",
+                "-C",
+                root,
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if out.returncode == 0:
+            common = out.stdout.strip()
+    # every worktree of cc-wt/.bare shares one common dir, so they share one project
+    name = (
+        os.path.basename(os.path.dirname(common)) if common else os.path.basename(root)
+    )
+    return name.removesuffix("--bare").removesuffix("-wt")
+
+
+def handoff_path(root: str, feat=None) -> str:
+    base = os.path.join(HANDOFFS, project(root))
+    if feat:
+        return os.path.join(base, "features", f"{feat}.md")
+    branch = current_branch(root) or os.path.basename(root)
+    return os.path.join(base, f"{branch.replace('/', '-')}.md")
+
+
 def ready_handoffs(root: str, feat):
-    base = os.path.join(root, ".giantmem")
-    feats = os.path.join(base, "features")
-    # repo-level fallback: work unrelated to the in_progress feature still hands off
-    own = [os.path.join(feats, feat, "handoff.md")] if feat else []
-    own.append(os.path.join(base, "handoff.md"))
-    # paused/pending features hand off too; without this their handoff only surfaces via a daily resume item
-    others = []
-    with contextlib.suppress(OSError):
-        others = [
-            os.path.join(feats, d, "handoff.md")
-            for d in sorted(os.listdir(feats))
-            if d != feat
-        ]
+    base = os.path.join(HANDOFFS, project(root))
+    # branch-level fallback: work unrelated to the in_progress feature still hands off
+    own = [handoff_path(root, feat)] if feat else []
+    own.append(handoff_path(root))
+    # other branches and features too, incl. ones whose worktree is gone
+    entries = []
+    for d in (base, os.path.join(base, "features")):
+        with contextlib.suppress(OSError):
+            entries += [
+                (e.stat().st_mtime, e.path)
+                for e in os.scandir(d)
+                if e.name.endswith(".md") and e.path not in own
+            ]
+    others = [p for _, p in sorted(entries, reverse=True)]
     primary = next(filter(None, map(read_ready, own)), None)
     rest = [found for found in map(read_ready, others) if found][:MAX_HANDOFFS]
     return primary, rest
@@ -500,13 +540,17 @@ def main() -> None:
 def cli() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--name-only", action="store_true")
+    parser.add_argument("--handoff-path", action="store_true")
     parser.add_argument("--feature")
     parser.add_argument("--cwd")
     args = parser.parse_args()
-    if not args.name_only:
+    if not (args.name_only or args.handoff_path):
         main()
         return
     root = git_root(args.cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+    if args.handoff_path:
+        print(handoff_path(root, args.feature))
+        return
     print(list_name(root, args.feature or active_feature(root)))
 
 

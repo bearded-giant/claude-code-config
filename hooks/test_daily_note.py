@@ -172,10 +172,11 @@ def main() -> None:
         run(bash)
         assert "vault [[k8s]]" in today_text()
 
-        # handoff writes link the file
-        handoff = repo / ".giantmem" / "handoff.md"
+        # handoff writes link the file, not a [[stem]] that every repo's main.md shares
+        handoff = vault / "handoffs" / "proj" / "main.md"
         run({**write, "tool_input": {"file_path": str(handoff)}})
         assert f"handoff [handoff]({handoff})" in today_text()
+        assert "[[main]]" not in today_text()
 
         # garbage stdin never raises
         sys.stdin = io.StringIO("nope")

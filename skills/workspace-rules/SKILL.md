@@ -55,7 +55,6 @@ Each entry mirrors 1:1 to a doit `decision` item, written with the doc and close
 | `research/*.md` | Findings + sources | Medium, cite sources | Key findings, code examples |
 | `reviews/*.md` | Issues + locations | Terse, file:line refs | Bullets with code refs |
 | `filebox/*` | Raw data | N/A | JSON, logs, samples |
-| `handoff.md` | Session-to-session handoff | Terse, exact commands and paths | One per scope, overwritten by `/wrap`. See `## Handoff`. |
 
 `tasks.md` vs `plans/current.md`: tasks.md is durable, archived with feature, OpenSpec-style checkbox list with auto-status from checkbox %. `plans/current.md` is transient scratchpad — what you're currently handling, mutates throughout the session, deleted on `/complete-feature`.
 
@@ -63,14 +62,18 @@ Write `context/patterns.md` for curated architectural patterns.
 
 ## Handoff
 
-The contract between a session that is ending and the next one. One file per scope, overwritten in place, never dated or numbered:
+The contract between a session that is ending and the next one. It lives in the vault, not `.giantmem/`, so removing a worktree never strands it. One file per scope, overwritten in place, never dated or numbered. `<project>` is the repo name (worktree container minus `-wt`, so every worktree of `cc-wt` shares `cc`):
 
-| Scope | Path |
+| Scope | Path under `~/Recharge-Notes/handoffs/<project>/` |
 |---|---|
-| feature `in_progress` | `features/{name}/handoff.md` |
-| no feature, or work unrelated to the `in_progress` feature | `.giantmem/handoff.md` |
+| feature `in_progress` | `features/{name}.md` |
+| no feature, or work unrelated to the `in_progress` feature | `<branch>.md` (`/` in the branch becomes `-`) |
 
-The SessionStart hook checks the feature path first, then `.giantmem/handoff.md`.
+Never build the path by hand; print it: `python3 ~/.claude/hooks/doit_session_prime.py --handoff-path [--feature <name>] --cwd "$(pwd)"`.
+
+The SessionStart hook checks the feature path first, then the branch path, and lists every other `status: ready` handoff of the project, including branches whose worktree is gone. `/clear` handoffs land in `clear/` under the same project dir.
+
+The vault syncs to GitHub: no secrets, tokens, or credentialed URLs in a handoff.
 
 Written by `/wrap`, or when the user asks for a handoff. It is a doc for the user alone, so absolute paths, branch names, and IDs belong in it; the shared-docs rule does not apply. It holds what a cold session needs that the feature docs don't already say. Link to feature docs instead of copying them.
 
@@ -111,7 +114,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, handoff, grill runs) never leaves `.giantmem/` unless the user names it.
+`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
 
 Preview: Obsidian (`obsidian-preview`) only when the user asks (preview / render / open). After writing a `.md`, return its path.
 

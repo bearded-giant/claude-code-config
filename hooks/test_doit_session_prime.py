@@ -176,23 +176,71 @@ def write_handoff(path, status):
 
 
 def handoff_cases(tmp):
-    base = os.path.join(tmp, "proj", ".giantmem")
+    # proj is no git repo: project and branch both fall back to its dir name
+    base = os.path.join(mod.HANDOFFS, "proj")
     assert "handoff" not in run_main("")
     # a paused feature's handoff surfaces, but never as the one to act on first
-    write_handoff(os.path.join(base, "features", "paused", "handoff.md"), "ready")
-    write_handoff(os.path.join(base, "features", "closed", "handoff.md"), "done")
+    paused = os.path.join(base, "features", "paused.md")
+    write_handoff(paused, "ready")
+    write_handoff(os.path.join(base, "features", "closed.md"), "done")
     out = run_main("")
-    paused = os.path.join(base, "features", "paused", "handoff.md")
     assert f"  other ready handoff: {paused} (updated 2026-10-17)" in out, out
     assert "handoff ready:" not in out and "closed" not in out, out
-    # repo-level comes first, other features follow as secondary lines
-    write_handoff(os.path.join(base, "handoff.md"), "ready")
+    # a branch whose worktree is gone still surfaces, newest first
+    gone = os.path.join(base, "old-branch.md")
+    write_handoff(gone, "ready")
+    os.utime(paused, (1, 1))
+    # branch-level comes first, the rest follow as secondary lines
+    own = os.path.join(base, "proj.md")
+    write_handoff(own, "ready")
     lines = run_main("").splitlines()
     i = next(n for n, line in enumerate(lines) if "handoff ready:" in line)
-    assert lines[i].startswith(f"  handoff ready: {os.path.join(base, 'handoff.md')}")
-    assert lines[i + 1].startswith(f"  other ready handoff: {paused}"), lines[i + 1]
-    os.remove(os.path.join(base, "handoff.md"))
-    os.remove(paused)
+    assert lines[i].startswith(f"  handoff ready: {own}"), lines[i]
+    assert lines[i + 1].startswith(f"  other ready handoff: {gone}"), lines[i + 1]
+    assert lines[i + 2].startswith(f"  other ready handoff: {paused}"), lines[i + 2]
+    # another repo's handoffs never show
+    write_handoff(os.path.join(mod.HANDOFFS, "other", "main.md"), "ready")
+    assert "other/main.md" not in run_main("")
+    shutil.rmtree(mod.HANDOFFS)
+    path_cases(tmp)
+
+
+def git(*args):
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+def path_cases(tmp):
+    # the -wt container names the project; a slash in the branch flattens
+    repo = os.path.join(tmp, "cc-wt")
+    git("init", "-q", repo)
+    git("-C", repo, "commit", "-q", "--allow-empty", "-m", "x")
+    git("-C", repo, "checkout", "-q", "-b", "feat/x")
+    assert mod.project(repo) == "cc"
+    assert mod.handoff_path(repo) == os.path.join(mod.HANDOFFS, "cc", "feat-x.md")
+    assert mod.handoff_path(repo, "auth") == os.path.join(
+        mod.HANDOFFS, "cc", "features", "auth.md"
+    )
+    out = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("doit_session_prime.py")),
+            "--handoff-path",
+            "--feature",
+            "auth",
+            "--cwd",
+            repo,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "OBSIDIAN_VAULT": os.path.dirname(mod.HANDOFFS)},
+    ).stdout.strip()
+    assert out == os.path.join(mod.HANDOFFS, "cc", "features", "auth.md"), out
+    shutil.rmtree(repo)
 
 
 def hook_cases() -> None:
@@ -202,14 +250,17 @@ def hook_cases() -> None:
         os.makedirs(os.path.join(tmp, "proj"))
         os.makedirs(os.path.join(tmp, "lists"))
         os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(tmp, "proj")
-        saved = mod.LISTS_DIR
-        mod.LISTS_DIR = os.path.join(tmp, "lists")
+        saved = {"LISTS_DIR": mod.LISTS_DIR, "HANDOFFS": mod.HANDOFFS}
+        vars(mod).update(
+            LISTS_DIR=os.path.join(tmp, "lists"),
+            HANDOFFS=os.path.join(tmp, "vault", "handoffs"),
+        )
         try:
             session_cases(tmp)
             handoff_cases(tmp)
             drift_cases()
         finally:
-            mod.LISTS_DIR = saved
+            vars(mod).update(saved)
 
 
 def link_cases() -> None:

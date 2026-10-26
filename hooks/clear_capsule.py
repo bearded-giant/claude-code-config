@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -12,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 
 MARKER_DIR = Path("/tmp")
-ARCHIVE = Path.home() / "giantmem_archive" / "handoff-clear"
 INSTRUCTIONS = (
     Path(__file__).resolve().parents[1] / "config" / "compact-instructions.md"
 )
@@ -28,6 +28,8 @@ PROMPT = (
     "Below is an extract of the cleared session: the summary of any compacted earlier part, "
     "user asks, assistant replies and thinking, and one line per tool call (tool output dropped). "
     "Thinking may hold hypotheses the session later dropped: mark a claim from thinking alone as inferred. "
+    "The note lands in a notes repo that syncs to GitHub: never copy a secret (token, password, key, "
+    "credentialed URL); write `<REDACTED>` instead. "
     "Markdown, terse, no preamble.\n\n"
 )
 
@@ -153,15 +155,20 @@ def extract(rows: list[dict]) -> str:
     return text
 
 
+def prime():
+    spec = importlib.util.spec_from_file_location(
+        "doit_session_prime", Path(__file__).with_name("doit_session_prime.py")
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def handoff_path(cwd: str, sid: str, now: datetime) -> Path:
-    name = f"{now:%Y%m%d_%H%M%S}_{sid[:8]}.md"
-    here, home = Path(cwd or os.getcwd()).resolve(), Path.home().resolve()
-    for d in (here, *here.parents):
-        if d == home:
-            break
-        if (d / ".giantmem").is_dir():
-            return d / ".giantmem" / "handoff-clear" / name
-    return ARCHIVE / name
+    p = prime()
+    project = p.project(p.git_root(cwd or os.getcwd()))
+    return Path(p.HANDOFFS) / project / "clear" / f"{now:%Y%m%d_%H%M%S}_{sid[:8]}.md"
 
 
 def summarize(prompt: str) -> str:
@@ -211,14 +218,12 @@ def write_handoff(sid: str, transcript_path: str, out: Path) -> None:
     )
     if not note:
         note = f"Summarizer failed. Tail of the transcript extract:\n\n{body[-FALLBACK_TAIL:]}"
-    giantmem = out.parent.parent
-    repo = giantmem.parent.name if giantmem.name == ".giantmem" else "none"
     text = "\n".join(
         [
             "---",
             "type: handoff",
             "status: ready",
-            f"repo: {repo}",
+            f"repo: {out.parent.parent.name}",
             "lifecycle: candidate",
             f"session: {sid}",
             f"created: {datetime.now().astimezone().isoformat(timespec='seconds')}",

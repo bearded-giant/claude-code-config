@@ -1,6 +1,6 @@
 ---
 name: obsidian-note
-description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<area>/<domain>/) with the vault frontmatter contract plus a creation timestamp, list vault notes by area/domain/project/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, handoff, reviews) which stay under .giantmem/.
+description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<area>/<domain>/) with the vault frontmatter contract plus a creation timestamp, list vault notes by area/domain/project/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `handoffs/`).
 ---
 <!-- caveman:compressed -->
 
@@ -100,6 +100,6 @@ One line per note: `created | area | domain | project | path | title`. Read the 
 - Vault pushes to GitHub every 5 min. No secrets, tokens, connection strings with passwords, query dumps, or customer PII. Redact `<REDACTED:token>`. Raw dumps stay in the scratchpad.
 - Notes are for the user: paths, dates, changelogs allowed. Anything for others goes out as a `claude-artifact`, not a note.
 - The `daily_note` hook logs every vault note write (Write/Edit or `note.py new`) and every artifact publish under `## CLAUDE LINKS` in `daily/<YYYY-MM-DD>.md`, creating the day's note from `templates/dailytemplate.md` when missing. Never hand-edit those sections or log twice.
-- Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, handoff, reviews, research tied to an in_progress feature. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
+- Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, reviews, research tied to an in_progress feature. Handoffs go to `handoffs/<project>/` per workspace-rules `## Handoff`, never through `note.py`. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
 - Do not write `areas/index.md`; it is a Dataview page.
 - Wiki links `[[note]]` resolve vault-wide; link existing notes by stem when relevant.
