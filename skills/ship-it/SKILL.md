@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` in Greptile repos, or any GitLab repo in autonomous mode. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` on every GitLab MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -89,8 +89,8 @@ Skip when `glmon-jirad` is not on PATH or `glmon-jirad --status` prints `enabled
 
 ### Step 4b — Review handoff (GitLab only; skip on GitHub)
 
-1. Greptile repo (`.greptile/` or `greptile.json` at root), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
-2. Greptile repo, or any GitLab repo in autonomous mode: no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. Babysit stops its own loop at READY or BLOCKED.
+1. Greptile repo (`.greptile/` or `greptile.json` at root, or a note by `greptile` on this MR: org-level enablement reviews repos with no config), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
+2. Every GitLab MR: no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. A new MR has no Greptile note yet, so a config-less repo cannot be told apart here; babysit detects Greptile from the summary note and stops its own loop at READY or BLOCKED.
 
 ### Step 5 — Final output
 
@@ -130,5 +130,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed; greptile repos or autonomous mode: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed; every GitLab MR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```
