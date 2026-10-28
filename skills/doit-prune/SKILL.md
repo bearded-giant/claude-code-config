@@ -45,7 +45,7 @@ User-authored items (the nvim/tmux `Mine` block: `source` set to anything but `m
 1. `--dry-run` → table only, no writes beyond `start_todo` on the top item when nothing is `in_progress` (`doit_active_gate`). Stop.
 2. `landed`, `resolved`, `gate-done`, `twin-drift` completes, and unmirrored adds → apply now, no ask. All reversible (`revert_todo`, `delete_todo`). Closing the `in_progress` item → `start_todo` the next one (the one waiting on the user, else the top pending), so the list keeps an active item.
 3. `--auto` (babysit and other loops) → stop after step 2. No asks, no deletes, no rewrites. Output one line: `doit <list>: <n> closed, <m> to prune (/doit-prune)`.
-4. Everything else → print the table, then ONE `AskUserQuestion`: apply all / apply except ranks I name / none. Run owe and unowe conversions, won't-fix closes, deletes, adoptions, and rewrites after the answer. With `--all`, one ask covers every list. If the list would end with 0 pending, put `clear_done` + `delete_list` in the same ask and name any tmux window `list_lists` shows linked to it.
+4. Everything else → print the table, then ONE `AskUserQuestion`: apply all / apply except ranks I name / none. Run owe and unowe conversions, won't-fix closes, deletes, adoptions, and rewrites after the answer. With `--all`, one ask covers every list. If the list would end with 0 pending, put `clear_done` + `delete_list` in the same ask and name any tmux window `list_lists` shows linked to it. Under `/wrap`, skip this: wrap deletes the empty session list with no ask.
 
 ## Output
 
