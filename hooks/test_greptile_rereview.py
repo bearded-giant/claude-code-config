@@ -90,7 +90,7 @@ def gh_stub(posted, origin="git@github.com:skio-org/r.git", mirror="", body=SUMM
         if args[0] == "git":
             return {"github": mirror, "origin": origin}.get(args[-1], "")
         if args[:3] == ["gh", "pr", "list"]:
-            return _json.dumps([{"number": 5, "headRefOid": "abc", "body": body}])
+            return _json.dumps([{"number": 5, "headRefOid": "abc1234", "body": body}])
         if args[:2] == ["gh", "api"]:
             return _json.dumps(list(reviews if args[2].endswith("/reviews") else comments))
         if args[:3] == ["gh", "pr", "comment"]:
@@ -101,8 +101,9 @@ def gh_stub(posted, origin="git@github.com:skio-org/r.git", mirror="", body=SUMM
 
 def gh_request(**kw):
     posted = []
+    has_config = kw.pop("has_config", False)
     mod._run = gh_stub(posted, **kw)
-    return mod.request_github_review("/tmp", "feat", "abc", kw.pop("has_config", False), HEAD_T), posted
+    return mod.request_github_review("/tmp", "feat", "abc1234", has_config, HEAD_T), posted
 
 
 msg, posted = gh_request()
@@ -117,8 +118,8 @@ assert gh_request(origin="git@github.com:bearded-giant/r.git") == (None, [])
 assert gh_request(body="plain description") == (None, [])
 assert gh_request(body="plain description", has_config=True)[1]
 # review already on the head, or the body already reviewed the head, or a request newer than the head commit
-assert gh_request(reviews=[{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc"}]) == (None, [])
-assert gh_request(body=SUMMARY.replace("old1234", "abc")) == (None, [])
+assert gh_request(reviews=[{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc1234"}]) == (None, [])
+assert gh_request(body=SUMMARY.replace("old1234", "abc1234")) == (None, [])
 assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:10:00Z"}]) == (None, [])
 assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:00:00Z"}])[1]
 
