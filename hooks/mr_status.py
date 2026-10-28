@@ -113,32 +113,41 @@ def write_json(path, data):
     os.replace(tmp, path)
 
 
-def main():
-    repo, branch, out = sys.argv[1:4]
-    remote = subprocess.run(
-        ["git", "-C", repo, "remote", "get-url", "origin"],
+def remote_url(repo, name):
+    return subprocess.run(
+        ["git", "-C", repo, "remote", "get-url", name],
         check=False,
         capture_output=True,
         text=True,
         timeout=5,
     ).stdout
-    host, project = project_from_remote(remote)
-    if host is None or project is None or not (host == "github.com" or "gitlab" in host):
+
+
+def lookup(host, project, branch):
+    if host == "github.com":
+        pr = github_pr(project, branch)
+        return pr and {"iid": pr["number"], "host": "github", **dict(zip(("tag", "level"), github_verdict(pr)))}
+    enc = urllib.parse.quote(project, safe="")
+    src = urllib.parse.quote(branch, safe="")
+    found = api(host, f"projects/{enc}/merge_requests?source_branch={src}&state=opened&per_page=1")
+    mr = api(host, f"projects/{enc}/merge_requests/{found[0]['iid']}") if found else None
+    return mr and {"iid": mr["iid"], **dict(zip(("tag", "level"), verdict(mr)))}
+
+
+def main():
+    repo, branch, out = sys.argv[1:4]
+    # a `github` mirror remote is the review surface while origin still points at gitlab
+    remotes = [project_from_remote(remote_url(repo, name)) for name in ("github", "origin")]
+    remotes = [(h, p) for h, p in remotes if h and p and (h == "github.com" or "gitlab" in h)]
+    if not remotes:
         write_json(out, {})
         return
+    result = None
     try:
-        if host == "github.com":
-            pr = github_pr(project, branch)
-            result = pr and {"iid": pr["number"], "host": "github", **dict(zip(("tag", "level"), github_verdict(pr)))}
-        else:
-            enc = urllib.parse.quote(project, safe="")
-            src = urllib.parse.quote(branch, safe="")
-            found = api(
-                host,
-                f"projects/{enc}/merge_requests?source_branch={src}&state=opened&per_page=1",
-            )
-            mr = api(host, f"projects/{enc}/merge_requests/{found[0]['iid']}") if found else None
-            result = mr and {"iid": mr["iid"], **dict(zip(("tag", "level"), verdict(mr)))}
+        for host, project in remotes:
+            result = lookup(host, project, branch)
+            if result:
+                break
     except (RuntimeError, subprocess.TimeoutExpired, ValueError, OSError):
         # keep the last good read; the statusline ages it out
         return
