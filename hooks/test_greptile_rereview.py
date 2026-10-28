@@ -78,27 +78,48 @@ mod._run = stub([], posted)
 assert mod.request_review(PUSH) is None and not posted
 
 
-# request_github_review: greptile's github handle is @greptileai; a review already on the head means no post
-def gh_stub(reviews, posted):
+# request_github_review: github origin in a greptile org, summary in the pr body; handle is @greptileai
+import json as _json
+
+SUMMARY = "<!-- greptile_summary -->\nLast reviewed commit: [x](https://github.com/o/r/commit/old1234)"
+HEAD_T = mod._ts("2026-10-18T18:06:00Z")
+
+
+def gh_stub(posted, origin="git@github.com:skio-org/r.git", mirror="", body=SUMMARY, reviews=(), comments=()):
     def run(args, cwd, timeout=15):
         if args[0] == "git":
-            return "git@github.com:o/r.git" if "github" in args else ""
+            return {"github": mirror, "origin": origin}.get(args[-1], "")
         if args[:3] == ["gh", "pr", "list"]:
-            return '[{"number": 5, "headRefOid": "abc"}]'
+            return _json.dumps([{"number": 5, "headRefOid": "abc", "body": body}])
         if args[:2] == ["gh", "api"]:
-            return __import__("json").dumps(reviews)
+            return _json.dumps(list(reviews if args[2].endswith("/reviews") else comments))
         if args[:3] == ["gh", "pr", "comment"]:
             posted.append(args)
         return ""
     return run
 
-posted = []
-mod._run = gh_stub([], posted)
-msg = mod.request_github_review("/tmp", "feat", "abc")
-assert posted and posted[0][-1] == "@greptileai review", posted
-assert "o/r#5" in msg and "@greptileai review" in msg, msg
-posted = []
-mod._run = gh_stub([{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc"}], posted)
-assert mod.request_github_review("/tmp", "feat", "abc") is None
-assert not posted
+
+def gh_request(**kw):
+    posted = []
+    mod._run = gh_stub(posted, **kw)
+    return mod.request_github_review("/tmp", "feat", "abc", kw.pop("has_config", False), HEAD_T), posted
+
+
+msg, posted = gh_request()
+assert posted and posted[0][5] == "skio-org/r" and posted[0][-1] == "@greptileai review", posted
+assert "skio-org/r#5" in msg and "@greptileai review" in msg, msg
+# a `github` mirror remote wins over origin, any org
+msg, posted = gh_request(origin="git@gitlab.example:g/r.git", mirror="git@github.com:bearded-giant/r.git")
+assert posted and posted[0][5] == "bearded-giant/r", posted
+# personal github origin: not reviewed by greptile, nothing posted
+assert gh_request(origin="git@github.com:bearded-giant/r.git") == (None, [])
+# no summary in the body and no .greptile/: greptile is not on this repo
+assert gh_request(body="plain description") == (None, [])
+assert gh_request(body="plain description", has_config=True)[1]
+# review already on the head, or the body already reviewed the head, or a request newer than the head commit
+assert gh_request(reviews=[{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc"}]) == (None, [])
+assert gh_request(body=SUMMARY.replace("old1234", "abc")) == (None, [])
+assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:10:00Z"}]) == (None, [])
+assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:00:00Z"}])[1]
+
 print("ok")

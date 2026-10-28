@@ -10,9 +10,12 @@ from datetime import datetime
 from pathlib import Path
 
 PROTECTED = {"main", "master", "stage", "HEAD"}
+# greptile reviews recharge's gitlab and these github orgs; personal github repos have no bot
+GH_ORGS = {"skio-org", "rechargepayments"}
 PUSH_RE = re.compile(r"\bgit\s+(?:-C\s+(\S+)\s+)?push\b")
 CD_RE = re.compile(r"(?:^|[;&|(]\s*)cd\s+(\S+)")
 SUMMARY_SHA_RE = re.compile(r"/commit/([0-9a-f]{7,40})")
+REQUEST_RE = re.compile(r"^@greptile(ai)? review\b")
 
 
 def push_dir(command, cwd):
@@ -80,7 +83,7 @@ def already_requested(notes, head, head_time):
             shas = SUMMARY_SHA_RE.findall(body)
             if shas and head.startswith(shas[-1]):
                 return True
-        if body.strip().startswith("@greptile review") and _ts(n["created_at"]) >= head_time:
+        if REQUEST_RE.match(body.strip()) and _ts(n["created_at"]) >= head_time:
             return True
     return False
 
@@ -100,7 +103,8 @@ def request_review(data):
     head = _git(top, "rev-parse", "HEAD")
     if not head:
         return None
-    github = request_github_review(top, branch, head)
+    head_time = _ts(_git(top, "log", "-1", "--format=%cI"))
+    github = request_github_review(top, branch, head, has_config, head_time)
     if "gitlab" not in _git(top, "remote", "get-url", "origin"):
         return github
     if head != _git(top, "rev-parse", "@{u}"):
@@ -125,7 +129,7 @@ def request_review(data):
         time.sleep(2)
     else:
         return None
-    if already_requested(notes, head, _ts(_git(top, "log", "-1", "--format=%cI"))):
+    if already_requested(notes, head, head_time):
         return None
     _run(["glab", "mr", "note", str(iid), "-m", "@greptile review"], top)
     msg = (
@@ -135,25 +139,41 @@ def request_review(data):
     return f"{msg} {github}" if github else msg
 
 
-def request_github_review(top, branch, head):
+def github_repo(top):
+    # a `github` mirror remote wins whatever its org; a github origin counts only in the orgs greptile reviews
+    for remote, any_org in (("github", True), ("origin", False)):
+        m = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", _git(top, "remote", "get-url", remote))
+        if m and (any_org or m.group(1).casefold() in GH_ORGS):
+            return f"{m.group(1)}/{m.group(2)}"
+    return None
+
+
+def _gh_json(top, args):
+    try:
+        return json.loads(_run(["gh", *args], top) or "[]")
+    except json.JSONDecodeError:
+        return None
+
+
+def request_github_review(top, branch, head, has_config, head_time):
     # greptile reviews a github pr on open only; its github handle is @greptileai, not the gitlab bot's @greptile
-    url = _git(top, "remote", "get-url", "github")
-    m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", url or "")
-    if not m:
+    repo = github_repo(top)
+    if not repo:
         return None
-    repo = m.group(1)
-    try:
-        prs = json.loads(_run(["gh", "pr", "list", "-R", repo, "--head", branch, "--json", "number,headRefOid"], top) or "[]")
-    except json.JSONDecodeError:
+    prs = _gh_json(top, ["pr", "list", "-R", repo, "--head", branch, "--json", "number,headRefOid,body"])
+    if not prs or len(prs) != 1 or prs[0].get("headRefOid") != head:
         return None
-    if len(prs) != 1 or prs[0].get("headRefOid") != head:
+    number, body = prs[0]["number"], prs[0].get("body") or ""
+    # the summary lives in the pr body on github; a repo with no .greptile/ can still be reviewed
+    if not (has_config or "greptile_summary" in body):
         return None
-    number = prs[0]["number"]
-    try:
-        reviews = json.loads(_run(["gh", "api", f"repos/{repo}/pulls/{number}/reviews"], top) or "[]")
-    except json.JSONDecodeError:
+    reviews = _gh_json(top, ["api", f"repos/{repo}/pulls/{number}/reviews"])
+    comments = _gh_json(top, ["api", f"repos/{repo}/issues/{number}/comments"])
+    if reviews is None or comments is None:
         return None
     if any(r.get("user", {}).get("login", "").startswith("greptile") and r.get("commit_id") == head for r in reviews):
+        return None
+    if already_requested([{"body": body}, *comments], head, head_time):
         return None
     _run(["gh", "pr", "comment", str(number), "-R", repo, "--body", "@greptileai review"], top)
     return f"Also posted `@greptileai review` on GitHub PR {repo}#{number} for head {head[:8]}; do not post another."
