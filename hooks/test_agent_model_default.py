@@ -26,7 +26,7 @@ def main():
     assert run({"subagent_type": "Explore", "prompt": "p"}) == {
         "subagent_type": "Explore",
         "prompt": "p",
-        "model": "sonnet",
+        "model": "haiku",
     }
     # omitted subagent_type spawns general-purpose
     assert (run({"prompt": "p"}) or {}).get("model") == "sonnet"

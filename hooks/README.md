@@ -57,7 +57,7 @@ Keying on the pid avoids depending on SessionEnd finishing first. The process st
 
 **Hook:** `PreToolUse` (matcher: Agent, Task)
 
-Fills in `model: sonnet` for `Explore` and `general-purpose` calls that pass no `model`, through `updatedInput`. Both otherwise inherit the session model. `CLAUDE_CODE_SUBAGENT_MODEL` can't do this: built-in Explore is pinned to `inherit` and ignores it. An explicit `model` on the call always wins, and agent types outside the table keep their frontmatter. Tests: `python3 hooks/test_agent_model_default.py`.
+Fills in `model: haiku` for `Explore` and `model: sonnet` for `general-purpose` calls that pass no `model`, through `updatedInput`. Both otherwise inherit the session model. `CLAUDE_CODE_SUBAGENT_MODEL` can't do this: built-in Explore is pinned to `inherit` and ignores it. An explicit `model` on the call always wins, and agent types outside the table keep their frontmatter. Tests: `python3 hooks/test_agent_model_default.py`.
 
 ## debug_stop_check.py
 
@@ -91,7 +91,7 @@ Skips `claude -p` children and `stop_hook_active` stops (a blocked report goes t
 
 **Hook:** `UserPromptSubmit` and `Stop` (via dispatch)
 
-Backs CLAUDE.md `### Autonomous mode`. A prompt of `/auto <scope>` writes `/tmp/claude-auto-mode/<session>.json` (`started`, `scope`, `shipped`), and `/auto off` deletes it. While the file exists, every prompt gets a one-line reminder of the mode and its exit command, so the mode survives compaction. `python3 ~/.claude/hooks/auto_mode.py --on [scope]` / `--off` does the same from a Bash call, keyed on `CLAUDE_CODE_SESSION_ID`, for a session that enters the mode without typing `/auto`.
+Backs CLAUDE.md `### Autonomous mode` (entry, hard stops) and `commands/auto.md` `## Rules of engagement`. A prompt of `/auto <scope>` writes `/tmp/claude-auto-mode/<session>.json` (`started`, `scope`, `shipped`), and `/auto off` deletes it. While the file exists, every prompt gets a one-line reminder of the mode and its exit command, so the mode survives compaction. `python3 ~/.claude/hooks/auto_mode.py --on [scope]` / `--off` does the same from a Bash call, keyed on `CLAUDE_CODE_SESSION_ID`, for a session that enters the mode without typing `/auto`.
 
 At Stop it blocks once when either holds: a ready `claude:` item sits on the session doit list (pending, and every `(dep on #N)` it carries points at a done item), or a branch pushed since entry has no MR/PR. Pushes come from Bash results in the transcript: each `To <remote>` line followed by ` <flag> ... <src> -> <dst>`, skipping rejected refs and `main`/`master`/`stage`/`develop`/`HEAD`. The remote is normalized to `host/group/repo` (glab `-R` rejects the scp form) and checked live with `glab mr list --source-branch <b> --all` or `gh pr list --head <b> --state all`. A branch with an MR is cached in `shipped`; a failed lookup fails open. A blocked item drops out once it carries a dep on an open `gate` item, which is how the rule says to park it.
 

@@ -5,7 +5,7 @@ import json
 import sys
 
 # Explore ignores CLAUDE_CODE_SUBAGENT_MODEL (built-in model: inherit), so the env var can't do this
-DEFAULTS = {"Explore": "sonnet", "general-purpose": "sonnet"}
+DEFAULTS = {"Explore": "haiku", "general-purpose": "sonnet"}
 
 
 def rewrite(tool_input):

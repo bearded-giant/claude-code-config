@@ -163,7 +163,7 @@ Tests exempt.
 
 ## Agent Tool Use
 - Explore subagents in parallel when work splits into independent searches or a trace would flood main context. Work directly when a handful of tool calls finishes it; symbol usages via LSP findReferences. Never spawn a subagent only to double-check your own work.
-- Explore and general-purpose run on Sonnet unless the call passes `model` (`hooks/agent_model_default.py`); pass `model: "opus"` for design, wide debugging, judge work.
+- Explore runs on Haiku and general-purpose on Sonnet unless the call passes `model` (`hooks/agent_model_default.py`); pass `model: "opus"` for design, wide debugging, judge work.
 - debugger subagent: stack traces, test failures, unexplained behavior needing a wide multi-file trace.
 - Parallel Task agents: refactors over >5 files splitting into independent chunks.
 - MUST NOT spawn agents for: single-file edits with known path; one-shot bash commands; direct Read of a file I named.

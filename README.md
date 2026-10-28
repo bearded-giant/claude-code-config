@@ -94,7 +94,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |
 | PreToolUse | `artifact_gate.py` | Blocks an `Artifact` publish whose page lacks a visible `Rev N · YYYY-MM-DD HH:MM` stamp or carries a changelog-shaped heading (`claude-artifact` skill) |
-| PreToolUse | `agent_model_default.py` | Gives `Explore` and `general-purpose` agents `model: sonnet` when the call passes no model, since both otherwise inherit the session model and built-in Explore ignores `CLAUDE_CODE_SUBAGENT_MODEL` |
+| PreToolUse | `agent_model_default.py` | Gives `Explore` agents `model: haiku` and `general-purpose` agents `model: sonnet` when the call passes no model, since both otherwise inherit the session model and built-in Explore ignores `CLAUDE_CODE_SUBAGENT_MODEL` |
 | PostToolUse | `greptile_rereview.py` | After a session `git push` to a GitLab MR branch in a Greptile repo, posts `@greptile review`, since Greptile reviews only on MR open |
 | PreToolUse | `guard_protected_paths.py` | Blocks writes to protected directories, and writes through `~/giantmem-vault` (names the real `.giantmem` path instead) |
 | PreToolUse | `voice_gate.py` | Blocks MR/PR comments, thread replies, Jira comments, and Slack messages posted as the user that break `config/voice.md` (capitalized starts, first person, dashes, code outside backticks, length) |
