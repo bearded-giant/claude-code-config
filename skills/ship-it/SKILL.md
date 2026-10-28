@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` on every GitLab MR. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density, GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` on every GitLab MR and every GitHub PR in the orgs skio-org / RechargePayments. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density; GitHub skio-org / RechargePayments→Skio four-header format; other GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it
@@ -53,9 +53,12 @@ Two formats exist. Pick ONE deterministically, generate it, write it to disk. Th
 2. Full opt-in — invocation contains `full`, `standard`, or `--full` → **verbose org kai format** (the full kai template, escape hatch for high-risk MRs).
 3. Default by MR-target remote host (the same remote Step 4 opens against — `git remote get-url origin`):
    - `gitlab.rechargeapps.net` / any GitLab → **concise-kai format** (kai section headers, compressed density)
-   - `github.com` → **personal bullet format** (your own repos default to your bullets)
+   - `github.com`, org `skio-org` or `RechargePayments` (first path segment of the remote, case-insensitive) → **Skio format**
+   - any other `github.com` → **personal bullet format** (your own repos default to your bullets)
 
 **Personal bullet format:** generate the description per `bullet-format.md` (in this skill dir) — bullet style, 3–7 bullets, curl/section rules it specifies. Write it to `mr-description.md` at the routing below (active feature dir → `.giantmem/` → repo root) and print the path. Apply the caveman post-processing that file specifies: tighten phrasing, drop filler, KEEP bullet structure (do NOT convert bullets to prose).
+
+**Skio format (work GitHub default):** generate the description per `skio-format.md` (in this skill dir): `## Why`, `## Scope`, `## Blast Radius`, `## Verification`, normal prose and bullets, no caveman pass. Write it to `mr-description.md` at the same routing and print the path.
 
 **Concise-kai format (GitLab default):** generate the description per `concise-kai-format.md` (in this skill dir) — kai's exact section headers (`## Description`, `## Impacted Areas in Application`, `## Related Issues`, `## Post Deploy Monitoring`, `## How to QA`, `## Post Deploy Action`, `## Risk Assessment`; headers sourced from `kai:open-mr` Step 7, do not duplicate here) at the compressed density that file specifies: minimum signal per section, caveman prose, code identifiers preserved exactly. Write it to `mr-description.md` at the same routing and print the path.
 
@@ -87,10 +90,10 @@ Skip when `glmon-jirad` is not on PATH or `glmon-jirad --status` prints `enabled
 2. Run `glmon-jirad --mr <mr-url> --summary-file <path>`. It creates a ticket in `jira.project` when the title carries no real key (a `PE-0000` placeholder is replaced in place), writes the key into the MR title, and syncs status. Excluded namespaces and already-keyed MRs are handled inside it, and it is idempotent, so an existing MR is safe.
 3. A non-zero exit or error never stops the chain. Keep its last log line (`<project>:<iid>: ticket PE-N, <outcome>`, or the skip / error line) for step 5. It may wait up to 90s for a running poller tick to finish.
 
-### Step 4b — Review handoff (GitLab only; skip on GitHub)
+### Step 4b — Review handoff (GitLab, and GitHub orgs skio-org / RechargePayments; skip on personal GitHub)
 
-1. Greptile repo (`.greptile/` or `greptile.json` at root, or a note by `greptile` on this MR: org-level enablement reviews repos with no config), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
-2. Every GitLab MR: no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. A new MR has no Greptile note yet, so a config-less repo cannot be told apart here; babysit detects Greptile from the summary note and stops its own loop at READY or BLOCKED.
+1. Greptile repo (`.greptile/` or `greptile.json` at root, or a note by `greptile` on this MR; GitHub: `<!-- greptile_summary -->` in the PR body. Org-level enablement reviews repos with no config), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
+2. Every GitLab MR and every skio-org / RechargePayments PR: no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. A new MR has no Greptile note yet, so a config-less repo cannot be told apart here; babysit detects Greptile from the summary note and stops its own loop at READY or BLOCKED.
 
 ### Step 5 — Final output
 
@@ -130,5 +133,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` if MR existed; every GitLab MR: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```
