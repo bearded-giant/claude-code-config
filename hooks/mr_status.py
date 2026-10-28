@@ -15,6 +15,8 @@ RUNNING = {
     "waiting_for_resource",
     "scheduled",
 }
+GH_FAILED = {"FAILURE", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "ERROR", "STARTUP_FAILURE"}
+GH_FIELDS = "number,isDraft,mergeable,mergeStateStatus,reviewDecision,headRefOid,statusCheckRollup"
 
 
 def project_from_remote(url):
@@ -52,6 +54,31 @@ def verdict(mr):
     return merge or status, "wait"
 
 
+def github_verdict(pr):
+    checks = pr.get("statusCheckRollup") or []
+    state = pr.get("mergeStateStatus") or ""
+    outcomes = {c.get("conclusion") or c.get("state") for c in checks}
+    if pr.get("mergeable") == "CONFLICTING" or state == "DIRTY":
+        return "conflicts", "bad"
+    if outcomes & GH_FAILED:
+        return "pipe:failed", "bad"
+    if state == "BEHIND":
+        return "rebase", "bad"
+    if any(c.get("status") not in (None, "COMPLETED") or c.get("state") in ("PENDING", "EXPECTED") for c in checks):
+        return "pipe:running", "wait"
+    if not checks:
+        return "no pipe", "wait"
+    if pr.get("isDraft"):
+        return "draft", "wait"
+    if pr.get("reviewDecision") in ("REVIEW_REQUIRED", "CHANGES_REQUESTED"):
+        return "approval", "wait"
+    if state == "BLOCKED":
+        return "threads", "wait"
+    if state in ("CLEAN", "HAS_HOOKS"):
+        return "GREEN", "ok"
+    return state.lower() or "unknown", "wait"
+
+
 def api(host, path):
     r = subprocess.run(
         ["glab", "api", "--hostname", host, path],
@@ -63,6 +90,20 @@ def api(host, path):
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip())
     return json.loads(r.stdout)
+
+
+def github_pr(project, branch):
+    r = subprocess.run(
+        ["gh", "pr", "list", "-R", project, "--head", branch, "--state", "open", "--limit", "1", "--json", GH_FIELDS],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip())
+    found = json.loads(r.stdout)
+    return found[0] if found else None
 
 
 def write_json(path, data):
@@ -82,29 +123,26 @@ def main():
         timeout=5,
     ).stdout
     host, project = project_from_remote(remote)
-    if host is None or project is None or "gitlab" not in host:
+    if host is None or project is None or not (host == "github.com" or "gitlab" in host):
         write_json(out, {})
         return
-    enc = urllib.parse.quote(project, safe="")
-    src = urllib.parse.quote(branch, safe="")
     try:
-        found = api(
-            host,
-            f"projects/{enc}/merge_requests?source_branch={src}&state=opened&per_page=1",
-        )
-        mr = (
-            api(host, f"projects/{enc}/merge_requests/{found[0]['iid']}")
-            if found
-            else None
-        )
+        if host == "github.com":
+            pr = github_pr(project, branch)
+            result = pr and {"iid": pr["number"], "host": "github", **dict(zip(("tag", "level"), github_verdict(pr)))}
+        else:
+            enc = urllib.parse.quote(project, safe="")
+            src = urllib.parse.quote(branch, safe="")
+            found = api(
+                host,
+                f"projects/{enc}/merge_requests?source_branch={src}&state=opened&per_page=1",
+            )
+            mr = api(host, f"projects/{enc}/merge_requests/{found[0]['iid']}") if found else None
+            result = mr and {"iid": mr["iid"], **dict(zip(("tag", "level"), verdict(mr)))}
     except (RuntimeError, subprocess.TimeoutExpired, ValueError, OSError):
         # keep the last good read; the statusline ages it out
         return
-    if mr is None:
-        write_json(out, {})
-        return
-    tag, level = verdict(mr)
-    write_json(out, {"iid": mr["iid"], "tag": tag, "level": level})
+    write_json(out, result or {})
 
 
 if __name__ == "__main__":

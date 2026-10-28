@@ -24,7 +24,7 @@ Statusline config:
 9. gmdocs: off          (giantmem docs/day counter)
 10. models: on          (per-model usage gauge, e.g. fable)
 11. preflight: on       (red ✗gcloud/adc/glab/gh/vault when auth lapses, ~ when unreachable)
-12. mr: on              (current branch MR: pipeline, conflicts, threads, approval)
+12. mr: on              (current branch MR or PR: pipeline, conflicts, threads, approval)
 
 Enter number to toggle, or "q" to quit:
 ```

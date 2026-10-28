@@ -85,4 +85,36 @@ assert mr.verdict(mk(merge="not_approved")) == ("approval", "wait")
 assert mr.verdict(mk(merge="requested_changes")) == ("approval", "wait")
 assert mr.verdict(mk(merge="checking")) == ("checking", "wait")
 
+def gh(state="CLEAN", checks=(), draft=False, review="APPROVED", mergeable="MERGEABLE"):
+    return {
+        "mergeStateStatus": state,
+        "statusCheckRollup": list(checks),
+        "isDraft": draft,
+        "reviewDecision": review,
+        "mergeable": mergeable,
+    }
+
+
+RUN = {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}
+FAIL = {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "FAILURE"}
+BUSY = {"__typename": "CheckRun", "status": "IN_PROGRESS", "conclusion": None}
+CTX_OK = {"__typename": "StatusContext", "state": "SUCCESS"}
+CTX_PENDING = {"__typename": "StatusContext", "state": "PENDING"}
+
+# github_verdict: same tags as gitlab, read from gh pr list fields
+assert mr.github_verdict(gh(checks=[RUN, CTX_OK])) == ("GREEN", "ok")
+assert mr.github_verdict(gh(state="HAS_HOOKS", checks=[RUN])) == ("GREEN", "ok")
+assert mr.github_verdict(gh(mergeable="CONFLICTING", checks=[FAIL])) == ("conflicts", "bad")
+assert mr.github_verdict(gh(state="DIRTY")) == ("conflicts", "bad")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, FAIL])) == ("pipe:failed", "bad")
+assert mr.github_verdict(gh(state="BEHIND", checks=[RUN])) == ("rebase", "bad")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, BUSY])) == ("pipe:running", "wait")
+assert mr.github_verdict(gh(checks=[CTX_PENDING])) == ("pipe:running", "wait")
+assert mr.github_verdict(gh()) == ("no pipe", "wait")
+assert mr.github_verdict(gh(checks=[RUN], draft=True)) == ("draft", "wait")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN], review="REVIEW_REQUIRED")) == ("approval", "wait")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN], review="CHANGES_REQUESTED")) == ("approval", "wait")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN])) == ("threads", "wait")
+assert mr.github_verdict(gh(state="UNSTABLE", checks=[RUN])) == ("unstable", "wait")
+
 print("ok")

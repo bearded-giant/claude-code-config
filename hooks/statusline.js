@@ -938,7 +938,8 @@ function fmtPreflight(checks) {
 
 function fmtMr(mr) {
   if (!mr || !mr.iid) return '';
-  return `${MR_COLORS[mr.level] || DIM}!${mr.iid} ${mr.tag}${RST}`;
+  const sigil = mr.host === 'github' ? '#' : '!';
+  return `${MR_COLORS[mr.level] || DIM}${sigil}${mr.iid} ${mr.tag}${RST}`;
 }
 
 // --- line fitting (pure: width + prebuilt segments in, strings out) ---

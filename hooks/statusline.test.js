@@ -180,6 +180,7 @@ test('fmtMr: renders iid + tag, empty when no MR', () => {
   const out = fmtMr({ iid: 1234, tag: 'GREEN', level: 'ok' });
   assert.ok(out.startsWith(GREEN));
   assert.ok(out.includes('!1234 GREEN'));
+  assert.ok(fmtMr({ iid: 62, tag: 'threads', level: 'wait', host: 'github' }).includes('#62 threads'));
 });
 
 const ORGS = [
