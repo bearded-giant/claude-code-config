@@ -357,7 +357,8 @@
     "linear-triage@skio": false,
     "opensearch-logs@skio": false,
     "subscriptions@skio": false,
-    "clangd-lsp@claude-plugins-official": false
+    "clangd-lsp@claude-plugins-official": false,
+    "typesafe@typesafe-ai": false
   },
   "extraKnownMarketplaces": {
     "caveman": {
@@ -410,5 +411,21 @@
       "type": "http",
       "url": "https://forge-mcp.infra.rechargeapps.com/mcp"
     }
+  },
+  "skillOverrides": {
+    "anthropic-skills:docs": "off",
+    "anthropic-skills:docx": "off",
+    "anthropic-skills:google-workspace": "off",
+    "anthropic-skills:import-memory": "off",
+    "anthropic-skills:morning": "off",
+    "anthropic-skills:pdf": "off",
+    "anthropic-skills:pptx": "off",
+    "anthropic-skills:skill-creator": "off",
+    "anthropic-skills:xlsx": "off",
+    "browser-capture": "off",
+    "deploy-to-vercel": "off",
+    "greploop": "off",
+    "obsidian-preview": "off",
+    "vercel-optimize": "off"
   }
 }
