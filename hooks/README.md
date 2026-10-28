@@ -109,7 +109,7 @@ Bash is not in the matcher, so this guards tool-driven edits only. A `sed -i` or
 
 ## greptile_rereview.py
 
-PostToolUse on Bash. Greptile reviews a GitLab MR or a GitHub PR only when it opens, so every later push needs an `@greptile review` comment. After a session runs `git push`, this posts that comment on the GitLab MR of the pushed branch and, when the repo has a `github` remote with an open PR for the branch, on that PR too, and tells the session so it does not post a second one. It skips when Greptile already reviewed the pushed head.
+PostToolUse on Bash. Greptile reviews a GitLab MR or a GitHub PR only when it opens, so every later push needs an `@greptile review` comment (`@greptileai review` on GitHub, where `@greptile` is not the bot). After a session runs `git push`, this posts that comment on the GitLab MR of the pushed branch and, when the repo has a `github` remote with an open PR for the branch, on that PR too, and tells the session so it does not post a second one. It skips when Greptile already reviewed the pushed head.
 
 ## voice_gate.py
 

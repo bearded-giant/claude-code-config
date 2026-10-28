@@ -77,4 +77,28 @@ posted = []
 mod._run = stub([], posted)
 assert mod.request_review(PUSH) is None and not posted
 
+
+# request_github_review: greptile's github handle is @greptileai; a review already on the head means no post
+def gh_stub(reviews, posted):
+    def run(args, cwd, timeout=15):
+        if args[0] == "git":
+            return "git@github.com:o/r.git" if "github" in args else ""
+        if args[:3] == ["gh", "pr", "list"]:
+            return '[{"number": 5, "headRefOid": "abc"}]'
+        if args[:2] == ["gh", "api"]:
+            return __import__("json").dumps(reviews)
+        if args[:3] == ["gh", "pr", "comment"]:
+            posted.append(args)
+        return ""
+    return run
+
+posted = []
+mod._run = gh_stub([], posted)
+msg = mod.request_github_review("/tmp", "feat", "abc")
+assert posted and posted[0][-1] == "@greptileai review", posted
+assert "o/r#5" in msg and "@greptileai review" in msg, msg
+posted = []
+mod._run = gh_stub([{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc"}], posted)
+assert mod.request_github_review("/tmp", "feat", "abc") is None
+assert not posted
 print("ok")

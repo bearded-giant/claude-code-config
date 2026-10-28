@@ -136,7 +136,7 @@ def request_review(data):
 
 
 def request_github_review(top, branch, head):
-    # greptile reviews a github pr on open only; a `@greptile review` comment re-reviews the pushed head
+    # greptile reviews a github pr on open only; its github handle is @greptileai, not the gitlab bot's @greptile
     url = _git(top, "remote", "get-url", "github")
     m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", url or "")
     if not m:
@@ -155,8 +155,8 @@ def request_github_review(top, branch, head):
         return None
     if any(r.get("user", {}).get("login", "").startswith("greptile") and r.get("commit_id") == head for r in reviews):
         return None
-    _run(["gh", "pr", "comment", str(number), "-R", repo, "--body", "@greptile review"], top)
-    return f"Also posted `@greptile review` on GitHub PR {repo}#{number} for head {head[:8]}; do not post another."
+    _run(["gh", "pr", "comment", str(number), "-R", repo, "--body", "@greptileai review"], top)
+    return f"Also posted `@greptileai review` on GitHub PR {repo}#{number} for head {head[:8]}; do not post another."
 
 
 def main():
