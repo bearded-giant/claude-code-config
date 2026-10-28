@@ -57,3 +57,5 @@ Never in an artifact (hook blocks the headings, the rest is on you):
 Republish = rewrite to the current truth, not append. A section that only existed to explain a change gets folded into the design or dropped.
 
 Note → artifact is a distill, not a transcribe: the note may hold dates, logs, and open threads; the artifact keeps the durable design.
+
+Reader comments: fold what a thread asks into the body where it belongs, then close the artifact with a `## N. Questions readers asked` section, one bold question per thread with a one or two bullet answer written as current fact (no "done", "now", "updated"). The body stays current with the code; the questions section is the only place a thread is answered by name. Threads not sent to Claude cannot be resolved by the tool: say which stay open and that a writer resolves them in the artifact view.
