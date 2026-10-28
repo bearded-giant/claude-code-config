@@ -60,8 +60,8 @@ Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `
       gh api "repos/<o>/<r>/rulesets/<id>" > <scratchpad>/ruleset.json   # edit: append {"context": "Greptile Review"} to the required_status_checks rule's parameters.required_status_checks
       gh api -X PUT "repos/<o>/<r>/rulesets/<id>" --input <scratchpad>/ruleset.json
       ```
-      Greptile's check context is `Greptile Review` (seen on ai-agent-hub PR 3). Its 5/5 approval lands as an `APPROVED` review by `greptile-apps[bot]`; whether that review alone satisfies the count is read from `gh pr view <n> --json reviewDecision` (`APPROVED` = yes) on a PR with no human review.
-   3. Repo CLAUDE.md gets `greptile_min_score: 5` and `greptile_approval: required`, so `/babysit` holds READY until both are there. Lowering to 4/5 later is a one-line edit of that key; Greptile's own approval stays at 5/5, so a 4/5 PR then waits for a human approval.
+      Greptile's check context is `Greptile Review` (seen on ai-agent-hub PR 3). Its 5/5 approval lands as an `APPROVED` review by `greptile-apps[bot]` and alone satisfies the count (ai-agent-hub PR 3: `reviewDecision: APPROVED`, no human review), so the approval rule is the gate; adding `Greptile Review` to the required checks is optional.
+   3. Nothing repo-side for babysit: it reads `reviewDecision`, so under the 1-approval rule a PR below 5/5 stops at `needs your approval` until you approve by hand. There is no 4/5 auto path; Greptile approves only 5/5.
    Skio and other people's repos: skip this step.
 
 ## rule (invalid suggestion)
