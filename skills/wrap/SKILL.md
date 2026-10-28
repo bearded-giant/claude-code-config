@@ -31,7 +31,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
    - New items: code follow-ups should already be done (CLAUDE.md `### Proactive execution`). Work the session could do but did not finish goes in the handoff's `Start here`, not doit. Code blocked on me (operator detail, dangerous change) gets a code item that deps on its owed or decision item, no ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. User actions that pass the daily bar (`feature-management` → `### Owed items → daily twin`) become owed items (`add_todo owe=true`), no ask; the handoff's `Open edges` lists them by `daily #N`. Review/merge asks, tags, deploys, conditional confirms, and "say ship it" go in the handoff's `Open edges` as plain lines, never owed. Last doit call: leave the next item `in_progress` (`start_todo`): the one waiting on me, else the top pending one; when no item covers the ask the session stops on, `add_todo type=gate` (no `owe`) and start it.
    - Every `claude:` item must be burnable cold: `ref:` line, paths, commands, and identifiers in its text or description. Fill thin ones in.
-   - Empty list, any mode: once the batched ask's closes and deletes have run, a session list left with 0 pending (no gate item added above) → `delete_list`, no ask; its done items go with it. List it under `Fixed`. Never `daily`; a refusal (list pinned active via `DOIT_ACTIVE_LIST`) goes under `Gaps`. The next session's SessionStart prime says `exists: no` and has it `create_list` on its first todo.
+   - `feature` mode: list would end with 0 pending → offer `delete_list` in the batched ask.
 3. **Docs:**
    - Feature: `tasks.md` checkboxes match reality, and `{name}-notes.md` / `facts.md` hold this session's new identifiers, commands, gotchas, and decisions.
    - Bare repo: route per workspace-rules (`context/`, `plans/current.md`).
@@ -39,7 +39,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Shared docs touched this session: recheck the shared-docs rule (no dates, changelogs, or local paths).
 4. **Running processes** started this session (tunnels, dev servers, background shells, watchers): name, how started, port/pid. If the next session can reuse one, leave it up; otherwise offer teardown in the batched ask. Record each one in the handoff either way.
 5. **Handoff:** write or overwrite it per workspace-rules `## Handoff`. Skip it with `--no-handoff`. If nothing is left open, skip it and set any existing handoff to `status: done`. A written handoff gets no doit item: SessionStart lists every `status: ready` handoff in the repo, and the handoff's `Start here` carries the resume. An open `resume` item on this list is a pointer: `delete_todo` it (its `daily` twin goes with it). The `daily_note` hook logs the handoff in the vault daily note on its own.
-6. **Batched ask**, then the empty-list delete (step 2), then the verdict.
+6. **Batched ask**, then the verdict.
 
 ## Output
 
