@@ -41,7 +41,7 @@ Otherwise:
 
 `git push -u origin <current-branch>`
 
-GitHub twin (repos.csv note says `github twin <owner/repo> on remote `github``, the remote exists; CLAUDE.md `## Repo Map`): also `git push github <current-branch>`. The greptile re-review hook then covers both sides.
+GitHub twin (repos.csv note says `github twin <owner/repo> on remote `github``, the remote exists; CLAUDE.md `## Repo Map`): also `git push github <current-branch>`. The greptile re-review hook then covers both sides. With `merge: github` in the note, push only `git push -u github <current-branch>`: GitLab takes `main` and tags from the mirror, and a branch pushed there only runs a pipeline nobody reads.
 
 - If push is rejected (non-fast-forward, hook rejection, auth): STOP the chain. Report exact error. Do NOT force-push. Do NOT retry destructively.
 
@@ -79,7 +79,9 @@ Pick the host based on remote:
 - `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the step-3 description file as the MR body (`--description "$(cat <path-from-step-3>)"`) and `mr_base_branch` as the target. `kai:open-mr` MUST use this supplied description and MUST NOT regenerate from its own Step 7 default template — Step 3 already chose the format.
 - `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`
 
-Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Do NOT prefix with "MR:" or "PR:".
+Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Never a `docs: changelog` subject: a squash merge makes the title the commit subject on `main`, and changelog scripts drop that subject. Do NOT prefix with "MR:" or "PR:".
+
+`merge: github` twin: open only the GitHub PR below; no GitLab MR, no `kai:open-mr`.
 
 Paired MRs: open the one that deploys later as Draft (`glab mr create --draft`, `gh pr create --draft`), so it cannot merge before its partner ships. A customcheckout MR in a pair opens as Draft. The user marks it ready.
 
@@ -138,5 +140,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin; `merge: github`: `github` only) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```
