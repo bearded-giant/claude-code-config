@@ -78,4 +78,10 @@ Line-anchored comment when a finding sits on a line the diff actually touches:
 glab mr note create <iid> -R <repo> --file <path> --line <n> -m "..."
 ```
 
+GitHub, body from a file, `commit_id` = the PR head sha:
+
+```bash
+gh api -X POST "repos/<o>/<r>/pulls/<n>/comments" -F body=@<body-file> -f commit_id=<head sha> -f path=<path> -F line=<n> -f side=RIGHT
+```
+
 Ceiling: only works for lines present in the latest diff version. Findings in untouched files — the common case for "the caller you didn't change also breaks" — must go in the main note. Don't split one review across five inline threads; authors read one comment, not a scavenger hunt.
