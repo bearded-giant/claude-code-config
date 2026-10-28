@@ -1,11 +1,11 @@
 ---
-description: Auto-address open review threads on the MR for the CURRENT worktree branch. Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline is green and, on Greptile MRs, Greptile has reviewed the head.
+description: Auto-address open review threads on the MR or PR for the CURRENT worktree branch, GitLab or GitHub (orgs skio-org, RechargePayments). Scoped to one MR — the one whose source branch == current branch. Idempotent — safe to /loop inside a worktree. Trigger phrases - "babysit this MR", "babysit this PR", "address review comments", "/babysit", or invoked via `/loop 5m /babysit`. Ends its own loop once the pipeline or checks are green and, on Greptile MRs, Greptile has reviewed the head.
 argument-hint: "[worktree path]"
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Skill, ToolSearch, ScheduleWakeup, CronList, CronDelete
 model: sonnet
 ---
 
-Address open review comments on the MR for **this** worktree's branch.
+Address open review comments on the MR or PR for **this** worktree's branch. "MR" below means either; `## Hosts` gives each call per host, and the steps name the GitLab form.
 
 ## Worktree scoping model
 
@@ -15,10 +15,34 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
 
 ## Preconditions
 
-- `glab auth status` succeeds (skip + log if not)
-- In a git repo with a GitLab remote (skip + log if not)
+- Host from `git remote get-url origin`: `gitlab` in the host → GitLab; `github.com` with org `skio-org` or `RechargePayments` → GitHub; anything else (personal GitHub, no remote) → skip + log `no reviewable remote`
+- `glab auth status` (GitLab) or `gh auth status` (GitHub) succeeds (skip + log if not)
+- GitHub owner/repo = the origin URL path minus `.git` (`skio-org/frost`); every `gh` call below takes `-R <o/r>`
 - Current branch is **not** `main` / `master` / `stage` — if it is, exit clean with `not on a feature branch — nothing to babysit`
 - `git status --porcelain` is clean — if dirty, **abort** and report (do not stash user work)
+
+## Hosts
+
+| Need | GitLab | GitHub |
+|---|---|---|
+| open MR for branch | `glab mr list --source-branch="$BRANCH" -F json` → `iid`, `project_id`, `web_url` | `gh pr list --head "$BRANCH" --state open --json number,url,isDraft,headRefOid,body` → `number` (stands in for `iid`), `url` |
+| merged MR for branch | `glab mr list --source-branch="$BRANCH" --merged -F json` | `gh pr list --head "$BRANCH" --state merged --json number,url` |
+| threads | `glab api "projects/<project_id>/merge_requests/<iid>/discussions" --paginate` | the GraphQL query below, plus PR-level asks from `gh api repos/<o>/<r>/issues/<n>/comments` |
+| reply on a thread | `glab api -X POST ".../discussions/<discussion_id>/notes" -F body=@<file>` | review thread: `gh api -X POST repos/<o>/<r>/pulls/<n>/comments/<databaseId>/replies -F body=@<file>`; PR-level comment: `gh pr comment <n> --body-file <file>` |
+| resolve a thread | `glab api -X PUT ".../discussions/<discussion_id>" -f resolved=true` | `gh api graphql -f query='mutation { resolveReviewThread(input:{threadId:"<id>"}) { thread { isResolved } } }'` |
+| CI on head | `glab api "projects/<project_id>/pipelines?ref=$BRANCH&order_by=updated_at&per_page=1"`, `head_pipeline.status` | `gh pr checks <n> --json name,state,bucket` (buckets `pass`, `fail`, `pending`, `skipping`, `cancel`) |
+| head + merge state | `glab api "projects/<project_id>/merge_requests/<iid>"` → `sha`, `draft`, `blocking_discussions_resolved` | `gh pr view <n> --json headRefOid,isDraft,mergeStateStatus,reviewDecision,body,reviews` |
+| Greptile summary | note carrying `<!-- greptile_summary -->` | the PR `body` (Greptile edits it in place; the bot posts no issue comments) |
+| Greptile author | `author.username == "greptile"` | `author.login == "greptile-apps"` (GraphQL), `user.login == "greptile-apps[bot]"` (REST) |
+| re-review request | `greptile` skill review mode (`@greptile review`) | same skill (`@greptileai review`) |
+| attention text, state file | `MR !<iid>`, `babysit-<iid>.json` | `PR #<n>`, `babysit-<n>.json` |
+| repo has CI | `.gitlab-ci.yml` at root | `.github/workflows/` at root |
+
+GitHub threads, one query:
+```
+gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(number:<n>) { reviewThreads(first:100) { nodes { id isResolved isOutdated comments(first:50) { nodes { databaseId author { login } body createdAt updatedAt path line url } } } } } } }'
+```
+`isResolved` is `resolved`; the node `id` is the `discussion_id` for the resolve mutation; the first comment's `databaseId` is the reply target. GitHub has no system notes. PR-level issue comments map to GitLab's `resolvable=false` notes: reply only, never resolve.
 
 ## Steps
 
@@ -26,16 +50,18 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
    ```
    BRANCH="$(git branch --show-current)"
    glab mr list --source-branch="$BRANCH" -F json   # opened is the default state
+   # GitHub: the "open MR for branch" row of ## Hosts
    ```
-   - Zero results → `glab mr list --source-branch="$BRANCH" --merged -F json`. Merged MR found → run the `doit-prune` skill with `--mr <iid> --auto`, stop the loop (step 9 **Stop loop**), exit: `<repo>!<iid> merged, doit <n> closed` plus the MR `web_url` on its own line. None → exit clean: `no open MR for branch <BRANCH>`
+   - Zero results → `glab mr list --source-branch="$BRANCH" --merged -F json` (GitHub: the merged row). Merged MR found → run the `doit-prune` skill with `--mr <iid> --auto`, stop the loop (step 9 **Stop loop**), exit: `<repo>!<iid> merged, doit <n> closed` plus the MR `web_url` on its own line. None → exit clean: `no open MR for branch <BRANCH>`
    - Multiple results → exit clean: `ambiguous: <n> MRs from this branch — manual triage needed`
-   - One result → proceed. Capture `iid`, `project_id`, `web_url`.
+   - One result → proceed. Capture `iid` (GitHub `number`), `project_id` (GitHub `<o/r>`), `web_url` (GitHub `url`).
 
 2. **Fetch unresolved discussions**:
    ```
    glab api "projects/<project_id>/merge_requests/<iid>/discussions" --paginate
+   # GitHub: the reviewThreads query in ## Hosts, plus the PR-level issue comments
    ```
-   Keep a thread if `system=false` AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Exception: Greptile edits its `<!-- greptile_outside_diff -->` note in place on each re-review, so keep a thread whose first note is by `greptile` and has `updated_at` later than the `created_at` of your last note in that thread. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
+   Keep a thread if `system=false` (GitHub: always) AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Exception: Greptile edits its `<!-- greptile_outside_diff -->` note in place on each re-review, so keep a thread whose first note is by `greptile` and has `updated_at` later than the `created_at` of your last note in that thread. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
 
    **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
 
@@ -83,17 +109,19 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
       Write the body (newline-separated bullets) to `<scratchpad>/reply-<discussion_id>.md`, then:
       ```
       glab api -X POST "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>/notes" -F body=@<scratchpad>/reply-<discussion_id>.md
+      # GitHub: gh api -X POST repos/<o>/<r>/pulls/<n>/comments/<databaseId>/replies -F body=@<file>; PR-level: gh pr comment <n> --body-file <file>
       ```
    6. Resolve thread if `resolvable=true`:
       ```
       glab api -X PUT "projects/<project_id>/merge_requests/<iid>/discussions/<discussion_id>" -f resolved=true
+      # GitHub: the resolveReviewThread mutation in ## Hosts
       ```
-      MR-level notes (`resolvable=false`) can't be resolved via API — reply only.
+      MR-level notes (`resolvable=false`; GitHub PR-level issue comments) can't be resolved via API — reply only.
    7. **`contradicts_design` threads** — no edit, no commit, no resolve. Skip 6.1–6.4 and 6.6. Post only the decline-with-reason bullet (6.5 decline branch) and leave the thread **unresolved**, so the human can accept or contest the rationale.
 
 7. **Raise or clear attention** — once, at end of every run. If anything is still left for you (NEEDS-SIGN-OFF threads still unresolved, including ones from earlier runs, `actionable_complex` ambiguous, push rejected, pipeline red, rebase conflict), raise it with the total pending count:
    ```
-   python3 ~/.claude/hooks/request_attention.py "MR !<iid> (<branch>): <n> thread(s) need your sign-off"
+   python3 ~/.claude/hooks/request_attention.py "MR !<iid> (<branch>): <n> thread(s) need your sign-off"   # GitHub: "PR #<n> (<branch>): ..."
    ```
    Otherwise clear it:
    ```
@@ -104,27 +132,30 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
 8. **Pipeline check** — after final push, query:
    ```
    glab api "projects/<project_id>/pipelines?ref=$BRANCH&order_by=updated_at&per_page=1"
+   # GitHub: gh pr checks <n> --json name,state,bucket   (red = any fail or cancel bucket)
    ```
    If pipeline newly red from this push, report `pipeline red after my fix — <job-url>` in chat, raise attention (step 7), and bail. If pipeline green or unrelated red, nothing to report.
 
 9. **Gate** — every run ends here, including zero-thread runs. Decides whether this babysit instance is finished.
 
-   **Greptile-aware** iff step 2's discussions include a note containing `<!-- greptile_summary -->`, or the repo root has `.greptile/` or `greptile.json` (covers a new MR Greptile has not reached yet). Reviewed sha = the `/commit/<sha>` in that note's "Last reviewed commit" line. Read it from step 2's payload, not a fresh fetch, so a review landing mid-run can't mark READY over threads this run never saw. Re-reviews are manual (`@greptile review`), so every push leaves the review stale and blocks auto-approve.
+   **Greptile-aware** iff step 2's discussions include a note containing `<!-- greptile_summary -->` (GitHub: the PR `body` fetched with step 1 carries it; skio-org/frost has no config and is still reviewed), or the repo root has `.greptile/` or `greptile.json` (covers a new MR Greptile has not reached yet). Reviewed sha = the `/commit/<sha>` in that note's "Last reviewed commit" line. Read it from step 2's payload (GitHub: step 1's `body`), not a fresh fetch, so a review landing mid-run can't mark READY over threads this run never saw. Re-reviews are manual (`@greptile review`, GitHub `@greptileai review`), so every push leaves the review stale and blocks auto-approve.
 
-   Inputs: MR head `sha` and `head_pipeline.status` (`glab api "projects/<project_id>/merge_requests/<iid>"`, fetched after the last push), threads still actionable this run, state file `_greptile`. Green = `success`, `manual`, `skipped`, or no pipeline in a repo without `.gitlab-ci.yml`. No pipeline with `.gitlab-ci.yml` = not created yet, so neither. Red = `failed`, `canceled`.
+   Inputs: MR head `sha` and `head_pipeline.status` (`glab api "projects/<project_id>/merge_requests/<iid>"`, fetched after the last push), threads still actionable this run, state file `_greptile`. Green = `success`, `manual`, `skipped`, or no pipeline in a repo without `.gitlab-ci.yml`. No pipeline with `.gitlab-ci.yml` = not created yet, so neither. Red = `failed`, `canceled`. GitHub: head `headRefOid` and `gh pr checks` buckets; green = every bucket `pass` or `skipping`, or no checks in a repo without `.github/workflows/`; red = any `fail` or `cancel`; else neither.
+
+   **Own-repo bar**: the repo CLAUDE.md may set `greptile_min_score: N` and `greptile_approval: required` (repos the user set up; the `greptile` skill init writes them). Score = `<!-- greptile_confidence_score:N -->`. Approved = GitLab note `<!-- greptile_auto_approval_sha:<head> -->`; GitHub a review in `reviews` by `greptile-apps` with `state == "APPROVED"` on the head commit. Neither key set → no bar (Skio and other people's repos).
 
    First match wins:
 
    | State | Condition | Action |
    |---|---|---|
-   | BLOCKED | MR is Draft without `[babysit-ok]`, pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, or `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
+   | BLOCKED | MR is Draft without `[babysit-ok]`, pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, `requested_sha == head` and `requested_at` > 15 min ago with no review, or own-repo bar not met once head == reviewed sha and no actionable threads remain (score below `greptile_min_score`, or approval missing where `greptile_approval: required`) | raise attention (step 7) with the reason (`greptile <score>/5 below bar`, `greptile approval missing`), **stop loop** |
    | working | actionable threads left past the 5-thread cap | continue |
    | sign-off | deferred state-file threads remain | continue, slow cadence |
    | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha`, and a summary note exists or the MR is 15+ min old | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
    | waiting | pipeline neither green nor red, `requested_sha == head` and not yet reviewed, or greptile-aware with no summary note on an MR under 15 min old (Greptile reviews on open) | continue |
-   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware) | run the `doit-prune` skill with `--mr <iid> --auto` (no owed merge item: glmon and `giantmem mr list` show READY MRs), raise attention `<repo>!<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]` with the MR `web_url` on its own line as the last line, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false |
+   | READY | pipeline green on head, head == reviewed sha (or not greptile-aware), own-repo bar met where set | run the `doit-prune` skill with `--mr <iid> --auto` (no owed merge item: glmon and `giantmem mr list` show READY MRs), raise attention `<repo>!<iid> ready: pipeline green, greptile <score>/5[, approved][, <n> declined threads await you]` (GitHub `<repo>#<n> ready: checks green, ...`) with the MR `web_url` on its own line as the last line, **stop loop**. Count = your declined threads still unresolved; they block merge where the MR's `blocking_discussions_resolved` is false (GitHub `mergeStateStatus == "BLOCKED"`) |
 
-   Greptile's new findings arrive as fresh unresolved discussions; the next run handles them through steps 2-8 like any reviewer's. Approved = a note with `<!-- greptile_auto_approval_sha:<head> -->`. A sub-5 score with no open Greptile threads is still READY; report the score.
+   Greptile's new findings arrive as fresh unresolved discussions (GitHub: one more PR review with inline comments); the next run handles them through steps 2-8 like any reviewer's. Approved as defined under Own-repo bar. A sub-5 score with no open Greptile threads is still READY where no bar is set; report the score.
 
    "Greptile due" fires while the pipeline runs, so review and CI overlap. A red pipeline from babysit's own push is already BLOCKED via step 8, so that is the only path that wastes a Greptile run.
 
@@ -151,13 +182,13 @@ Single line:
 ```
 remi!1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
 ```
-`READY` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message.
+GitHub refs read `frost#25117`. `READY` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message.
 Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `BLOCKED: <reason>`).
 Below it, one numbered entry per deferred thread: URL, why it was deferred, the plan or open question with options. The user signs off in chat by number (`signed off 1`, or plan edits); the next run picks it up as `signed_off`.
 
 ## Failure modes — exit clean, never error
 
-- glab auth expired → log + exit 0
+- glab or gh auth expired → log + exit 0
 - network error → log + exit 0
 - merge conflict → report in chat + exit 0
 - ambiguous review thread → defer to chat + skip
