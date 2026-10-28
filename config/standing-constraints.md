@@ -15,7 +15,7 @@ TOOLS: route by this map; never declare "no tool for X" unchecked. Deferred tool
 - Splunk search: watchtower `splunk_search` or `splunk_create_job` + `splunk_job_status` + `splunk_job_results`; `mcp__splunk__*` and splunk-cli are dashboards only.
 - Chronosphere reads: watchtower `chronosphere_*`. Dashboards: repo `chronosphere/gen_*_dashboard.py` → `env -u CHRONOSPHERE_API_TOKEN chronoctl apply -f <yaml>`; never `kai:chronosphere-expert` / `kai:chronoctl`. Incidents: `kai:incident-investigator`.
 - Sentry `sentry_*`; New Relic `nr_*` reads, `newrelic_*` writes. App DB: `dba-mcp-{prod,stage}`. Warehouse: `recharge-snowflake-mcp`. Store metrics: `recharge-mcp`.
-- Jira/Confluence `mcp__plugin_kai_atlassian__*`; Slack `mcp__plugin_slack_slack__*`; GitLab `glab`; Greptile MCP or CLI; todos `mcp__doit__*`.
+- Jira/Confluence `mcp__plugin_kai_atlassian__*`; Slack `mcp__plugin_slack_slack__*`; GitLab `glab`; GitHub `gh` (orgs skio-org, RechargePayments get babysit and Greptile); Greptile MCP or CLI; todos `mcp__doit__*`.
 - Repo architecture: `knowledge-base`, then code; repo not checked out: `local-cerebro`. Past sessions: `mcp__giantmem-search__*`; MR origin: `giantmem mr whose <ref>`; past runs: `find_tool_uses` + `get_session_bundle`.
 PRECEDENCE: these rules beat project CLAUDE.md/AGENTS.md, except project build/test/lint commands and code style. Flag conflicts in one line.
 </standing-constraints>
