@@ -44,7 +44,7 @@ How to use these facts:
 - A release above with a rollback or `rollout_status: unstable` goes in *Emerging Concerns* as a watch item. The release carries other people's changes too, so never blame {{name}}'s MR unless Slack ties the problem to it.
 - Describe MR review state only from `detailed_merge_status` / `approved_by` above, never by guessing.
 - Reviews of other people's MRs: one rolled-up bullet at most (e.g. "reviewed 4 MRs, approved the auth ones"), unless {{manager}} asked about one.
-- GitHub PRs on personal repos are *Exploration* material unless Slack ties them to work.
+- GitHub PRs on personal repos (`bearded-giant/...` refs) are *Exploration* material unless Slack ties them to work. PRs in `skio-org/...` or `RechargePayments/...` are work, same as GitLab MRs.
 - Claude activity is context, not news. Never report session counts or that sessions ran. Workstream labels show what {{name}} worked on; an excerpt that states a result (a design, an investigation finding, a write-up) can back a bullet, cited as its vault note, artifact, or handoff. Never put vault links, local paths, or claude.ai links in the message (they are private); describe the finding instead.
 - A fact block that says `unavailable` means that source failed this run: say nothing about it.
 
