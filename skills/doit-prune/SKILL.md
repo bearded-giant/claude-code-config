@@ -11,7 +11,7 @@ Docs and MRs are the source of truth; doit is the reminder. Code items close onc
 - `--list <name>` → verbatim. Else the session list from the SessionStart `doit session list` line. Re-derive on cwd / worktree / feature change: `python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"`.
 - `--list daily` → classify only items that carry a `from:` line (owed twins): its project item done → `complete_todo`, gone → delete, a `[decision]` twin → `decision-twin`, fails the bar → `unowe`, plus `landed` / `moot` on live MR state. Everything else in `daily` is the user's own: untouched.
 - `--all` → every list in `list_lists` with pending > 0, `daily` included (per the rule above). One general-purpose subagent per list, in parallel, classify only (no doit writes). Each returns one line per item: `rank | verdict | evidence | action`. Main context applies after the single ask.
-- `--mr <iid|url>` → only items whose text or description names that MR (URL or `!iid`) or its source branch. Skips the unmirrored scan.
+- `--mr <iid|url>` → only items whose text or description names that MR or PR (URL, `!iid`, or `#N`) or its source branch. Skips the unmirrored scan.
 - List missing → report it, stop. Never `create_list`.
 
 ## Classify
