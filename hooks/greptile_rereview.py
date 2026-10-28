@@ -140,7 +140,7 @@ def request_review(data):
 
 
 def github_repo(top):
-    # a `github` mirror remote wins whatever its org; a github origin counts only in the orgs greptile reviews
+    # a `github` twin remote wins whatever its org; a github origin counts only in the orgs greptile reviews
     for remote, any_org in (("github", True), ("origin", False)):
         m = re.search(r"github\.com[:/]([^/]+)/([^/.]+)", _git(top, "remote", "get-url", remote))
         if m and (any_org or m.group(1).casefold() in GH_ORGS):
