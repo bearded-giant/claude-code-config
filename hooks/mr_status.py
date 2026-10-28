@@ -136,7 +136,7 @@ def lookup(host, project, branch):
 
 def main():
     repo, branch, out = sys.argv[1:4]
-    # a `github` mirror remote is the review surface while origin still points at gitlab
+    # a `github` twin remote is the review surface while origin still points at gitlab
     remotes = [project_from_remote(remote_url(repo, name)) for name in ("github", "origin")]
     remotes = [(h, p) for h, p in remotes if h and p and (h == "github.com" or "gitlab" in h)]
     if not remotes:

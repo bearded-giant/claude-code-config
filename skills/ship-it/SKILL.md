@@ -41,9 +41,7 @@ Otherwise:
 
 `git push -u origin <current-branch>`
 
-Mirror repo (origin GitLab, and `git remote get-url github` names a `skio-org` / `RechargePayments` repo): also `git push github <current-branch>`. The greptile re-review hook then covers both sides.
-
-GitHub twin (repos.csv note says `github twin`, remote `github` exists): also `git push github <current-branch>`.
+GitHub twin (repos.csv note says `github twin <owner/repo> on remote `github``, the remote exists; CLAUDE.md `## Repo Map`): also `git push github <current-branch>`. The greptile re-review hook then covers both sides.
 
 - If push is rejected (non-fast-forward, hook rejection, auth): STOP the chain. Report exact error. Do NOT force-push. Do NOT retry destructively.
 
@@ -56,7 +54,7 @@ Two formats exist. Pick ONE deterministically, generate it, write it to disk. Th
 1. Brief opt-in — invocation contains `brief`, `short`, or `--brief` → **personal bullet format**.
 2. Full opt-in — invocation contains `full`, `standard`, or `--full` → **verbose org kai format** (the full kai template, escape hatch for high-risk MRs).
 3. Default by MR-target remote host (the same remote Step 4 opens against — `git remote get-url origin`):
-   - mirror repo (origin GitLab plus a `github` remote in `skio-org` / `RechargePayments`) → **Skio format**, one description for both the MR and the PR
+   - GitHub twin → **Skio format**, one description for the PR and, without `merge: github`, the GitLab MR too
    - `gitlab.rechargeapps.net` / any GitLab → **concise-kai format** (kai section headers, compressed density)
    - `github.com`, org `skio-org` or `RechargePayments` (first path segment of the remote, case-insensitive) → **Skio format**
    - any other `github.com` → **personal bullet format** (your own repos default to your bullets)
@@ -80,7 +78,6 @@ Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent
 Pick the host based on remote:
 - `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the step-3 description file as the MR body (`--description "$(cat <path-from-step-3>)"`) and `mr_base_branch` as the target. `kai:open-mr` MUST use this supplied description and MUST NOT regenerate from its own Step 7 default template — Step 3 already chose the format.
 - `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`
-- mirror repo → both: `kai:open-mr` on GitLab as above, then `gh pr create -R <owner/repo> --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`. Capture both URLs; the PR is the review surface, the MR mirrors it.
 
 Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Do NOT prefix with "MR:" or "PR:".
 
@@ -88,7 +85,7 @@ Paired MRs: open the one that deploys later as Draft (`glab mr create --draft`, 
 
 If the MR/PR already exists for this branch: skip creation, capture the existing URL.
 
-GitHub twin: also open the GitHub PR (`gh pr create -R <owner/repo from the github remote> --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`) for Greptile and the preview; it auto-closes as merged once `main` is pushed to `github`. Then, only when the repos.csv note also says `merge: github`: `gh pr merge <n> -R <owner/repo> --auto --squash` and skip the GitLab MR (GitHub is the merge path there; GitLab `main` follows by mirror). Without that note the GitLab MR stays the merge path and the PR is never armed: a GitHub merge would fork `main`, since GitLab `main` takes pushes only from "Gitlab Integrations".
+GitHub twin: also open the GitHub PR (`gh pr create -R <owner/repo from the github remote> --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`) for Greptile and the preview; babysit works that PR either way. It auto-closes as merged once `main` is pushed to `github`. Then, only when the repos.csv note also says `merge: github`: `gh pr merge <n> -R <owner/repo> --auto --squash` and skip the GitLab MR (GitHub is the merge path there; GitLab `main` follows by mirror). Without that note the GitLab MR stays the merge path and the PR is never armed: a GitHub merge would fork `main`, since GitLab `main` takes pushes only from "Gitlab Integrations".
 
 ### Step 4a — Jira ticket (GitLab only; skip on GitHub)
 
@@ -101,7 +98,7 @@ Skip when `glmon-jirad` is not on PATH or `glmon-jirad --status` prints `enabled
 ### Step 4b — Review handoff (GitLab, and GitHub orgs skio-org / RechargePayments; skip on personal GitHub)
 
 1. Greptile repo (`.greptile/` or `greptile.json` at root, or a note by `greptile` on this MR; GitHub: `<!-- greptile_summary -->` in the PR body. Org-level enablement reviews repos with no config), MR existed before this run (step 4 skipped creation), and step 2 pushed → invoke the `greptile` skill **review** mode; ship-it is the authorization. New MR → nothing; Greptile reviews on open and auto re-review is off.
-2. Every GitLab MR and every skio-org / RechargePayments PR (a mirror repo gets one loop; babysit picks the PR): no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. A new MR has no Greptile note yet, so a config-less repo cannot be told apart here; babysit detects Greptile from the summary note and stops its own loop at READY or BLOCKED.
+2. Every GitLab MR and every skio-org / RechargePayments PR (a GitHub twin gets one loop; babysit picks the PR): no `CronList` job whose prompt is `/babysit <worktree path>` (`git rev-parse --show-toplevel`) → invoke the `loop` skill with `5m /babysit <worktree path>`. A new MR has no Greptile note yet, so a config-less repo cannot be told apart here; babysit detects Greptile from the summary note and stops its own loop at READY or BLOCKED.
 
 ### Step 5 — Final output
 
@@ -109,7 +106,7 @@ Print to chat in EXACTLY this order, nothing else:
 
 1. The full MR description markdown (so user sees what was posted)
 2. One blank line
-3. The MR URL on its own line (mirror repo: the PR URL, then the MR URL, each on its own line)
+3. The MR URL on its own line (GitHub twin: the PR URL, then the MR URL when one was opened, each on its own line)
 4. Only when step 4a ran: `glmon-jirad`'s last log line (created / retitled / skip / error)
 
 Then STOP. Do NOT add a closing summary. Do NOT offer next steps. Do NOT explain what happened — the description and URL are the report.
@@ -141,5 +138,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` mirror) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or mirror→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; mirror: both) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```
