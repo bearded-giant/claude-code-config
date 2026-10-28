@@ -6,9 +6,11 @@ description: >-
   auto-approve risk config in step with what MRs actually touch. Auto-fires
   when user says "set up greptile", "init greptile", "greptile rule", "tell
   greptile to stop flagging X", "tune greptile", "greptile re-review",
-  "ask greptile to review", "@greptile review", invokes /greptile, when
-  processing an MR thread authored by `greptile` (babysit, manual review
-  triage), or before editing `.greptile/**`. Modes: review, init, rule, sync.
+  "ask greptile to review", "@greptile review", "@greptileai review", invokes
+  /greptile, when processing an MR or PR thread authored by `greptile` or
+  `greptile-apps[bot]` (babysit, manual review triage), or before editing
+  `.greptile/**`. GitLab MRs and GitHub PRs (orgs skio-org, RechargePayments).
+  Modes: review, init, rule, sync.
 argument-hint: "[review [mr] [--force] | init | rule <note-url> | sync [mr-url]]"
 ---
 <!-- caveman:compressed -->
@@ -17,13 +19,13 @@ Four jobs: **review** (post the re-review trigger), **init** (no `.greptile/`), 
 
 ## review
 
-Auto re-review is off; Greptile reviews on MR open only. Trigger is the comment `@greptile review`. `@greptileai` (the docs' handle) also works on GitLab; use the former.
+Auto re-review is off (`autoReview` default `["open"]`); Greptile reviews on MR or PR open only. Trigger comment by host (`git remote get-url origin`): GitLab `@greptile review` (`@greptileai` also works there, use the former); GitHub `@greptileai review` only, since `@greptile` is another GitHub user. GitHub = orgs `skio-org` and `RechargePayments`; personal repos have no Greptile, stop and say so.
 
-1. MR: arg (iid or URL) else `glab mr list --source-branch="$(git branch --show-current)" -F json`. Zero or many → stop, say so.
-2. Skip if already reviewed: latest `greptile_summary` note's "Last reviewed commit" link ends in the MR's `sha` → report `head <sha7> already reviewed`, stop. Skip too if an `@greptile review` note is newer than the head commit (`hooks/greptile_rereview.py` posts one after every session push) → report `review already requested for <sha7>`, stop. `--force` posts anyway.
+1. MR: arg (iid or URL) else `glab mr list --source-branch="$(git branch --show-current)" -F json`. GitHub: `gh pr list --head "$(git branch --show-current)" --state open --json number,url,headRefOid,body`. Zero or many → stop, say so.
+2. Skip if already reviewed: latest `greptile_summary` note's "Last reviewed commit" link ends in the MR's `sha` (GitHub: the same line in the PR `body` ends in `headRefOid`) → report `head <sha7> already reviewed`, stop. Skip too if an `@greptile review` note (GitHub: a `@greptileai review` comment in `gh api repos/<o>/<r>/issues/N/comments`) is newer than the head commit (`hooks/greptile_rereview.py` posts one after every session push) → report `review already requested for <sha7>`, stop. `--force` posts anyway.
 3. Unpushed local commits (`git rev-list @{u}..HEAD` non-empty) → warn: Greptile reviews the pushed head only.
-4. Post: `glab mr note <iid> --message "@greptile review"`. Report the note URL.
-5. Review lands in ~2-3 min. Summary note is edited in place (`Reviews (N)` increments, `updated_at` moves); new findings arrive as fresh DiffNotes.
+4. Post: `glab mr note <iid> --message "@greptile review"`; GitHub `gh pr comment <n> --body "@greptileai review"`. Report the note or comment URL.
+5. Review lands in ~2-3 min. Summary note is edited in place (`Reviews (N)` increments, `updated_at` moves); new findings arrive as fresh DiffNotes. GitHub: the Greptile section of the PR body is edited in place; new findings arrive as one more PR review with inline comments.
 
 User invoking review = authorization to post; so are `/babysit` step 9 (it tracks rounds and caps at 3) and `ship-it` step 4b. Any other model-initiated post (fixes pushed, want fresh eyes) → AskUserQuestion first; it is an outward-facing post and spends a Greptile run.
 
@@ -32,6 +34,7 @@ User invoking review = authorization to post; so are `/babysit` step 9 (it track
 Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `auto-approve-prs`.
 
 - GitLab bot: username `greptile` (also a project bot whose display name is `greptile`). Match `author.username == "greptile"` or `author.name` casefold `greptile`.
+- GitHub bot: `user.login == "greptile-apps[bot]"` in REST, `author.login == "greptile-apps"` in GraphQL. The summary lives in the PR body (`gh pr view <n> --json body`): same markers as GitLab plus `<!-- greptile_comment -->` and `<!-- greptile-impact-verdict -->`; the bot posts no issue comments. Findings = one PR review (`state: COMMENTED`, empty body) carrying inline review comments with the same badge + bold title. Threads: GraphQL `pullRequest(number:N){ reviewThreads(first:100){ nodes{ id isResolved isOutdated comments(first:50){ nodes{ databaseId author{login} body createdAt path line } } } } }`; resolve with the `resolveReviewThread(input:{threadId})` mutation. Approval, where `autoApprove.enabled`, is an `APPROVED` review by the bot on the head sha. A repo with no `.greptile/` is still reviewed under org-level enablement (skio-org/frost has none), so greptile-aware on GitHub = the body marker, not the tree.
 - Note markers: `<!-- greptile_summary -->`, `<!-- greptile_confidence_score:N -->`, `<!-- greptile_auto_approval_sha:<sha> -->` ("Greptile approved these changes."), `<!-- greptile_outside_diff -->`. Inline finding = DiffNote, P0/P1/P2 badge (`badges/p1.svg`) + bold title.
 - `.greptile/` = `config.json` (settings, `rules`, `disabledRules`, `instructions`, `ignorePatterns`, `autoApprove`), `rules.md` (prose context), `files.json` (context files, paths relative to the dir holding `.greptile/`).
 - Cascade root → nearest dir. Settings: nearest wins. Rules, files, instructions: accumulate. Kill a parent rule from a child via `disabledRules: ["<id>"]`.
@@ -50,6 +53,18 @@ Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `
 3. `ignorePatterns`: match an existing file's form. New file: newline-separated string (docs type it `string`).
 4. `python3 -m json.tool .greptile/config.json >/dev/null && python3 -m json.tool .greptile/files.json >/dev/null`
 5. Commit alone: `chore: add greptile review config`.
+6. GitHub repo you set up yourself (org `RechargePayments`): make Greptile a required approver, in this order.
+   1. `config.json` gets `"autoApprove": {"enabled": true, "riskCeiling": "<pick>"}`; `statusCheck` stays at its default `true`. Greptile approves only a clean 5/5 review, there is no lower bar on this side.
+   2. After the config has merged to the base branch (policy is read from there), branch protection, payload to a scratchpad file first:
+      ```bash
+      gh api -X PUT "repos/<o>/<r>/branches/<base>/protection" --input <scratchpad>/protection.json
+      ```
+      ```json
+      {"required_status_checks": {"strict": true, "contexts": ["<greptile check context>"]}, "enforce_admins": false, "required_pull_request_reviews": {"required_approving_review_count": 1}, "restrictions": null}
+      ```
+      The check context name is not in the docs: read it from `gh pr checks <n>` on the first reviewed PR, then pin it. Verify on that PR that the bot's `APPROVED` review counts toward the 1 required approval; if GitHub does not count an app review there, the required check is the gate and the count drops back to 0.
+   3. Repo CLAUDE.md gets `greptile_min_score: 5` and `greptile_approval: required`, so `/babysit` holds READY until both are there. Lowering to 4/5 later is a one-line edit of that key; Greptile's own approval stays at 5/5, so a 4/5 PR then waits for a human approval.
+   Skio and other people's repos: skip this step.
 
 ## rule (invalid suggestion)
 
@@ -68,13 +83,14 @@ Fires per Greptile thread you judge wrong for this repo.
 6. **Train Greptile** (any branch of step 2, once the thread is declined): decline-with-reason reply per babysit 6.5 style, plus a thumbs-down award on the Greptile note:
    ```bash
    glab api -X POST "projects/<pid>/merge_requests/<iid>/notes/<note_id>/award_emoji" -f name=thumbsdown
+   gh api -X POST "repos/<o>/<r>/pulls/comments/<databaseId>/reactions" -f content=-1   # GitHub
    ```
 
 ## sync (risk config)
 
 Run after reading Greptile's summary for the MR and after pushing review fixes. Repo without `.greptile/` → skip.
 
-1. Read the latest `greptile_summary` note (score, findings) and whether a `greptile_auto_approval_sha` note matches the current head sha.
+1. Read the latest `greptile_summary` note (score, findings) and whether a `greptile_auto_approval_sha` note matches the current head sha. GitHub: the PR body, and an `APPROVED` review by the bot on the head.
 2. **Tighten, no ask:** diff touches a path repo docs or the code mark as critical (auth, secrets, billing, migrations, infra, CI, public API) and no `excludePaths` glob covers it → add the narrowest glob. Generated/vendored file drew findings → add to `ignorePatterns`. One line in chat per change.
 3. **Ask first** (AskUserQuestion; in loops → babysit state + chat):
    - Greptile rated the MR above what the diff does (test-only held at medium, internal tooling treated as core) → `instructions` clause: "Changes confined to `<glob>` are low risk: <reason>."
