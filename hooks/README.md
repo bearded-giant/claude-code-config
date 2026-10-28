@@ -109,7 +109,7 @@ Bash is not in the matcher, so this guards tool-driven edits only. A `sed -i` or
 
 ## greptile_rereview.py
 
-PostToolUse on Bash. Greptile reviews a GitLab MR only when it opens, so every later push needs an `@greptile review` comment. After a session runs `git push`, this posts that comment and tells the session it did. It acts only when the repo root has `.greptile/` or `greptile.json`, origin is GitLab, the branch is not `main`/`master`/`stage`, the push was a branch push (not a tag, `--tags`, or `--delete`), `HEAD` matches `@{u}`, and exactly one open MR has that source branch. It waits up to about 16s for GitLab to register the new head, then skips when Greptile already reviewed that head or an `@greptile review` note is newer than the head commit. The `settings.json` command runs a shell `case` first, so python starts only when the payload mentions `git` and `push`. Tests: `python3 hooks/test_greptile_rereview.py`.
+PostToolUse on Bash. Greptile reviews a GitLab MR or a GitHub PR only when it opens, so every later push needs an `@greptile review` comment. After a session runs `git push`, this posts that comment on the GitLab MR of the pushed branch and, when the repo has a `github` remote with an open PR for the branch, on that PR too, and tells the session so it does not post a second one. It skips when Greptile already reviewed the pushed head.
 
 ## voice_gate.py
 

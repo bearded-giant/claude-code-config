@@ -94,14 +94,17 @@ def request_review(data):
     if not top:
         return None
     has_config = Path(top, ".greptile").is_dir() or Path(top, "greptile.json").exists()
-    if "gitlab" not in _git(top, "remote", "get-url", "origin"):
-        return None
     branch = _git(top, "rev-parse", "--abbrev-ref", "HEAD")
     if branch in PROTECTED or not pushes_branch(command, branch):
         return None
     head = _git(top, "rev-parse", "HEAD")
-    if not head or head != _git(top, "rev-parse", "@{u}"):
+    if not head:
         return None
+    github = request_github_review(top, branch, head)
+    if "gitlab" not in _git(top, "remote", "get-url", "origin"):
+        return github
+    if head != _git(top, "rev-parse", "@{u}"):
+        return github
     try:
         mrs = json.loads(_run(["glab", "mr", "list", f"--source-branch={branch}", "-F", "json"], top) or "[]")
     except json.JSONDecodeError:
@@ -125,10 +128,35 @@ def request_review(data):
     if already_requested(notes, head, _ts(_git(top, "log", "-1", "--format=%cI"))):
         return None
     _run(["glab", "mr", "note", str(iid), "-m", "@greptile review"], top)
-    return (
+    msg = (
         f"greptile_rereview hook posted `@greptile review` on MR !{iid} for head {head[:8]}. "
         "Greptile reviews only on MR open, so every later push needs this request; it is done, do not post another."
     )
+    return f"{msg} {github}" if github else msg
+
+
+def request_github_review(top, branch, head):
+    # greptile reviews a github pr on open only; a `@greptile review` comment re-reviews the pushed head
+    url = _git(top, "remote", "get-url", "github")
+    m = re.search(r"github\.com[:/]([^/]+/[^/.]+)", url or "")
+    if not m:
+        return None
+    repo = m.group(1)
+    try:
+        prs = json.loads(_run(["gh", "pr", "list", "-R", repo, "--head", branch, "--json", "number,headRefOid"], top) or "[]")
+    except json.JSONDecodeError:
+        return None
+    if len(prs) != 1 or prs[0].get("headRefOid") != head:
+        return None
+    number = prs[0]["number"]
+    try:
+        reviews = json.loads(_run(["gh", "api", f"repos/{repo}/pulls/{number}/reviews"], top) or "[]")
+    except json.JSONDecodeError:
+        return None
+    if any(r.get("user", {}).get("login", "").startswith("greptile") and r.get("commit_id") == head for r in reviews):
+        return None
+    _run(["gh", "pr", "comment", str(number), "-R", repo, "--body", "@greptile review"], top)
+    return f"Also posted `@greptile review` on GitHub PR {repo}#{number} for head {head[:8]}; do not post another."
 
 
 def main():
