@@ -1,6 +1,6 @@
 ---
 name: grill
-description: 'Adversarial pre-ship review loop for larger/complex changes. Runs `greptile review --json` on local branch committed diff vs base (Recharge GitLab + RechargePayments / skio-org GitHub repos; any other remote gets grill''s own review instead), triages each finding as skeptical staff engineer, scores it (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don''t let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR URL (`/grill <mr-url>`, "grill this MR", "adversarial review of <mr-url>"), runs read-only MR mode instead: seeds from Greptile''s MR threads, verifies the MR description''s claims against the code, refutes and scores, prints findings. MR mode never edits, writes files, or posts.'
+description: 'Adversarial pre-ship review loop for larger/complex changes. Runs `greptile review --json` on local branch committed diff vs base (Recharge GitLab + RechargePayments / skio-org GitHub repos; any other remote gets grill''s own review instead), triages each finding as skeptical staff engineer, scores it (severity 1-5, confidence 0-1), auto-fixes high-confidence sev 2-4 items per dual-axis matrix, flags sev-5 for human, loops up to N turns (default 3, configurable 1-5). Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Sticky per-feature config at .config.yaml. Outputs per-run artifacts under .giantmem/features/{feature}/grill/. Auto-fires when user says "grill me", "grill this", "tear it apart", "don''t let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR or GitHub PR URL (`/grill <mr-url>`, "grill this MR", "grill this PR", "adversarial review of <mr-url>"), runs read-only MR mode instead: seeds from Greptile''s MR threads, verifies the MR description''s claims against the code, refutes and scores, prints findings. MR mode never edits, writes files, or posts.'
 context: fork
 model: sonnet
 background: false
@@ -90,13 +90,13 @@ Greptile excludes uncommitted changes, so it cannot see auto-fix edits. Turn N>1
 
 ## MR mode
 
-First arg matches `https://<host>/<ns/project>/-/merge_requests/<iid>` → MR mode. Review the posted MR as reviewer, not author. GitHub PR URL → say unsupported, stop.
+First arg matches `https://<host>/<ns/project>/-/merge_requests/<iid>` or `https://github.com/<owner>/<repo>/pull/<n>` → MR mode. Review the posted MR as reviewer, not author. "MR" below covers both; each Fetch call has its `gh` twin. A GitHub PR outside the orgs `skio-org` / `RechargePayments` has no Greptile: review it on the `greptile: none` path.
 
 Differs from local mode:
 
 - Read-only. Implies `--dry-run`, one turn. Skip output dir, sticky config, every file write. Chat reply is the deliverable: glmon poller stores it as the review file.
 - Refusal cases become findings, never refusals: new behavior with zero tests → sev 3 tests, migration without rollback → sev 4 data.
-- NEVER write to the MR: no notes, no `@greptile review`, no approval. Posting is `review-comment`, on request.
+- NEVER write to the MR: no notes, no `@greptile review` (GitHub `@greptileai review`), no approval or review submission. Posting is `review-comment`, on request.
 
 ### Fetch
 
@@ -108,15 +108,23 @@ Differs from local mode:
 - Files at head (Verification pass reads callers + definitions beyond hunks): `glab api "projects/<enc>/repository/files/<url-encoded path>/raw?ref=<sha>"`. Cwd is a clone of the same repo → `git fetch origin <source_branch>`, then `git show <sha>:<path>`.
 - Diff between two shas: `glab api "projects/<enc>/repository/compare?from=<a>&to=<b>"`.
 
+GitHub twins, `<o/r>` from the URL:
+
+- `gh pr view <n> -R <o/r> --json headRefOid,headRefName,title,body` → head, branch, title, description. The Greptile summary lives in `body`.
+- `gh pr diff <n> -R <o/r>` → diff.
+- Threads: `gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(number:<n>) { reviewThreads(first:100) { nodes { isResolved isOutdated comments(first:50) { nodes { author { login } body path line url } } } } } } }'`.
+- Files at head: `gh api "repos/<o>/<r>/contents/<path>?ref=<sha>" -H "Accept: application/vnd.github.raw"`; a local clone works the same as on GitLab.
+- Diff between two shas: `gh api "repos/<o>/<r>/compare/<a>...<b>"`.
+
 ### Seed findings
 
-Greptile author: `author.username == "greptile"` (`greptile` skill, Greptile facts).
+Greptile author: `author.username == "greptile"`; GitHub `author.login == "greptile-apps"` (`greptile` skill, Greptile facts).
 
-- Summary note (`<!-- greptile_summary -->`): score from `<!-- greptile_confidence_score:N -->`, reviewed sha from its "Last reviewed commit" `/commit/<sha>` link.
-- Each unresolved Greptile DiffNote → candidate. `position.new_path` + `new_line` = file:line (`old_line` only → base side). Bold title + body = problem. ```` ```suggestion ```` block = proposed fix, never applied blind. Badge `badges/p0|p1|p2.svg` seeds sev per the mapping table above. Resolved threads: skip.
-- `<!-- greptile_outside_diff -->` note: each item a candidate.
+- Summary note (`<!-- greptile_summary -->`; GitHub: the same markers in the PR `body`): score from `<!-- greptile_confidence_score:N -->`, reviewed sha from its "Last reviewed commit" `/commit/<sha>` link.
+- Each unresolved Greptile DiffNote → candidate. `position.new_path` + `new_line` = file:line (`old_line` only → base side). GitHub: each thread with `isResolved: false` whose first comment is the bot's; `path` + `line` = file:line. Bold title + body = problem. ```` ```suggestion ```` block = proposed fix, never applied blind. Badge `badges/p0|p1|p2.svg` seeds sev per the mapping table above. Resolved threads: skip.
+- `<!-- greptile_outside_diff -->` note: each item a candidate (GitHub: same marker wherever it appears; not seen on frost yet).
 - Reviewed sha != head → Greptile stale. Status each seeded finding at head (RESOLVED / STILL OPEN), then self-review `<reviewed>..<head>` with the Review categories table, `source: self-review`.
-- No summary note (Greptile reviews off for the repo, or not run yet) → self-review the full diff with the Review categories table, header says `greptile: none`. Only MR-mode path where grill reviews without Greptile.
+- No summary note (GitHub: no marker in the body; Greptile reviews off for the repo, a personal org, or not run yet) → self-review the full diff with the Review categories table, header says `greptile: none`. Only MR-mode path where grill reviews without Greptile.
 - Prompt names a previously reviewed sha (glmon re-review) → lead with what changed in `<prev>..<head>`.
 
 ### Claim check
@@ -211,7 +219,7 @@ All optional. Parsed from `$ARGUMENTS` after `/grill`.
 
 | Arg | Type | Default | Range | Effect |
 |---|---|---|---|---|
-| `<mr-url>` | positional | none | GitLab MR URL | MR mode (see MR mode). Other flags ignored. |
+| `<mr-url>` | positional | none | GitLab MR or GitHub PR URL | MR mode (see MR mode). Other flags ignored. |
 | `--loops N` | int | 3 | 1-5 | Max loop turns. >5 rejected (diminishing returns + churn risk). |
 | `--threshold X` | float | 0.85 | 0.50-1.00 | Conf cutoff for sev 3-4 auto-fix. |
 | `--sev2-threshold X` | float | 0.95 | 0.50-1.00 | Conf cutoff for sev-2 auto-fix. |
