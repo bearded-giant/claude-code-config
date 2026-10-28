@@ -98,6 +98,7 @@ A worktree that cannot be fast-forwarded stays where it is; the note then says `
 git -C <wt> log origin/<base> --oneline -i --grep="<KEY>\|<H1 id>\|<related keys>"
 glab mr list -R <group/project> --search "<KEY>" --all
 glab mr list -R <group/project> --search "<H1 id>" --all
+gh pr list -R <owner/repo> --search "<KEY>" --state all --json number,state,mergedAt,url   # GitHub repos (repos.csv remote)
 ```
 
 Landed or open: name it in the note (`Fix: <repo>!N merged <sha>` or `open`), confirm what it covers against the ticket, and score the remaining gap. Nothing found: `no MR, no commit by key`.
@@ -165,7 +166,7 @@ Code read on <repo> `<worktree>` at `<sha>` (<base> head <date>).
 
 ### Repos
 <one line: what ships together and in what order; branch `<KEY>-<slug>` per repo>
-| ship | repo (repos.csv) | GitLab project | base | role in the bug | change | test command |
+| ship | repo (repos.csv) | project (`group/project` on GitLab, `owner/repo` on GitHub) | base | role in the bug | change | test command |
 (one row per repo read, including repos that need no change; test command is the exact command from the repo's CLAUDE.md or Makefile with the test files the fix touches, or "CI only" when the repo forbids local runs)
 
 ## Gates before trusting this note    <- table: check | expected | failure means
@@ -223,7 +224,7 @@ Batch (`--status ready`, or several keys): one `general-purpose` subagent per ti
 
 ## Sweep
 
-`/sec-ticket --sweep`. For each `in_review` note, for each repo row with a change: `glab mr list -R <project> --search <KEY> --all`. Every row has a merged MR: `note.py status <note> done`, `complete_todo` + `DONE <ts> <refs>`. An MR closed unmerged: report it, leave the status. Then repair drift both ways: a `done` / `wont_fix` note whose item is still open gets it closed; a note with a `status` and no item gets one. Report one line per change.
+`/sec-ticket --sweep`. For each `in_review` note, for each repo row with a change: `glab mr list -R <project> --search <KEY> --all` (GitHub: `gh pr list -R <project> --search <KEY> --state all --json number,state,mergedAt,url`). Every row has a merged MR: `note.py status <note> done`, `complete_todo` + `DONE <ts> <refs>`. An MR closed unmerged: report it, leave the status. Then repair drift both ways: a `done` / `wont_fix` note whose item is still open gets it closed; a note with a `status` and no item gets one. Report one line per change.
 
 ## Rules
 
