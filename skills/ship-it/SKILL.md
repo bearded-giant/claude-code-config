@@ -22,7 +22,7 @@ This skill exists because the chain was previously a one-line rule in CLAUDE.md 
    - Triggered → look for grill `final.md` for this branch (feature grill dir per `grill` skill routing) newer than HEAD commit.
    - Found + rating SHIP IT → proceed, note `grill: SHIP IT (runs N)` in chat.
    - Found + rating BLOCK/NEEDS WORK → STOP, report rating + final.md path. User decides.
-   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Autonomous mode (CLAUDE.md `### Autonomous mode`) → run `/grill` without asking. Small/simple diffs never trigger — no gate friction on routine ships.
+   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Autonomous mode (`commands/auto.md`) → run `/grill` without asking. Small/simple diffs never trigger — no gate friction on routine ships.
 
 ## Chain (execute in order, no breaks)
 

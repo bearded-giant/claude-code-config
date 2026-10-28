@@ -1,5 +1,5 @@
 ---
-description: Autonomous mode for a defined scope (reviewed plan, task list, handoff, doit list, named branches). Works the scope end to end without mid-run questions, ships every tested piece through ship-it, babysits each MR, and logs every call made without asking. `/auto off` exits. Rules of engagement live in CLAUDE.md `### Autonomous mode`.
+description: Autonomous mode for a defined scope (reviewed plan, task list, handoff, doit list, named branches). Works the scope end to end without mid-run questions, ships every tested piece through ship-it, babysits each MR, and logs every call made without asking. `/auto off` exits. Rules of engagement below; entry and hard stops in CLAUDE.md `### Autonomous mode`.
 argument-hint: "<plan | tasks | handoff path | doit list | branches> | off"
 ---
 
@@ -9,5 +9,14 @@ Autonomous mode for: $ARGUMENTS
 
 1. Load the scope. Read the plan, task list, handoff, or doit list named above. Empty argument → the plan or scope agreed earlier in this conversation; no such scope → AskUserQuestion once, the only ask of the run. Every piece of work becomes a `claude:` item on the session doit list: priority set, `ref:` first description line, `deps` where one piece waits on another. Items already on the list stay as they are.
 2. Announce in 1-3 lines: the items in work order and the hard stops that apply. Do not wait for a reply.
-3. Work per CLAUDE.md `### Autonomous mode`, in burn order (sequence first, then priority).
-4. Exit when every item is done or BLOCKED behind a `gate`/`decision` item, and every MR is READY, BLOCKED, or has a babysit loop running: run `python3 ~/.claude/hooks/auto_mode.py --off`, then report per that section.
+3. Work per `## Rules of engagement` below and the hard stops in CLAUDE.md `### Autonomous mode`, in burn order (sequence first, then priority).
+4. Exit when every item is done or BLOCKED behind a `gate`/`decision` item, and every MR is READY, BLOCKED, or has a babysit loop running: run `python3 ~/.claude/hooks/auto_mode.py --off`, then report per `## Rules of engagement`.
+
+## Rules of engagement
+
+- Decide, don't ask. Scope settles ambiguity → take fitting option, log the call. Only I can settle it (product choice, credentials, rebuild-priced fork) → item BLOCKED: add `gate` item naming the ask (`decision` mirror when from a doc's Open Questions), dep work item on it, next item. No AskUserQuestion mid-run; overrides Wizard-Style Prompts and the Strategy-visibility ask for the run.
+- Two failed attempts on an item → BLOCKED the same way, evidence in its notes. Never a third variation, never a stopped run.
+- Ship every tested piece via `ship-it` chain on its branch, most urgent first, no per-branch ask. Grill gate runs `/grill` without asking. Pushed branch with no MR = unfinished work. Every GitLab MR gets `/loop 5m /babysit <worktree path>`, Greptile repo or not, until READY or BLOCKED. GitHub PR: `gh pr checks <n> --watch`, fix until green. Babysit sign-off threads stay deferred for the report. Never `-q` on `git push` (gate reads its output).
+- Coverage: scope's items and branches + follow-up fixes landing on those branches. Follow-up needing its own branch outside scope waits for "ship it".
+- `hooks/auto_mode.py`: re-injects a one-line reminder each prompt while on (survives compaction); Stop blocks once while a ready `claude:` item (no open deps) is on the session list or a branch pushed since entry has no MR/PR.
+- Exit report: BLOCKED items + gate asks first, then decision log (`item | call | why`, one line per call made without asking), then every MR link. Mid-run handoff says `auto mode: on`, carries scope, decision log, MR list.

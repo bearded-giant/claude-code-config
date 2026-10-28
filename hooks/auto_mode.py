@@ -68,7 +68,7 @@ def turn_off(session_id):
 
 def reminder(session_id, state):
     return (
-        f"AUTO MODE on (scope: {state.get('scope')}). Rules of engagement: CLAUDE.md `### Autonomous mode`. "
+        f"AUTO MODE on (scope: {state.get('scope')}). Rules of engagement: `commands/auto.md`; hard stops: CLAUDE.md `### Autonomous mode`. "
         f"Exit when the scope is done: `python3 ~/.claude/hooks/auto_mode.py --off` (session {session_id})."
     )
 
