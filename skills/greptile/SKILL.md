@@ -55,7 +55,7 @@ Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `
 5. Commit alone: `chore: add greptile review config`.
 6. GitHub repo you set up yourself (org `RechargePayments`): make Greptile a required approver, in this order.
    1. `config.json` gets `"autoApprove": {"enabled": true, "riskCeiling": "<pick>"}`; `statusCheck` stays at its default `true`. Greptile approves only a clean 5/5 review, there is no lower bar on this side.
-   2. After the config has merged to the base branch (policy is read from there), the branch ruleset (`gh api repos/<o>/<r>/rulesets`, the one targeting `~DEFAULT_BRANCH`; ai-agent-hub and ai-investigator already have one with `pull_request` `required_approving_review_count: 1`, `required_review_thread_resolution: true`, and `required_status_checks` `test`, `test-db`). Add the Greptile check to it, payload to a scratchpad file first:
+   2. After the config has merged to the base branch (policy is read from there), the branch ruleset (`gh api repos/<o>/<r>/rulesets`, the one targeting `~DEFAULT_BRANCH`; ai-agent-hub and ai-investigator carry one with `pull_request` `required_approving_review_count: 1`, `required_review_thread_resolution: true`, and `required_status_checks` `test`, `test-db`). Add the Greptile check to it, payload to a scratchpad file first:
       ```bash
       gh api "repos/<o>/<r>/rulesets/<id>" > <scratchpad>/ruleset.json   # edit: append {"context": "Greptile Review"} to the required_status_checks rule's parameters.required_status_checks
       gh api -X PUT "repos/<o>/<r>/rulesets/<id>" --input <scratchpad>/ruleset.json

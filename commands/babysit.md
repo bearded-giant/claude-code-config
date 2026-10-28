@@ -16,7 +16,7 @@ Argument: `$ARGUMENTS` (optional worktree path). Given → start every Bash call
 ## Preconditions
 
 - Host from `git remote get-url origin`: `gitlab` in the host → GitLab; `github.com` with org `skio-org` or `RechargePayments` → GitHub; anything else (personal GitHub, no remote) → skip + log `no reviewable remote`
-- GitHub twin (CLAUDE.md `## Repo Map`: repos.csv note `github twin`, remote `github` to a `skio-org` / `RechargePayments` repo) with an open PR for `$BRANCH` → this run works the GitHub PR (threads, approval, checks) and reads only the pipeline from the GitLab MR, when one exists (`merge: github` twins open none). No open PR there → the origin path as usual. Once origin moves to GitHub the rule is moot
+- GitHub twin (CLAUDE.md `## Repo Map`: repos.csv note `github twin`, remote `github` to a `skio-org` / `RechargePayments` repo) with an open PR for `$BRANCH` → this run works the GitHub PR (threads, approval, checks) and reads only the pipeline from the GitLab MR, when one exists (`merge: github` twins open none). No open PR there → the origin path as usual. A repo whose origin is GitHub takes the plain GitHub path
 - `glab auth status` (GitLab) or `gh auth status` (GitHub) succeeds (skip + log if not)
 - GitHub owner/repo = the origin URL path minus `.git` (`skio-org/frost`); every `gh` call below takes `-R <o/r>`
 - Current branch is **not** `main` / `master` / `stage` — if it is, exit clean with `not on a feature branch — nothing to babysit`

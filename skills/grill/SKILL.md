@@ -122,7 +122,7 @@ Greptile author: `author.username == "greptile"`; GitHub `author.login == "grept
 
 - Summary note (`<!-- greptile_summary -->`; GitHub: the same markers in the PR `body` or in the bot's issue comment): score from `<!-- greptile_confidence_score:N -->`, reviewed sha from its "Last reviewed commit" `/commit/<sha>` link.
 - Each unresolved Greptile DiffNote → candidate. `position.new_path` + `new_line` = file:line (`old_line` only → base side). GitHub: each thread with `isResolved: false` whose first comment is the bot's; `path` + `line` = file:line. Bold title + body = problem. ```` ```suggestion ```` block = proposed fix, never applied blind. Badge `badges/p0|p1|p2.svg` seeds sev per the mapping table above. Resolved threads: skip.
-- `<!-- greptile_outside_diff -->` note: each item a candidate (GitHub: same marker wherever it appears; not seen on frost yet).
+- `<!-- greptile_outside_diff -->` note: each item a candidate (GitHub: same marker wherever it appears; not observed on frost).
 - Reviewed sha != head → Greptile stale. Status each seeded finding at head (RESOLVED / STILL OPEN), then self-review `<reviewed>..<head>` with the Review categories table, `source: self-review`.
 - No summary note (GitHub: no marker in body or comments; Greptile reviews off for the repo, a personal org, or not run yet) → self-review the full diff with the Review categories table, header says `greptile: none`. Only MR-mode path where grill reviews without Greptile.
 - Prompt names a previously reviewed sha (glmon re-review) → lead with what changed in `<prev>..<head>`.
