@@ -164,12 +164,15 @@ def request_github_review(top, branch, head, has_config, head_time):
     if not prs or len(prs) != 1 or prs[0].get("headRefOid") != head:
         return None
     number, body = prs[0]["number"], prs[0].get("body") or ""
-    # the summary lives in the pr body on github; a repo with no .greptile/ can still be reviewed
-    if not (has_config or "greptile_summary" in body):
+    comments = _gh_json(top, ["api", f"repos/{repo}/issues/{number}/comments"])
+    if comments is None:
+        return None
+    # the summary is edited into the pr body on some repos and posted as a bot comment on others
+    summary = any("greptile_summary" in b for b in [body, *(c.get("body") or "" for c in comments)])
+    if not (has_config or summary):
         return None
     reviews = _gh_json(top, ["api", f"repos/{repo}/pulls/{number}/reviews"])
-    comments = _gh_json(top, ["api", f"repos/{repo}/issues/{number}/comments"])
-    if reviews is None or comments is None:
+    if reviews is None:
         return None
     if any(r.get("user", {}).get("login", "").startswith("greptile") and r.get("commit_id") == head for r in reviews):
         return None

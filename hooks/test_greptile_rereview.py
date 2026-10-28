@@ -117,6 +117,8 @@ assert gh_request(origin="git@github.com:bearded-giant/r.git") == (None, [])
 # no summary in the body and no .greptile/: greptile is not on this repo
 assert gh_request(body="plain description") == (None, [])
 assert gh_request(body="plain description", has_config=True)[1]
+# summary posted as a bot comment instead of edited into the body (RechargePayments repos)
+assert gh_request(body="plain description", comments=[{"body": SUMMARY, "created_at": "2026-10-18T17:00:00Z"}])[1]
 # review already on the head, or the body already reviewed the head, or a request newer than the head commit
 assert gh_request(reviews=[{"user": {"login": "greptile-apps[bot]"}, "commit_id": "abc1234"}]) == (None, [])
 assert gh_request(body=SUMMARY.replace("old1234", "abc1234")) == (None, [])
