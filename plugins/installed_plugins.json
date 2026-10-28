@@ -4,21 +4,21 @@
     "commit-commands@claude-code-plugins": [
       {
         "scope": "user",
-        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/commit-commands/1.0.0",
-        "version": "1.0.0",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/commit-commands/1.0.1",
+        "version": "1.0.1",
         "installedAt": "2025-12-13T01:44:25.767Z",
-        "lastUpdated": "2025-12-13T01:44:25.767Z",
-        "gitCommitSha": "eb872450105745e9489c6f6d73fa2fb4ff5a1e9a"
+        "lastUpdated": "2026-10-27T22:01:08.719Z",
+        "gitCommitSha": "f8c5e7a1dcb71b10cb74586224b5401f3de5db28"
       }
     ],
     "feature-dev@claude-code-plugins": [
       {
         "scope": "user",
-        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/feature-dev/1.0.0",
-        "version": "1.0.0",
+        "installPath": "/Users/bryan/.claude/plugins/cache/claude-code-plugins/feature-dev/1.0.1",
+        "version": "1.0.1",
         "installedAt": "2025-12-13T01:44:25.767Z",
-        "lastUpdated": "2025-12-13T01:44:25.767Z",
-        "gitCommitSha": "eb872450105745e9489c6f6d73fa2fb4ff5a1e9a"
+        "lastUpdated": "2026-10-27T22:01:08.737Z",
+        "gitCommitSha": "f8c5e7a1dcb71b10cb74586224b5401f3de5db28"
       }
     ],
     "pyright-lsp@claude-plugins-official": [
@@ -102,12 +102,12 @@
       },
       {
         "scope": "project",
+        "projectPath": "/Users/bryan/dev/claude-code-config/skills/eod-status/scripts",
         "installPath": "/Users/bryan/.claude/plugins/cache/claude-plugins-official/slack/1.4.1",
         "version": "1.4.1",
         "installedAt": "2026-10-21T20:14:52.853Z",
         "lastUpdated": "2026-10-21T20:14:52.853Z",
-        "gitCommitSha": "b073ebc2fc500b52e781f5fd17ebb9ad462363dc",
-        "projectPath": "/Users/bryan/dev/claude-code-config/skills/eod-status/scripts"
+        "gitCommitSha": "b073ebc2fc500b52e781f5fd17ebb9ad462363dc"
       }
     ],
     "clangd-lsp@claude-plugins-official": [
@@ -296,11 +296,11 @@
       },
       {
         "scope": "user",
-        "installPath": "/Users/bryan/.claude/plugins/cache/skio/dev-workflow/1.0.0",
-        "version": "1.0.0",
+        "installPath": "/Users/bryan/.claude/plugins/cache/skio/dev-workflow/2.0.0",
+        "version": "2.0.0",
         "installedAt": "2026-08-31T00:57:29.904Z",
-        "lastUpdated": "2026-08-31T00:57:29.904Z",
-        "gitCommitSha": "a998eae2c6c990e20c3877eb77ec25e40a47ba9a"
+        "lastUpdated": "2026-10-27T17:17:46.680Z",
+        "gitCommitSha": "d600373faa93a44dfbef548086fa6c8b06c102b4"
       }
     ],
     "ponytail@ponytail": [
