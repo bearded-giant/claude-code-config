@@ -37,7 +37,7 @@ grill/
 
 ## Scope
 
-Greptile is Recharge's tool: it reviews Recharge-owned repos only. Review remote = the one `greptile review` resolves: branch upstream (`git config branch.<b>.remote`), else `origin`, else the sole remote. `git remote get-url <review remote>` picks turn 1's finding source:
+Greptile is Recharge's tool: it reviews Recharge-owned repos only. Review remote = the one `greptile review` resolves: branch upstream (`git config branch.<b>.remote`, skipped when `.`), else `origin`, else the sole remote. `git remote get-url <review remote>` picks turn 1's finding source:
 
 | review remote URL | Turn 1 source |
 |---|---|
