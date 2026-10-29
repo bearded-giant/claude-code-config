@@ -91,7 +91,7 @@ GNU stow. NEVER edit files in `~/.config` or other home locations directly: edit
 Source `config/repos.csv` (`~/dev/claude-code-config/config/repos.csv`, stowed to `~/.claude/config/repos.csv`): `names` = `|`-separated aliases, `path` absolute, `notes` optional.
 - I name a repo → its row's path. No searching `~/dev`, no guessing from dir names. Name not in file → ask for the path, offer to add the row.
 - Path holds `.bare` (worktree parent) → `git -C <path> worktree list`, pick worktree on the feature branch. Match by branch, never dir name. No match → ask.
-- Note `github twin <owner/repo> on remote `github`` → ship-it pushes the branch and opens a PR there too; `merge: github` in the same note → GitHub is the merge path: ship-it arms `gh pr merge --auto --squash`, no GitLab MR. Absent → GitLab MR merges, GitHub PR auto-closes on the main push.
+- Note `github twin <owner/repo> on remote `github`` → ship-it pushes the branch and opens a PR there too; `merge: github` in the same note → GitHub is the merge path: ship-it arms `gh pr merge --auto --squash`, no GitLab MR. Absent → GitLab MR merges, GitHub PR auto-closes on the main push. Note `merge: github` on a repo whose `origin` is GitHub (GitLab mirror on remote `gitlab`) → plain GitHub path, ship-it arms the same auto-merge.
 
 ## Communication Style
 

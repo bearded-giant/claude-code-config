@@ -77,7 +77,7 @@ Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent
 
 Pick the host based on remote:
 - `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the step-3 description file as the MR body (`--description "$(cat <path-from-step-3>)"`) and `mr_base_branch` as the target. `kai:open-mr` MUST use this supplied description and MUST NOT regenerate from its own Step 7 default template — Step 3 already chose the format.
-- `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`
+- `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`; repos.csv note says `merge: github` → then `gh pr merge <n> --auto --squash`
 
 Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Never a `docs: changelog` subject: a squash merge makes the title the commit subject on `main`, and changelog scripts drop that subject. Do NOT prefix with "MR:" or "PR:".
 
