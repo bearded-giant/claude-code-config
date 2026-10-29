@@ -16,6 +16,7 @@ PUSH_RE = re.compile(r"\bgit\s+(?:-C\s+(\S+)\s+)?push\b")
 CD_RE = re.compile(r"(?:^|[;&|(]\s*)cd\s+(\S+)")
 SUMMARY_SHA_RE = re.compile(r"/commit/([0-9a-f]{7,40})")
 REQUEST_RE = re.compile(r"^@greptile(ai)? review\b")
+REPOS_CSV = Path.home() / ".claude/config/repos.csv"
 
 
 def push_dir(command, cwd):
@@ -148,6 +149,16 @@ def github_repo(top):
     return None
 
 
+def babysit_merge(top):
+    try:
+        lines = REPOS_CSV.read_text().splitlines()
+    except OSError:
+        return False
+    # notes is the unquoted rest of the row and holds commas
+    rows = (line.split(",", 2) for line in lines)
+    return any(len(r) == 3 and "babysit-merge" in r[2] and Path(top).is_relative_to(r[1]) for r in rows)
+
+
 def _gh_json(top, args):
     try:
         return json.loads(_run(["gh", *args], top) or "[]")
@@ -158,7 +169,8 @@ def _gh_json(top, args):
 def request_github_review(top, branch, head, has_config, head_time):
     # greptile reviews a github pr on open only; its github handle is @greptileai, not the gitlab bot's @greptile
     repo = github_repo(top)
-    if not repo:
+    # babysit step 9 owns re-review there; a request after a 4/5 fix push restarts the rounds
+    if not repo or babysit_merge(top):
         return None
     prs = _gh_json(top, ["pr", "list", "-R", repo, "--head", branch, "--json", "number,headRefOid,body"])
     if not prs or len(prs) != 1 or prs[0].get("headRefOid") != head:

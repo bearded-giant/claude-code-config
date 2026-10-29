@@ -125,4 +125,16 @@ assert gh_request(body=SUMMARY.replace("old1234", "abc1234")) == (None, [])
 assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:10:00Z"}]) == (None, [])
 assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-10-18T18:00:00Z"}])[1]
 
+# repos.csv `babysit-merge` row covering the checkout: babysit owns the re-review, nothing posted
+import tempfile
+
+with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as f:
+    f.write("names,path,notes\nr,/tmp,origin = GitHub (PRs, Greptile); merge: github; babysit-merge\nq,/tmpx,\n")
+mod.REPOS_CSV = Path(f.name)
+assert mod.babysit_merge("/tmp") and mod.babysit_merge("/tmp/feat") and not mod.babysit_merge("/tmpx/feat")
+assert gh_request() == (None, [])
+mod.REPOS_CSV = Path(f.name + ".missing")
+assert not mod.babysit_merge("/tmp") and gh_request()[1]
+Path(f.name).unlink()
+
 print("ok")
