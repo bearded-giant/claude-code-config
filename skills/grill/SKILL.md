@@ -14,7 +14,7 @@ NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 ## When to use
 
 - **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened.
-- **This skill, MR mode** (`/grill <mr-url>`): posted GitLab MR, yours or someone else's. Reviewer pass, read-only. glmon review poller runs it.
+- **This skill, MR mode** (`/grill <mr-url>`): posted GitLab MR or GitHub PR, yours or someone else's. Reviewer pass, read-only. glmon review poller runs it on GitLab MRs.
 - **kai:review-code**: kai template review of a posted GitLab MR.
 - **caveman-review**: posted PR, line-by-line feedback.
 
@@ -37,9 +37,9 @@ grill/
 
 ## Scope
 
-Greptile is Recharge's tool: it reviews Recharge-owned repos only. `git remote get-url origin` picks turn 1's finding source:
+Greptile is Recharge's tool: it reviews Recharge-owned repos only. Review remote = the one `greptile review` resolves: branch upstream (`git config branch.<b>.remote`), else `origin`, else the sole remote. `git remote get-url <review remote>` picks turn 1's finding source:
 
-| origin | Turn 1 source |
+| review remote URL | Turn 1 source |
 |---|---|
 | host `gitlab.rechargeapps.net` | Greptile |
 | `github.com`, org `RechargePayments` (Recharge) or `skio-org` (Skio) | Greptile |
@@ -58,8 +58,8 @@ In-scope repos only (see Scope). Turn 1 finding source is the Greptile CLI (`gre
 ### Preflight (step 5)
 
 - `command -v greptile` empty → stop, report broken install or `PATH`.
-- `greptile whoami | grep -q '^Not signed in'` → stop, tell user to run `greptile login` (interactive browser flow, never run it). `whoami` exits 0 when signed out; gate on text.
-- `this repository is not connected to Greptile yet` → stop, tell user to run `greptile init` or add the repo in the dashboard (never run it: registers the repo with the org).
+- `greptile whoami 2>&1` prints `Not signed in` (exit 0) or exits non-zero (stored credential rejected: `API key invalid or revoked`) → stop, tell user to run `greptile login` (interactive browser flow, never run it). Gate on both text and exit code.
+- `this repository is not connected to Greptile yet` → stop, tell user to run `greptile init` or add the repo in the dashboard (never run it: registers the repo with the org). GitHub repos also need the Greptile GitHub app granted on the repo (org admin). Review remote ≠ `origin` and `origin` in scope → branch tracks a mirror (GitHub origin with a GitLab mirror remote, or the reverse) and Greptile reviewed the mirror's repo: report `git branch --set-upstream-to=origin/<b>` (`git branch --unset-upstream` when `origin/<b>` does not exist) instead, re-run. Never change the upstream yourself.
 - No fallback. In-scope repo + Greptile unavailable → stop and report. NEVER substitute a Claude-only review.
 
 ### Run (turn 1)
@@ -94,7 +94,7 @@ First arg matches `https://<host>/<ns/project>/-/merge_requests/<iid>` or `https
 
 Differs from local mode:
 
-- Read-only. Implies `--dry-run`, one turn. Skip output dir, sticky config, every file write. Chat reply is the deliverable: glmon poller stores it as the review file.
+- Read-only. Implies `--dry-run`, one turn. Skip output dir, sticky config, every file write. Chat reply is the deliverable: on GitLab MRs the glmon poller stores it as the review file.
 - Refusal cases become findings, never refusals: new behavior with zero tests → sev 3 tests, migration without rollback → sev 4 data.
 - NEVER write to the MR: no notes, no `@greptile review` (GitHub `@greptileai review`), no approval or review submission. Posting is `review-comment`, on request.
 
@@ -312,7 +312,7 @@ Diff touches a script that emits data artifacts (converters, generators, mutatio
 4. **Determine base branch**:
    - `--base` arg if passed
    - Else project CLAUDE.md `mr_base_branch: <branch>`
-   - Else git remote default
+   - Else review remote's default: `git symbolic-ref --short refs/remotes/<remote>/HEAD` minus the `<remote>/` prefix; unset → GitHub `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`, GitLab `glab repo view -F json` → `default_branch`
    - Else ask (main / master / stage / develop)
 5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Scope check** (see Scope): in scope → **Greptile preflight** (see Greptile review), fails → stop and report; out of scope → self-review, no Greptile.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
