@@ -58,7 +58,7 @@ In-scope repos only (see Scope). Turn 1 finding source is the Greptile CLI (`gre
 ### Preflight (step 5)
 
 - `command -v greptile` empty → stop, report broken install or `PATH`.
-- `greptile whoami 2>&1` prints `Not signed in` (exit 0) or exits non-zero (stored credential rejected: `API key invalid or revoked`) → stop, tell user to run `greptile login` (interactive browser flow, never run it). Gate on both text and exit code.
+- `greptile whoami 2>&1` prints `Not signed in` (exit 0) or exits non-zero (stored credential rejected: `API key invalid or revoked`) → stop, tell user to run `greptile login` (interactive browser flow, never run it). Gate on both text and exit code. Rejected with `GREPTILE_API_KEY` set → that env key overrides any login: user updates or removes its export instead.
 - `this repository is not connected to Greptile yet` → stop, tell user to run `greptile init` or add the repo in the dashboard (never run it: registers the repo with the org). GitHub repos also need the Greptile GitHub app granted on the repo (org admin). Review remote ≠ `origin` and `origin` in scope → branch tracks a mirror (GitHub origin with a GitLab mirror remote, or the reverse) and Greptile reviewed the mirror's repo: report `git branch --set-upstream-to=origin/<b>` (`git branch --unset-upstream` when `origin/<b>` does not exist) instead, re-run. Never change the upstream yourself.
 - No fallback. In-scope repo + Greptile unavailable → stop and report. NEVER substitute a Claude-only review.
 
