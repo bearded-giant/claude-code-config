@@ -55,13 +55,13 @@ Docs: https://www.greptile.com/docs/code-review/greptile-config, `-reference`, `
 5. Commit alone: `chore: add greptile review config`.
 6. GitHub repo you set up yourself (org `RechargePayments`): make Greptile a required approver, in this order.
    1. `config.json` gets `"autoApprove": {"enabled": true, "riskCeiling": "<pick>"}`; `statusCheck` stays at its default `true`. Greptile approves only a clean 5/5 review, there is no lower bar on this side.
-   2. After the config has merged to the base branch (policy is read from there), the branch ruleset (`gh api repos/<o>/<r>/rulesets`, the one targeting `~DEFAULT_BRANCH`; ai-agent-hub and ai-investigator carry one with `pull_request` `required_approving_review_count: 1`, `required_review_thread_resolution: true`, and `required_status_checks` `test`, `test-db`). Add the Greptile check to it, payload to a scratchpad file first:
+   2. After the config has merged to the base branch (policy is read from there), the branch ruleset (`gh api repos/<o>/<r>/rulesets`, the one targeting `~DEFAULT_BRANCH`, with `pull_request` `required_approving_review_count: 1` and `required_review_thread_resolution: true`). Add the Greptile check to it, payload to a scratchpad file first:
       ```bash
       gh api "repos/<o>/<r>/rulesets/<id>" > <scratchpad>/ruleset.json   # edit: append {"context": "Greptile Review"} to the required_status_checks rule's parameters.required_status_checks
       gh api -X PUT "repos/<o>/<r>/rulesets/<id>" --input <scratchpad>/ruleset.json
       ```
       Greptile's check context is `Greptile Review` (seen on ai-agent-hub PR 3). Its 5/5 approval lands as an `APPROVED` review by `greptile-apps[bot]` and alone satisfies the count (ai-agent-hub PR 3: `reviewDecision: APPROVED`, no human review), so the approval rule is the gate; adding `Greptile Review` to the required checks is optional.
-   3. Nothing repo-side for babysit: it reads `reviewDecision`, so under the 1-approval rule a PR below 5/5 stops at `needs your approval` until you approve by hand. There is no 4/5 auto path; Greptile approves only 5/5.
+   3. Nothing repo-side for babysit: it reads `reviewDecision`, so under the 1-approval rule a PR below 5/5 stops at `needs your approval` until you approve by hand; Greptile approves only 5/5. The 4/5 path is the opposite setup: ruleset `required_approving_review_count: 0` and `required_review_thread_resolution: false`, repos.csv note `babysit-merge`, and babysit is the merge gate (ai-investigator, ai-agent-hub, ai-semantic-layer).
    Skio and other people's repos: skip this step.
 
 ## rule (invalid suggestion)

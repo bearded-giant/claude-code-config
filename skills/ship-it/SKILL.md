@@ -77,7 +77,7 @@ Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent
 
 Pick the host based on remote:
 - `gitlab.rechargeapps.net` or other GitLab → invoke `kai:open-mr` skill, passing the step-3 description file as the MR body (`--description "$(cat <path-from-step-3>)"`) and `mr_base_branch` as the target. `kai:open-mr` MUST use this supplied description and MUST NOT regenerate from its own Step 7 default template — Step 3 already chose the format.
-- `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`; repos.csv note says `merge: github` → then `gh pr merge <n> --auto --squash`
+- `github.com` → `gh pr create --base <mr_base_branch> --head <current-branch> --title "<subject>" --body-file <path-from-step-3>`; repos.csv note says `merge: github` → then `gh pr merge <n> --auto --squash`, unless the note also says `babysit-merge` (no auto-merge; babysit merges after Greptile's review)
 
 Title: use the most recent commit subject (or the branch's primary commit subject if multi-commit). Never a `docs: changelog` subject: a squash merge makes the title the commit subject on `main`, and changelog scripts drop that subject. Do NOT prefix with "MR:" or "PR:".
 
@@ -140,5 +140,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin; `merge: github`: `github` only) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin; `merge: github`: `github` only) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github` and no `babysit-merge`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```

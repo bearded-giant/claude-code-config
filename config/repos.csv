@@ -25,11 +25,11 @@ frost,/Users/bryan/dev/skio/frost-wt,
 merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
 mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
 monitor,/Users/bryan/dev/ai/monitor,ai-tooling/monitor; greptile auto-approves here
-investigator-v2|inv-v2|inv2|inv|investigator,/Users/bryan/dev/ai/investigator-v2-wt,churn investigator v2 (Vercel project investigator-v2); fork of investigator-agent; worktree layout; origin = GitHub RechargePayments/ai-investigator (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/investigator-v2 read-only mirror on remote `gitlab`; merge: github
+investigator-v2|inv-v2|inv2|inv|investigator,/Users/bryan/dev/ai/investigator-v2-wt,churn investigator v2 (Vercel project investigator-v2); fork of investigator-agent; worktree layout; origin = GitHub RechargePayments/ai-investigator (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/investigator-v2 read-only mirror on remote `gitlab`; merge: github; babysit-merge
 auth-session-sync|session-sync,/Users/bryan/dev/python/dapr/auth-session-sync,
 zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
 db-schema,/Users/bryan/dev/db-schema,liquibase schema repo; DDL MRs for every mysql db incl. concierge
 semantic-layer|sem-layer|recharge-semantic-layer,/Users/bryan/dev/data-eng/recharge-semantic-layer,DE-owned; pypi + Vercel service
-semantic-engine|engine-fork|ai-semantic-layer,/Users/bryan/dev/ai/semantic-engine,standalone semantic layer engine + HTTP service (Vercel project recharge-semantic-layer); origin = GitHub RechargePayments/ai-semantic-layer (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/semantic-engine (id 1385) read-only mirror on remote `gitlab`; merge: github
-agent-hub|hub|investigator-hub,/Users/bryan/dev/ai/agent-hub-wt,investigator v2 phase 1 hub + eve (TypeScript, Vercel project agent-hub); worktree layout; origin = GitHub RechargePayments/ai-agent-hub (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/agent-hub (id 1387) read-only mirror on remote `gitlab`; merge: github
+semantic-engine|engine-fork|ai-semantic-layer,/Users/bryan/dev/ai/semantic-engine,standalone semantic layer engine + HTTP service (Vercel project recharge-semantic-layer); origin = GitHub RechargePayments/ai-semantic-layer (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/semantic-engine (id 1385) read-only mirror on remote `gitlab`; merge: github; babysit-merge
+agent-hub|hub|investigator-hub,/Users/bryan/dev/ai/agent-hub-wt,investigator v2 phase 1 hub + eve (TypeScript, Vercel project agent-hub); worktree layout; origin = GitHub RechargePayments/ai-agent-hub (PRs, Greptile, rulesets, Actions deploys); GitLab ai-tooling/agent-hub (id 1387) read-only mirror on remote `gitlab`; merge: github; babysit-merge

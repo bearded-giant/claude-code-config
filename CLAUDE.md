@@ -36,7 +36,7 @@ Own the repo, not only the literal ask. Pieces found on the way get done this se
 Default: MRs wait for "ship it" (git_rules); a blocker stops the turn with a question. Autonomous mode replaces both, for a scope I hand over.
 - Entry: `/auto <scope>` (reviewed plan, task list, handoff, doit list, named branches). I hand over a defined scope + say handle and ship it without `/auto` → run `python3 ~/.claude/hooks/auto_mode.py --on <scope>` first, then follow `commands/auto.md`. Can't tell if an ask means this → ask once via AskUserQuestion at start. Exit: `/auto off`, or `auto_mode.py --off` once scope done.
 - Rules for the run (deciding instead of asking, BLOCKED items, shipping, coverage, the hook, the exit report): `commands/auto.md` `## Rules of engagement`. Read it before the first item.
-- Hard stops hold, each blocks only its own item, not the run: merge, deploy, pushes to shared main/master/stage, deleting anything the session didn't create, one-way doors (schema/data migration, public API/contract change), security-sensitive changes, outward comms beyond the MR, its Jira sync, Greptile, babysit replies.
+- Hard stops hold, each blocks only its own item, not the run: merge (except babysit's on `babysit-merge` repos), deploy, pushes to shared main/master/stage, deleting anything the session didn't create, one-way doors (schema/data migration, public API/contract change), security-sensitive changes, outward comms beyond the MR, its Jira sync, Greptile, babysit replies.
 
 ### Gitignored files are editable
 `.gitignore` = what git tracks, not what you may edit. Gitignored files and files in ignored dirs: read/edit/create/delete under the same gates as tracked (read-before-edit, confirm destructive/outward-facing). No rule bars editing them; never invent one; never stop, skip, or ask solely because a path is gitignored.
@@ -91,7 +91,7 @@ GNU stow. NEVER edit files in `~/.config` or other home locations directly: edit
 Source `config/repos.csv` (`~/dev/claude-code-config/config/repos.csv`, stowed to `~/.claude/config/repos.csv`): `names` = `|`-separated aliases, `path` absolute, `notes` optional.
 - I name a repo → its row's path. No searching `~/dev`, no guessing from dir names. Name not in file → ask for the path, offer to add the row.
 - Path holds `.bare` (worktree parent) → `git -C <path> worktree list`, pick worktree on the feature branch. Match by branch, never dir name. No match → ask.
-- Note `github twin <owner/repo> on remote `github`` → ship-it pushes the branch and opens a PR there too; `merge: github` in the same note → GitHub is the merge path: ship-it arms `gh pr merge --auto --squash`, no GitLab MR. Absent → GitLab MR merges, GitHub PR auto-closes on the main push. Note `merge: github` on a repo whose `origin` is GitHub (GitLab mirror on remote `gitlab`) → plain GitHub path, ship-it arms the same auto-merge.
+- Note `github twin <owner/repo> on remote `github`` → ship-it pushes the branch and opens a PR there too; `merge: github` in the same note → GitHub is the merge path: ship-it arms `gh pr merge --auto --squash`, no GitLab MR. Absent → GitLab MR merges, GitHub PR auto-closes on the main push. Note `merge: github` on a repo whose `origin` is GitHub (GitLab mirror on remote `gitlab`) → plain GitHub path, ship-it arms the same auto-merge. Note `babysit-merge` → ship-it arms no auto-merge and babysit squash-merges after one Greptile review (`commands/babysit.md` step 9); the `main` ruleset there requires no approval and no thread resolution.
 
 ## Communication Style
 
