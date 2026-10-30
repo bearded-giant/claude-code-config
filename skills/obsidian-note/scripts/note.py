@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import hashlib
 import io
 import json
 import os
@@ -8,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import unicodedata
 from pathlib import Path
 
 AREAS = [
@@ -58,6 +60,7 @@ DOMAIN_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 LINK_KEYS = ("artifact", "artifact_rev", "artifact_account")
 # keep in step with LABEL_OVERRIDES in hooks/usage-fetch.py so labels match the statusline
 ACCOUNT_LABELS = {"recharge, inc": "rc-inc", "recharge, team": "rc-team"}
+SLOT_LABELS = {"team": "rc-team", "enterprise": "rc-inc"}
 STATUSES = ("new", "ready", "blocked", "in_progress", "in_review", "done", "wont_fix")
 
 
@@ -176,7 +179,34 @@ def cmd_domains(a):
     return rows
 
 
+def slot_tier():
+    # the session's keychain slot holds its own token; ~/.claude.json names whichever session logged in last
+    service = "Claude Code-credentials"
+    slot = os.environ.get("CLAUDE_SECURESTORAGE_CONFIG_DIR")
+    if slot:
+        service += (
+            "-"
+            + hashlib.sha256(unicodedata.normalize("NFC", slot).encode()).hexdigest()[
+                :8
+            ]
+        )
+    try:
+        raw = subprocess.run(
+            ["security", "find-generic-password", "-s", service, "-w"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=True,
+        ).stdout
+        return json.loads(raw)["claudeAiOauth"]["subscriptionType"]
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
+        return ""
+
+
 def claude_account():
+    label = SLOT_LABELS.get(slot_tier())
+    if label:
+        return label
     cfg = Path(os.environ.get("CLAUDE_CONFIG_DIR") or "~").expanduser() / ".claude.json"
     try:
         org = json.loads(cfg.read_text(encoding="utf-8"))["oauthAccount"][
@@ -196,10 +226,53 @@ def cmd_account(a):
         owner = (parse_fm(Path(a.note).expanduser()) or {}).get("artifact_account")
         if owner and owner[0] != cur:
             sys.exit(
-                f"artifact lives in {owner[0]}, logged in as {cur}: /login to {owner[0]} first"
+                f"artifact lives in {owner[0]}, this session is {cur}: open a {owner[0]} session"
+                f" (~/.claude/skills/claude-artifact/scripts/from-note.sh --account {owner[0]} <note>)"
             )
     print(cur)
     return cur
+
+
+def cache_file(note, rev):
+    # same layout as cache() in hooks/artifact_gate.py, keyed by the page's source-note meta
+    root = Path(
+        os.environ.get("ARTIFACT_CACHE", "~/.local/share/claude-artifact")
+    ).expanduser()
+    try:
+        rel = note.resolve().relative_to(vault().resolve())
+    except ValueError:
+        rel = Path(note.name)
+    return root / rel.with_suffix("") / f"rev-{rev}.html"
+
+
+def mirror_keys(account):
+    key = "artifact_mirror_" + account.replace("-", "_")
+    return key, key + "_rev"
+
+
+def cmd_role(a):
+    path = Path(a.note).expanduser()
+    fm = parse_fm(path) or {}
+
+    def first(k):
+        return (fm.get(k) or [""])[0]
+
+    me = a.account or claude_account()
+    if not me:
+        sys.exit("no claude.ai login found; run /login")
+    rev, owner = first("artifact_rev"), first("artifact_account")
+    if not first("artifact"):
+        out = "new"
+    elif not owner:
+        out = f"unknown {rev}"
+    elif owner == me:
+        out = f"source {rev}"
+    else:
+        cached = cache_file(path, rev)
+        mirrored = first(mirror_keys(me)[1]) or "0"
+        out = f"mirror {mirrored} {rev} {cached if cached.exists() else '-'}"
+    print(out)
+    return out
 
 
 def cmd_link(a):
@@ -208,20 +281,24 @@ def cmd_link(a):
     if not text.startswith("---\n") or text.find("\n---", 4) < 0:
         sys.exit(f"no frontmatter: {path}")
     end = text.find("\n---", 4)
-    fm = [
-        l
-        for l in text[4:end].splitlines()
-        if l.split(":", 1)[0].strip() not in LINK_KEYS
-    ]
-    fm += [f"artifact: {a.url}", f"artifact_rev: {a.rev}"]
     account = a.account or claude_account()
-    if account:
+    if a.mirror:
+        if not account:
+            sys.exit("no claude.ai login found; run /login")
+        if (parse_fm(path) or {}).get("artifact_account") == [account]:
+            sys.exit(f"{account} holds the source artifact; link it without --mirror")
+        keys, log = mirror_keys(account), f"mirror {account} {a.url}"
+    else:
+        keys, log = LINK_KEYS, a.log
+    fm = [l for l in text[4:end].splitlines() if l.split(":", 1)[0].strip() not in keys]
+    fm += [f"{keys[0]}: {a.url}", f"{keys[1]}: {a.rev}"]
+    if account and not a.mirror:
         fm.append(f"artifact_account: {account}")
     body = text[end + 4 :].rstrip("\n")
-    if a.log:
+    if log:
         if "\n## Artifact revisions" not in body:
             body += "\n\n## Artifact revisions\n"
-        body += f"\n- rev {a.rev} · {now_iso()} · {a.log}"
+        body += f"\n- rev {a.rev} · {now_iso()} · {log}"
     path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
     print(path)
     return path
@@ -327,6 +404,12 @@ def self_test():
     with tempfile.TemporaryDirectory() as d:
         os.environ["OBSIDIAN_VAULT"] = d
         os.environ["CLAUDE_CONFIG_DIR"] = d
+        os.environ["ARTIFACT_CACHE"] = str(Path(d, "cache"))
+
+        def slot(tier):
+            globals()["slot_tier"] = lambda: tier
+
+        slot("")
 
         def login(org):
             Path(d, ".claude.json").write_text(
@@ -428,6 +511,7 @@ def self_test():
                 rev=1,
                 log=None,
                 account="rc-team",
+                mirror=False,
             )
         )
         cmd_link(
@@ -437,6 +521,7 @@ def self_test():
                 rev=2,
                 log="split tokens out",
                 account=None,
+                mirror=False,
             )
         )
         text = p1.read_text()
@@ -460,6 +545,7 @@ def self_test():
                 rev=2,
                 log=None,
                 account="skio",
+                mirror=False,
             )
         )
         try:
@@ -475,6 +561,10 @@ def self_test():
         ):
             login(org)
             assert claude_account() == label, (org, claude_account())
+        for tier, label in (("team", "rc-team"), ("enterprise", "rc-inc")):
+            slot(tier)
+            assert claude_account() == label, (tier, claude_account())
+        slot("")
         Path(d, ".claude.json").write_text("{}", encoding="utf-8")
         assert claude_account() == ""
         login("Recharge, Inc.")
@@ -552,6 +642,72 @@ def self_test():
             raise AssertionError("bad key must fail")
         except argparse.ArgumentTypeError:
             pass
+
+        login("Recharge, Inc.")
+        r = cmd_new(
+            ns(
+                title="Mirror Me",
+                area="ai-tooling",
+                domain="mirrors",
+                created="2026-10-30T10:00:00-04:00",
+            )
+        )
+
+        def role(account=None):
+            return cmd_role(argparse.Namespace(note=str(r), account=account))
+
+        def link(url, rev, mirror=False, log=None):
+            return cmd_link(
+                argparse.Namespace(
+                    note=str(r), url=url, rev=rev, log=log, account=None, mirror=mirror
+                )
+            )
+
+        assert role() == "new"
+        r.write_text(
+            r.read_text().replace(
+                "\n---\n\n#",
+                "\nartifact: https://claude.ai/artifact/S\nartifact_rev: 2\n---\n\n#",
+                1,
+            )
+        )
+        assert role() == "unknown 2"
+        link("https://claude.ai/artifact/S", 2)
+        assert role() == "source 2"
+        assert role("rc-team") == "mirror 0 2 -"
+        cached = Path(d, "cache/areas/ai-tooling/mirrors/mirror-me/rev-2.html")
+        cached.parent.mkdir(parents=True)
+        cached.write_text("x", encoding="utf-8")
+        assert role("rc-team") == f"mirror 0 2 {cached}"
+        slot("team")
+        assert role() == f"mirror 0 2 {cached}"
+        link("https://claude.ai/artifact/M", 2, mirror=True)
+        text = r.read_text()
+        assert (
+            "artifact: https://claude.ai/artifact/S\nartifact_rev: 2\nartifact_account: rc-inc\n"
+            "artifact_mirror_rc_team: https://claude.ai/artifact/M\nartifact_mirror_rc_team_rev: 2\n---"
+            in text
+        ), text
+        assert text.rstrip().endswith("· mirror rc-team https://claude.ai/artifact/M")
+        assert role() == f"mirror 2 2 {cached}"
+        slot("enterprise")
+        link("https://claude.ai/artifact/S", 3, log="rewrote section 2")
+        assert role() == "source 3"
+        slot("team")
+        assert role() == "mirror 2 3 -"
+        link("https://claude.ai/artifact/M", 3, mirror=True)
+        text = r.read_text()
+        assert text.count("artifact_mirror_rc_team:") == 1, text
+        assert "artifact_mirror_rc_team_rev: 3\n" in text, text
+        assert "artifact_rev: 3\nartifact_account: rc-inc\n" in text, text
+        assert role() == "mirror 3 3 -"
+        slot("enterprise")
+        try:
+            link("https://claude.ai/artifact/M", 3, mirror=True)
+            raise AssertionError("mirror link on the source account must exit")
+        except SystemExit as e:
+            assert "source" in str(e), e
+        slot("")
     print("ok")
 
 
@@ -595,6 +751,17 @@ def main(argv=None):
     k.add_argument("--rev", required=True, type=int)
     k.add_argument("--log", help="one line for the note's revision log")
     k.add_argument("--account", help="default: the logged-in claude.ai org label")
+    k.add_argument(
+        "--mirror",
+        action="store_true",
+        help="record a mirror of the source rev on this account; source keys untouched",
+    )
+    r = sub.add_parser(
+        "role",
+        help="new | source <rev> | unknown <rev> | mirror <mirror rev> <source rev> <cached html or ->",
+    )
+    r.add_argument("note")
+    r.add_argument("--account", help="default: the logged-in claude.ai org label")
     c = sub.add_parser("account", help="print the logged-in claude.ai org label")
     c.add_argument(
         "note",
@@ -614,6 +781,8 @@ def main(argv=None):
         return cmd_link(a)
     if a.cmd == "account":
         return cmd_account(a)
+    if a.cmd == "role":
+        return cmd_role(a)
     if a.cmd == "bump":
         return cmd_bump(a)
     if a.cmd == "status":
