@@ -25,8 +25,26 @@ def run(**tool_input):
     return json.loads(out)["reason"] if out else ""
 
 
+def post(response, **tool_input):
+    sys.stdin = io.StringIO(
+        json.dumps(
+            {
+                "hook_event_name": "PostToolUse",
+                "tool_name": "Artifact",
+                "tool_input": tool_input,
+                "tool_response": response,
+            }
+        )
+    )
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        mod.main()
+    return buf.getvalue().strip()
+
+
 def main():
     with tempfile.TemporaryDirectory() as d:
+        mod.CACHE = Path(d, "cache")
 
         def page(name, body):
             p = Path(d, name)
@@ -64,6 +82,29 @@ def main():
         assert run(file_path=nostamp, asset=True, url="u") == ""
         assert run(file_path=page("img.png", "x")) == ""
         assert run(action="list") == ""
+
+        published = {"url": "https://claude.ai/artifact/AbC-123", "title": "x"}
+        assert post(published, file_path=good) == ""
+        cached = Path(d, "cache/areas/a/b/c/rev-3.html")
+        assert cached.read_bytes() == Path(good).read_bytes(), cached
+        refused = page(
+            "rev4.html",
+            Path(good).read_text(encoding="utf-8").replace("Rev 3", "Rev 4"),
+        )
+        assert post("publish refused: read the artifact first", file_path=refused) == ""
+        assert not cached.with_name("rev-4.html").exists()
+        assert post(published, file_path=nostamp) == ""
+        assert post(published, file_path=log) == ""
+        escape = page(
+            "escape.html",
+            '<meta name="source-note" content="../../out.md"><h1>X</h1><p>Rev 1 · 2026-10-11 10:00</p>',
+        )
+        assert post(published, file_path=escape) == ""
+        assert (
+            not Path(d, "out").exists() and not Path(d).parent.joinpath("out").exists()
+        )
+        assert post(published, file_path=good, action="read") == ""
+        assert sorted(p.name for p in mod.CACHE.rglob("*.html")) == ["rev-3.html"]
     print("ok")
 
 

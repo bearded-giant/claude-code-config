@@ -258,6 +258,11 @@
             "type": "command",
             "command": "python3 ~/.claude/hooks/daily_note.py",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/artifact_gate.py",
+            "timeout": 10
           }
         ]
       },
