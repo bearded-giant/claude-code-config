@@ -91,10 +91,11 @@ def build_html(note: Path, out: Path, args) -> None:
         frag = frag.replace(f"<strong>{args.companion_name}</strong>",
                             f'<a href="{args.companion_url}"><strong>{args.companion_name}</strong></a>')
 
+    src_note = args.source_note or note
     try:
-        source = str(note.resolve().relative_to(VAULT))
+        source = str(src_note.resolve().relative_to(VAULT))
     except ValueError:
-        source = note.name
+        source = src_note.name
     stamp = f"Rev {args.rev} · {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')}"
     page = TEMPLATE.read_text()
     for key, val in {
@@ -187,6 +188,8 @@ def main() -> None:
     ap.add_argument("note", type=Path)
     ap.add_argument("--out", type=Path, help="artifact HTML path")
     ap.add_argument("--rev", default="1")
+    ap.add_argument("--source-note", type=Path,
+                    help="vault note for the source-note meta when the input is a distilled copy")
     ap.add_argument("--doc-title", help="<title> name when the H1 carries a subtitle")
     ap.add_argument("--eyebrow", default="")
     ap.add_argument("--companion-url")
