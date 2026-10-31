@@ -90,6 +90,7 @@ All hooks are Python (stdlib only) except statusline (Node.js) and `claude_tmux_
 | Stop | `debug_stop_check.py` | Blocks a stop while an unresolved `.giantmem/debug/` file has a stale `next_action` |
 | Stop | `open_edges_gate.py` | Blocks a report once when its open-edges list holds work the session could do itself (CLOSE or VERIFY shapes, not gates); `OPEN_EDGES_GATE=off` bypasses |
 | Stop | `doit_active_gate.py` | Blocks a stop once when the session's doit list has pending items and none `in_progress`, so the chip always shows the active or next item. Links an unlinked tmux window to a list created mid-session. Skips `claude -p` children; `DOIT_ACTIVE_GATE=off` bypasses |
+| Stop | `doit_ref_gate.py` | Blocks a stop once when the final message cites a doit item by number without its label (`flip #10 / #11`); the reason lists each ref with its real label from the list. `DOIT_REF_GATE=off` bypasses |
 | Stop | `created_links_gate.py` | Opens the MRs/PRs and dashboards a turn created (main transcript and its subagents) in the browser once, and blocks a stop once when they are missing from the last lines of the final message, so links never hide in tool output. Skips `claude -p` children; `CREATED_LINKS_GATE=off` bypasses |
 | PostToolUse | `live_index.py` | Indexes `.giantmem/` + harness memory `*.md` writes into giantmem live.db |
 | PostToolUse | `code_comment_nudge.py` | Flags comment shapes CLAUDE.md forbids in non-test `.py` — 2+ line comment blocks, docstrings, banners, ticket refs |

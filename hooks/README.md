@@ -77,6 +77,14 @@ Mechanical half of CLAUDE.md `### Proactive execution` report-time triage. Reads
 
 Skips when `stop_hook_active` is true, so a report blocked once goes through on the second stop. `OPEN_EDGES_GATE=off` in the environment disables it. Tests: `python3 hooks/test_open_edges_gate.py`.
 
+## doit_ref_gate.py
+
+**Hook:** `Stop` (via dispatch)
+
+Mechanical half of the CLAUDE.md `### Format` doit ref rule: a ref names its list, number, and label (`claude-code #12 (rotate vault creds)`), never a bare number. Reads the final message (fenced code skipped) line by line and resolves each `#N` against the doit lists: a word before it that names a list (or is the unique suffix of one, so `bulk-run-3` finds `investigator-bulk-run-3`) sets the list for that ref and later bare refs on the line; otherwise the session list from `doit_session_prime.py` applies. Item numbers come from the text convention (`claude: [type] N. body (dep on #M)`), done items included. A ref passes when `(` follows it, when the line already holds two words of the item's label, when it sits in a `dep on` list, after `PR`/`MR`/`issue`/`Pasted text`/`Image`, after a hyphenated name that is not a list (a repo), or when the number is no item on that list. Otherwise the stop blocks once, listing each ref with its real label and the line it came from.
+
+Skips when `stop_hook_active` is true, so a report blocked once goes through on the second stop. `DOIT_REF_GATE=off` in the environment disables it. Tests: `python3 hooks/test_doit_ref_gate.py`.
+
 ## created_links_gate.py
 
 **Hook:** `Stop` (via dispatch)
@@ -155,7 +163,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 | Stop, PreCompact, SessionEnd | `session_bundle.py`: detached rsync of the session's `/private/tmp/claude-*/<slug>/<sid>/{scratchpad,tasks}` (purged by macOS) into `~/giantmem_archive/bundles/<slug>/<sid>/`, skipping `.venv`, `node_modules`, caches, binaries, files over 20MB, and symlinks. PreCompact and SessionEnd also copy `~/.claude/projects/<slug>/<sid>/{subagents,workflows,tool-results}` and the transcript into `claude/`. Writes `bundle.json` (cwd, branch, first prompt, resume command, file list with kinds). Archive only: files the session deletes stay. After the SessionEnd sync it re-runs `giantmem db ingest -s session-bundle`, so the final files are indexed even when `session_end_ingest` got there first. `--backfill [--from DIR]` sweeps existing tmp dirs or a saved copy. Tests: `python3 hooks/test_session_bundle.py` | No (file write only) |
 | SessionStart | `session_prime.py` renders `giantmem prime --json`: active feature, recent `.giantmem/` writes, and `open_mrs` (MRs/PRs this project's sessions opened or touched that are not merged or closed, one line each: `repo!N  state  opener  url`). Skips the prime only when all three are empty. Tests: `python3 hooks/test_session_prime.py` | Yes |
 | SessionStart | `doit_session_prime.py` also prints the session id + tmux `session:window` + `resume` line, the owed count, `DRIFT` lines for owed twins out of sync with `daily`, and the project's `status: ready` handoffs from `$OBSIDIAN_VAULT/handoffs/<project>/` (`--handoff-path [--feature <name>]` prints where `/wrap` writes one). Tests: `python3 hooks/test_doit_session_prime.py` | Yes |
-| Stop | dispatch: `debug_stop_check`, `open_edges_gate`, `doit_active_gate`, `created_links_gate`, `auto_mode` | No (JSON decision only; `created_links_gate` also opens created links in the browser) |
+| Stop | dispatch: `debug_stop_check`, `open_edges_gate`, `doit_active_gate`, `doit_ref_gate`, `created_links_gate`, `auto_mode` | No (JSON decision only; `created_links_gate` also opens created links in the browser) |
 | SessionStart, UserPromptSubmit, PreToolUse (AskUserQuestion/ExitPlanMode), PostToolUse, PermissionRequest, Notification, Stop, SessionEnd | `claude_tmux_state.sh` (bash, not dispatch: it runs on every tool call) | No (tmux pane options only) |
 | statusLine | `statusline.js` (spawns `usage-fetch.py`, `preflight_check.py`, `mr_status.py` detached; each writes a cache the next tick reads) | N/A (terminal only) |
 
