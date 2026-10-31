@@ -42,13 +42,14 @@ Never builds, edits, or restamps: the page is the source's rev S as published.
 
 ## Hub
 
-Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`, https://artifacts-hub-ten.vercel.app; the `deploy` Actions workflow ships every push to `main`). Readers need the Recharge Vercel team (Vercel Authentication on every deployment). Any claude.ai account publishes; no mirror.
+Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`, https://artifacts-hub-ten.vercel.app; the `deploy` Actions workflow ships every push to `main`). Readers sign in with a rechargeapps.com Google account, and every artifact starts closed to everyone but the hub admins (the user) until shared. Previews stay behind Vercel Authentication. Any claude.ai account publishes; no mirror.
 
 1. Read the whole note. N = `artifact_hub_rev` + 1, else 1. Name = last path segment of `artifact_hub:`, else the note stem lowercased. publish.sh refuses an existing name without `FORCE=1`: another note holds it, so use `<stem>-<domain>` and say so.
 2. Distill per `## Content`, then `build_doc.py <note.md> --out <scratchpad>/<name>.html --rev N --hub [...]` per `## Build`: full document, Mackinac served by the hub at `/fonts/`, pinned mermaid loader. A hand-built page: full document, nothing from claude.ai's runtime (`window.claude`, `window.storage`); hub validation rejects those.
 3. `[FORCE=1] ~/dev/ai/artifact-publish/publish.sh <scratchpad>/<name>.html <name>`: validates, commits, pushes `main`, prints the URL. Needs the checkout on `main`. `hooks/artifact_gate.py` blocks it without the stamp.
 4. `note.py link <note.md> --hub --url <url> --rev N --log "<one line>"`: writes `artifact_hub:` + `artifact_hub_rev:`, logs `- rev N · <ts> · hub <url> · <log>`, claude.ai keys untouched.
-5. Report: URL, rev, and the deploy run (`gh run list -R RechargePayments/ai-artifacts-hub --limit 1`). Never run the hub's `share.sh` unasked; it controls nothing until Google sign-in rolls out.
+5. Share only when the user names people or says everyone: `~/dev/ai/artifact-publish/share.sh <name> <email>... | all | none | -<email>` (rechargeapps.com addresses only; commits and pushes `shares.mjs`). Never `all` unasked.
+6. Report: URL, rev, access (`share.sh <name>` prints it), and the deploy run (`gh run list -R RechargePayments/ai-artifacts-hub --limit 1`).
 
 ## Build
 
