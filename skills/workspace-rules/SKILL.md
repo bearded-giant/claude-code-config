@@ -83,7 +83,7 @@ Sections in fixed order; omit empty ones:
 
 ```markdown
 ## Open Questions for User   only when there are any
-## Open edges                blockers, gaps, and items the user waived during /wrap; owed items by `daily #N`
+## Open edges                blockers, gaps, and items the user waived during /wrap; owed items by `daily #N (<label>)`
 ## Start here                numbered, exact commands; step 1 runs as-is
 ## State
 - repos: absolute path, branch, HEAD sha, pushed or not, each MR as `repo!N` plus its full URL, and its state

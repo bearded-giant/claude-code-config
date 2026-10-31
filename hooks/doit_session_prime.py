@@ -516,7 +516,7 @@ def main() -> None:
         ),
         (
             "  - owed (add_todo owe=true on this list, twins into `daily`, no ask, "
-            "search_todos first, report as `daily #N`) ONLY when all hold: only "
+            "search_todos first, report as `daily #N (<label>)`) ONLY when all hold: only "
             "the user can do it (credentials, console/vault/DNS/IdP, outward "
             "comms, a human call), actionable now (not waiting on a reviewer, "
             "release, cutover, or other item), and something waits on it. Never "
