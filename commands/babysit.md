@@ -64,7 +64,7 @@ gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(num
    ```
    Keep a thread if `system=false` (GitHub: always) AND it still requests a change (`resolved=false`, or a `resolvable=false` MR-level note that asks for one) AND its last non-system note author is someone other than you. Skip a thread whose last note is yours — you are mid-conversation, leave it. Exception: Greptile edits its `<!-- greptile_outside_diff -->` note in place on each re-review, so keep a thread whose first note is by `greptile` and has `updated_at` later than the `created_at` of your last note in that thread. Never keep notes carrying `<!-- greptile_summary -->` or `<!-- greptile_auto_approval_sha:` — they restate the inline threads; step 9 reads them.
 
-   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds}` (step 9). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
+   **Deferred state** lives in `$(git rev-parse --git-dir)/babysit-<iid>.json`: `{discussion_id: {reason, plan, url}}`, plus reserved key `_greptile: {requested_sha, requested_at, rounds, cap}` (step 9; `cap` starts at 5 and grows by 5 each time the user asks for more). Skip any kept thread already in it unless the user signed it off in chat this session. Zero kept threads → skip to step 9.
 
    **Never run the sign-off handshake through MR comments.** No `[babysit]` notes, no asking the user to reply on a thread. Deferrals go to the state file and to chat; the user signs off in chat.
 
@@ -153,9 +153,10 @@ gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(num
 
    | State | Condition | Action |
    |---|---|---|
-   | BLOCKED | MR is Draft without `[babysit-ok]`, pipeline red on head, rebase conflict, push rejected, "greptile due" with `_greptile.rounds >= 3`, `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
+   | BLOCKED | MR is Draft without `[babysit-ok]`, pipeline red on head, rebase conflict, push rejected, the user chose stop at the Greptile cap, `requested_sha == head` and `requested_at` > 15 min ago with no review | raise attention (step 7) with the reason, **stop loop** |
    | working | actionable threads left past the 5-thread cap | continue |
    | sign-off | deferred state-file threads remain | continue, slow cadence |
+   | greptile cap | the "greptile due" row below would fire and `_greptile.rounds >= _greptile.cap` (cap missing = 5) | AskUserQuestion once, in full sentences: `<repo>!<iid> has had <rounds> Greptile rounds; request 5 more or stop the loop?` with options "5 more rounds (Recommended)" and "Stop the loop". More → `cap += 5`, write the state file, continue with the "greptile due" row. Stop → BLOCKED with reason `greptile cap <rounds>` |
    | greptile due | greptile-aware, head != reviewed sha, head != `requested_sha`, and a summary note exists or the MR is 15+ min old; `babysit-merge` repo: only while the latest score is under 4/5, there is no review yet, or head is not a fixed sha | post via the `greptile` skill's **review** mode (babysit run = user authorization, no ask). Set `requested_sha=head`, `requested_at=now`, `rounds+=1`. Continue |
    | waiting | pipeline neither green nor red, `requested_sha == head` and not yet reviewed, or greptile-aware with no summary note on an MR under 15 min old (Greptile reviews on open) | continue |
    | MERGE | `babysit-merge` repo, checks green on head, latest score 4/5 or better, head is a fixed sha, no actionable threads | run the pre-merge checks the repo's CLAUDE.md sets on head (a preview smoke), if any: not ready yet is waiting, a failure is BLOCKED with its output; then `gh pr merge <n> -R <o/r> --squash` (never `--admin`; a refusal is BLOCKED with the gh error), then the step 1 merged path (doit-prune, post-merge steps, **stop loop**) and exit `MERGED` |
@@ -187,10 +188,10 @@ gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(num
 
 Single line:
 ```
-remi!1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/3) → waiting
+remi!1234 (feat-xyz): 2 addressed, 1 declined (design), 1 needs sign-off, pipeline green, greptile requested (round 2/5) → waiting
 ```
 GitHub refs read `frost#25117`; a twin run names the PR. `READY`, `MERGED` and `BLOCKED` lines are followed by the MR `web_url` on its own line, last in the message.
-Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/3)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `MERGED`, `BLOCKED: <reason>`). `babysit-merge` runs add `<n> not material` when they skip Greptile threads.
+Drop any zero-count segment (`declined`, `needs sign-off`, `doit <n> closed`). Greptile segment: `greptile requested (round n/<cap>)` | `greptile pending` | `greptile <score>/5[, approved]`; omit when not greptile-aware. Tail is the step 9 state (`working`, `sign-off`, `waiting`, `READY`, `MERGED`, `BLOCKED: <reason>`). `babysit-merge` runs add `<n> not material` when they skip Greptile threads.
 Below it, one numbered entry per deferred thread: URL, why it was deferred, the plan or open question with options. The user signs off in chat by number (`signed off 1`, or plan edits); the next run picks it up as `signed_off`.
 
 ## Failure modes — exit clean, never error
