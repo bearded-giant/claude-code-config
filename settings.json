@@ -5,7 +5,8 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     "GLAB_PAGER": "cat",
-    "GLAB_NO_PROMPT": "1"
+    "GLAB_NO_PROMPT": "1",
+    "SLASH_COMMAND_TOOL_CHAR_BUDGET": "24000"
   },
   "permissions": {
     "allow": [
@@ -431,6 +432,28 @@
     "deploy-to-vercel": "off",
     "greploop": "off",
     "obsidian-preview": "off",
-    "vercel-optimize": "off"
+    "vercel-optimize": "off",
+    "eod-status": "user-invocable-only",
+    "feature-facts": "user-invocable-only",
+    "feature-report": "user-invocable-only",
+    "fewer-permission-prompts": "user-invocable-only",
+    "init": "user-invocable-only",
+    "jira-status": "user-invocable-only",
+    "list-features": "user-invocable-only",
+    "plan-feature": "user-invocable-only",
+    "plugin-authoring": "user-invocable-only",
+    "reopen-feature": "user-invocable-only",
+    "review-memory": "user-invocable-only",
+    "run": "user-invocable-only",
+    "schedule": "user-invocable-only",
+    "sec-ticket": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "statusline": "user-invocable-only",
+    "swarm": "user-invocable-only",
+    "swarm-analyze": "user-invocable-only",
+    "swarm-exec": "user-invocable-only",
+    "update-config": "user-invocable-only",
+    "usage-switch": "user-invocable-only",
+    "vercel-bootstrap": "user-invocable-only"
   }
 }
