@@ -2,19 +2,11 @@
 import html
 import itertools
 import json
-import os
 import re
 import shlex
-import shutil
 import sys
 from pathlib import Path
 
-# same layout as cache_file in skills/obsidian-note/scripts/note.py
-CACHE = Path(
-    os.environ.get("ARTIFACT_CACHE", "~/.local/share/claude-artifact")
-).expanduser()
-ARTIFACT_URL = re.compile(r"https://claude\.ai/[\w./-]*artifact/[\w-]+")
-SOURCE_RE = re.compile(r'<meta name="source-note" content="([^"]+)"')
 STAMP_RE = re.compile(r"\bRev\s+(\d+)\s*·\s*\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}")
 CHANGELOG_RE = re.compile(
     r"change\s*log|revision history|version history|release notes|what'?s new"
@@ -45,21 +37,6 @@ def problems(src):
     return out
 
 
-def cache(data, path, src):
-    if not ARTIFACT_URL.search(json.dumps(data.get("tool_response"))):
-        return
-    stamp, source = STAMP_RE.search(visible_text(src)), SOURCE_RE.search(src)
-    if not (stamp and source):
-        return
-    dest = (
-        CACHE / Path(source.group(1)).with_suffix("") / f"rev-{stamp.group(1)}.html"
-    ).resolve()
-    if not dest.is_relative_to(CACHE.resolve()):
-        return
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(Path(path).expanduser(), dest)
-
-
 def target(data):
     ti = data.get("tool_input") or {}
     if data.get("tool_name") == "Bash":
@@ -87,9 +64,6 @@ def main():
     try:
         src = Path(path).expanduser().read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return
-    if data.get("hook_event_name") == "PostToolUse":
-        cache(data, path, src)
         return
     found = problems(src)
     if not found:

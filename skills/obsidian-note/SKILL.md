@@ -59,7 +59,7 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_mirror_<acct>` + `artifact_mirror_<acct>_rev` once mirrored (`rc-team` → `rc_team`), `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
 
 ## Bump or set status on a ticket note
 
@@ -80,9 +80,9 @@ After a `claude-artifact` publish of this note's content:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "one line on what changed"
 ```
 
-Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--mirror` upserts `artifact_mirror_<acct>:` / `artifact_mirror_<acct>_rev:` instead, logs `mirror <acct> <url>`, leaves the source keys alone, and exits when the account is the source or the note already records a different mirror URL for it. `--hub` upserts `artifact_hub:` / `artifact_hub_rev:` instead and logs `hub <url>`, claude.ai keys untouched. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
+Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--hub` upserts `artifact_hub:` / `artifact_hub_rev:` instead and logs `hub <url>`, claude.ai keys untouched. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
 
-`note.py account [<note.md>]` prints the session's label (keychain slot `subscriptionType`: `team` rc-team, `enterprise` rc-inc; else `~/.claude.json`) and exits non-zero when the note's artifact lives in another account. `note.py role <note.md> [--account X]` prints `new`, `source N`, `unknown N` (linked with no account), or `mirror M S <cached html or ->`. Building or mirroring the artifact → `claude-artifact` `## From a note`.
+`note.py account [<note.md>]` prints the session's label (keychain slot `subscriptionType`: `team` rc-team, `enterprise` rc-inc; else `~/.claude.json`) and exits non-zero when the note's artifact lives in another account. Building the artifact → `claude-artifact` `## From a note`.
 
 ## Read before write
 

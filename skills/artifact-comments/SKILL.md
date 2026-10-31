@@ -10,7 +10,7 @@ Comments are feedback on the design account. Two outputs per pass: a body rewrit
 ## Preconditions
 
 1. Note: the argument, or the note whose frontmatter `artifact:` matches the URL (`grep -l 'artifact: <url>' ~/Recharge-Notes/areas -r`). No note → stop: artifacts are built from notes (`claude-artifact`).
-2. `python3 ~/.claude/skills/obsidian-note/scripts/note.py account <note.md>`: non-zero = this session is not the source account (a mirror's threads are not worked; readers comment on the source); stop, relay the message.
+2. `python3 ~/.claude/skills/obsidian-note/scripts/note.py account <note.md>`: non-zero = the artifact lives in another account; stop, relay the message.
 3. `ArtifactComments` `read` on the URL. Zero threads → say so, stop.
 
 ## Pass
@@ -21,7 +21,7 @@ Comments are feedback on the design account. Two outputs per pass: a body rewrit
    - **ask for a behavior change**: the code does not do it → not yours to promise. Answer what the code does; the ask goes to the user as a `decision` item on the feature list (`feature-management`). The artifact claims it only once it ships.
    - **question only**: answered in the closing section.
 3. Closing section, last `## N. Questions readers asked` before `## Artifact revisions` (create it once, extend it after): one bold question per thread in the commenter's words, tightened, then one or two bullets, current fact, pointing at the section that holds the detail (`section 4`). Two bullets max. No names, no dates, no "done" / "now" / "fixed".
-4. Build + publish rev N+1 per `claude-artifact` `## Build` (same `--out` path, `url` on the publish), then `note.py link --rev N+1 --log "<threads answered, one line>"`, then mirror it per `claude-artifact` `## From a note` step 6.
+4. Build + publish rev N+1 per `claude-artifact` `## Build` (same `--out` path, `url` on the publish), then `note.py link --rev N+1 --log "<threads answered, one line>"`.
 5. Threads: `ArtifactComments` `reply` with the thread's bullets as one or two plain sentences, then `resolve`, on threads marked activated only. Never resolve a thread not sent to Claude and never one you did not address.
 6. Report: rev + URL, then the open threads as a table (thread, section that answers it) so the user can resolve them in the artifact view, then any `decision` items raised. Nothing else.
 
