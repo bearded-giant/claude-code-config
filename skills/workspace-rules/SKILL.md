@@ -90,7 +90,7 @@ Sections in fixed order; omit empty ones:
 - running: process, how it was started, port/pid, left up or torn down, restart command
 - doit: list name, pending count, next 3 by do-order
 ## Decisions                 non-obvious choices, one line of why each
-## External docs             absolute paths / URLs of docs outside this dir (vault notes, other repos, claude.ai artifacts)
+## External docs             absolute paths / URLs of docs outside this dir (vault notes, other repos, hub or claude.ai artifacts)
 ## Paste prompt              fenced block: the complete prompt for the new session
 ```
 
@@ -114,7 +114,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
+`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = artifacts hub page (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
 
 Preview: Obsidian (`obsidian-preview`) only when the user asks (preview / render / open). After writing a `.md`, return its path.
 

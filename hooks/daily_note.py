@@ -19,6 +19,7 @@ SESSIONS = "## CLAUDE SESSIONS"
 LINKS = "## CLAUDE LINKS"
 SKIP_DIRS = {DAILY_DIR, "templates", ".obsidian", ".trash"}
 ARTIFACT_URL = re.compile(r"https://claude\.ai/[\w./-]*artifact/[\w-]+")
+HUB_URL = re.compile(r"^https://\S+/([a-z0-9-]+)/$", re.MULTILINE)
 TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 SUBST = re.compile(r"\{\{?\s*(yesterday|tomorrow|date|time|title)\s*\}?\}")
 
@@ -180,12 +181,24 @@ def bash_vault_paths(data):
     return [ln.strip() for ln in out.splitlines() if ln.strip().endswith(".md")]
 
 
+def hub_link(data):
+    if "publish.sh" not in ((data.get("tool_input") or {}).get("command") or ""):
+        return None
+    resp = data.get("tool_response")
+    out = resp.get("stdout", "") if isinstance(resp, dict) else str(resp or "")
+    m = HUB_URL.search(out)
+    return ("artifact", f"[{m.group(1)}]({m.group(0)})", m.group(0)) if m else None
+
+
 def links_for(data):
     tool = data.get("tool_name")
     if tool == "Artifact":
         found = artifact_link(data)
         return [found] if found else []
     if tool == "Bash":
+        found = hub_link(data)
+        if found:
+            return [found]
         paths = bash_vault_paths(data)
     elif tool in ("Write", "Edit", "MultiEdit"):
         paths = [(data.get("tool_input") or {}).get("file_path") or ""]

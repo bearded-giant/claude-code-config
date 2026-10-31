@@ -20,6 +20,11 @@ FONT = Path(os.environ.get(
 ))
 IMG_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\.png\)$", re.M)
 NUM_RE = re.compile(r"^([0-9]+|[A-Z])\.\s+(.*)$", re.S)
+MERMAID = (
+    '<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>\n'
+    "<script>mermaid.initialize({ startOnLoad: true, "
+    'theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });</script>\n'
+)
 
 
 def body_of(note: Path) -> str:
@@ -103,7 +108,7 @@ def build_html(note: Path, out: Path, args) -> None:
         "{{STAMP}}": stamp, "{{SOURCE}}": source, "{{COMPANION_URL}}": args.companion_url or "",
         "{{COMPANION_NAME}}": args.companion_name or "", "{{FONT_FACE}}": font_face(),
         "{{TOC}}": "\n".join(f'<li><a href="#{h}"><span class="toc-num">{n}</span>{t}</a></li>' for h, n, t in toc),
-        "{{BODY}}": frag,
+        "{{BODY}}": frag, "{{SCRIPTS}}": MERMAID if diagrams else "",
     }.items():
         page = page.replace(key, val)
     if not args.companion_url:
