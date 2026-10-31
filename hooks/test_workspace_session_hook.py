@@ -38,8 +38,18 @@ def main():
     out = mod.format_context_output({"current_plan": filled}, "/x/proj", False)
     assert "=== ACTIVE PLAN ===" in out and "ship the cache fix" in out, out
 
-    out = mod.format_context_output({"workspace_md": "# ws\n", "current_plan": None}, "/x/proj", False)
+    out = mod.format_context_output(
+        {"workspace_md": "# ws\n", "current_plan": None}, "/x/proj", False
+    )
     assert "=== WORKSPACE CONTEXT ===" in out and "ACTIVE PLAN" not in out, out
+
+    ws = "# Workspace: p\n\n## Purpose\n<!-- describe -->\n\n## Features\n\n| a | b |\n\n## Notes\n<!-- notes -->\n"
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / ".giantmem").mkdir()
+        (Path(d) / ".giantmem" / "WORKSPACE.md").write_text(ws)
+        out = mod.format_context_output(mod.read_workspace_context(d), d, False)
+    assert "<!--" not in out and "## Purpose" not in out and "## Notes" not in out, out
+    assert "## Features\n\n| a | b |" in out and "# Workspace: p" in out, out
 
     start = mod.claude_process_start()
     assert start is None or start <= time.time()

@@ -143,7 +143,7 @@ def read_workspace_context(cwd: str) -> dict:
     workspace_file = workspace_dir / "WORKSPACE.md"
     if workspace_file.exists():
         try:
-            context["workspace_md"] = workspace_file.read_text()[:3500]
+            context["workspace_md"] = strip_template(workspace_file.read_text())[:3500]
         except Exception:
             pass
 
@@ -156,6 +156,15 @@ def read_workspace_context(cwd: str) -> dict:
             pass
 
     return context
+
+
+def strip_template(md: str) -> str:
+    md = re.sub(r"<!--.*?-->", "", md, flags=re.DOTALL)
+    sections = re.split(r"(?m)^(?=## )", md)
+    kept = [
+        s for s in sections if not s.startswith("## ") or s.partition("\n")[2].strip()
+    ]
+    return re.sub(r"\n{3,}", "\n\n", "".join(kept))
 
 
 def plan_has_body(plan: str) -> bool:
