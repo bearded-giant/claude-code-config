@@ -35,8 +35,8 @@ Never builds, edits, or restamps: the page is the source's rev S as published.
 
 1. `M == S`: report `mirror current at rev S`, stop.
 2. Cache `-`: stop, `rev S not cached on this machine; republish from <artifact_account>`.
-3. Copy the cached HTML to `<scratchpad>/<stem>.html`. Note has `artifact_mirror_<acct>:` (`-` as `_`): read that URL, publish with `url`. Absent: new artifact, `icon` set.
-4. `note.py link <note.md> --mirror --url <url> --rev S`: writes `artifact_mirror_<acct>` + `_rev`, appends `- rev S · <ts> · mirror <acct> <url>`; source keys untouched.
+3. Copy the cached HTML to `<scratchpad>/<stem>.html`. Re-run `note.py role` right before publishing: a source publish spawns one mirror session per rev, so a sibling may have moved S or linked the mirror; changed → back to step 1. Note has `artifact_mirror_<acct>:` (`-` as `_`): read that URL, publish with `url`. Absent: new artifact, `icon` set.
+4. `note.py link <note.md> --mirror --url <url> --rev S`: writes `artifact_mirror_<acct>` + `_rev`, appends `- rev S · <ts> · mirror <acct> <url>`; source keys untouched. Exits when the note already records a different mirror URL: a sibling session won the race, so the artifact just published is a duplicate; ask the user before deleting it.
 5. Report: URL, account, rev. Reader comments live on the source artifact (`artifact-comments`); the next mirror publish replaces anything changed here.
 
 ## Build

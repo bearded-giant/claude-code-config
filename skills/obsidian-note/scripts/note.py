@@ -285,9 +285,14 @@ def cmd_link(a):
     if a.mirror:
         if not account:
             sys.exit("no claude.ai login found; run /login")
-        if (parse_fm(path) or {}).get("artifact_account") == [account]:
+        held = parse_fm(path) or {}
+        if held.get("artifact_account") == [account]:
             sys.exit(f"{account} holds the source artifact; link it without --mirror")
         keys, log = mirror_keys(account), f"mirror {account} {a.url}"
+        if held.get(keys[0], [a.url]) != [a.url]:
+            sys.exit(
+                f"{account} mirror is {held[keys[0]][0]}; publish to that url, not a second artifact"
+            )
     else:
         keys, log = LINK_KEYS, a.log
     fm = [l for l in text[4:end].splitlines() if l.split(":", 1)[0].strip() not in keys]
@@ -710,6 +715,12 @@ def self_test():
         assert "artifact_mirror_rc_team_rev: 3\n" in text, text
         assert "artifact_rev: 3\nartifact_account: rc-inc\n" in text, text
         assert role() == "mirror 3 3 -"
+        try:
+            link("https://claude.ai/artifact/X", 3, mirror=True)
+            raise AssertionError("second mirror url must exit")
+        except SystemExit as e:
+            assert "https://claude.ai/artifact/M" in str(e), e
+        assert "artifact/X" not in r.read_text()
         slot("enterprise")
         try:
             link("https://claude.ai/artifact/M", 3, mirror=True)

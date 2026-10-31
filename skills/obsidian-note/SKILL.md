@@ -80,7 +80,7 @@ After a `claude-artifact` publish of this note's content:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "one line on what changed"
 ```
 
-Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--mirror` upserts `artifact_mirror_<acct>:` / `artifact_mirror_<acct>_rev:` instead, logs `mirror <acct> <url>`, leaves the source keys alone, and exits when the account is the source. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
+Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--mirror` upserts `artifact_mirror_<acct>:` / `artifact_mirror_<acct>_rev:` instead, logs `mirror <acct> <url>`, leaves the source keys alone, and exits when the account is the source or the note already records a different mirror URL for it. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
 
 `note.py account [<note.md>]` prints the session's label (keychain slot `subscriptionType`: `team` rc-team, `enterprise` rc-inc; else `~/.claude.json`) and exits non-zero when the note's artifact lives in another account. `note.py role <note.md> [--account X]` prints `new`, `source N`, `unknown N` (linked with no account), or `mirror M S <cached html or ->`. Building or mirroring the artifact → `claude-artifact` `## From a note`.
 
