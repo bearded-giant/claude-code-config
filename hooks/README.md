@@ -151,7 +151,7 @@ The caveman plugin registers its own SessionStart and UserPromptSubmit hooks thr
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest`, `giantmem_vault` | Yes (one-time, ~4.9KB; `clear_capsule` adds up to ~1KB after `/clear` only, plus a `systemMessage` naming the handoff file) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest`, `giantmem_vault` | Yes (one-time, ~4KB; `clear_capsule` adds up to ~1KB after `/clear` only, plus a `systemMessage` naming the handoff file) |
 | UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on) |
 | PreCompact | timestamp file, then `precompact_capture.py`, then `cat ~/.claude/config/compact-instructions.md` | Yes: PreCompact stdout becomes the compaction's custom instructions (merged with `/compact <args>`), so the summary keeps files, findings, commits, decisions, and open state for the next task. Every other PreCompact hook must keep stdout empty. The window stays at each model's default (`docs/autocompact.md`) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |

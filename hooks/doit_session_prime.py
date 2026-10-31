@@ -501,33 +501,8 @@ def main() -> None:
             "pending and none is in_progress"
         ),
         (
-            "  - follow-ups found during the work get done this session: no "
-            "item, no ask. New items only for work blocked on the user "
-            "(operator detail, or a dangerous change: one-way door, data "
-            "corruption/loss, security, outward-facing): code work (`ref:` "
-            "first description line, `claude:` if model work) deps on its "
-            "owed or `decision` item; a `decision` mirrors one doc Open "
-            "Question 1:1 (decisions stay on this list: no owe, no daily twin)"
-        ),
-        (
-            "  - item text is a short label, <= 40 chars: it is what the tmux "
-            "chip and board sidebar show. Paths, files, commands, sub-steps, "
-            "options, and why go in the description"
-        ),
-        (
-            "  - owed (add_todo owe=true on this list, twins into `daily`, no ask, "
-            "search_todos first, report as `daily #N (<label>)`) ONLY when all hold: only "
-            "the user can do it (credentials, console/vault/DNS/IdP, outward "
-            "comms, a human call), actionable now (not waiting on a reviewer, "
-            "release, cutover, or other item), and something waits on it. Never "
-            "owe: resume (the handoff carries it), merge/review an MR, tag or "
-            "deploy, watch for a future event, 'say ship it', approve a chat "
-            "diff, anything you can run. Conditional asks: this list with deps, "
-            "no owe. One console session = one owed item with a checklist"
-        ),
-        (
-            "  - complete or revert either twin through the MCP and both follow; "
-            "fix DRIFT lines first"
+            "  - owed: only past the CLAUDE.md `### What I owe` bar; "
+            "search_todos first, then add_todo owe=true on this list"
         ),
         "  - stale or non-code items here -> /doit-prune",
         "  - `claude:` items are model-assigned; /burn drains them. Do not "
