@@ -9,7 +9,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inconsolata:wght@500;600&family=Space+Mono&display=swap">
 <style>
-{{FONT_FACE}}/* layout: Spark-blue title band, then one reading column with a sticky section index; the index folds above the text on phones.
+/* licensed face, served by the artifacts hub; claude-code-config never holds the file */
+@font-face {
+  font-family: "Mackinac Pro";
+  font-weight: 350;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/mackinac-book.woff2") format("woff2");
+}
+/* layout: Spark-blue title band, then one reading column with a sticky section index; the index folds above the text on phones.
    color roles from Spark 2.0: blue = structure (band, h2, table heads, row labels), teal = identifiers (h3, code), lime = markers */
 :root {
   --bg: #f8f4f1;

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import base64
 import html
-import os
 import re
 import subprocess
 import sys
@@ -13,11 +11,6 @@ from pathlib import Path
 
 VAULT = Path.home() / "Recharge-Notes"
 TEMPLATE = Path(__file__).resolve().parent.parent / "doc-template" / "template.html"
-# licensed face: read from the recharge-auth checkout, never copied into this (public) repo
-FONT = Path(os.environ.get(
-    "ARTIFACT_DISPLAY_FONT",
-    Path.home() / "dev/python/recharge-auth-wt/main/app/static/fonts/mackinac-book.woff2",
-))
 IMG_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\.png\)$", re.M)
 NUM_RE = re.compile(r"^([0-9]+|[A-Z])\.\s+(.*)$", re.S)
 MERMAID = (
@@ -36,15 +29,6 @@ def body_of(note: Path) -> str:
 def slug(text: str) -> str:
     text = re.sub(r"^([0-9]+|[A-Z])\.\s+", "", html.unescape(re.sub(r"<[^>]+>", "", text)))
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-
-
-def font_face() -> str:
-    if not FONT.exists():
-        print(f"warn: {FONT} missing, headings fall back to Georgia", file=sys.stderr)
-        return ""
-    data = base64.b64encode(FONT.read_bytes()).decode()
-    return ('@font-face {\n  font-family: "Mackinac Pro";\n  font-weight: 350;\n  font-style: normal;\n'
-            f'  font-display: swap;\n  src: url(data:font/woff2;base64,{data}) format("woff2");\n}}\n')
 
 
 def build_html(note: Path, out: Path, args) -> None:
@@ -106,7 +90,7 @@ def build_html(note: Path, out: Path, args) -> None:
     for key, val in {
         "{{DOCTITLE}}": args.doc_title or title, "{{TITLE}}": title, "{{EYEBROW}}": args.eyebrow,
         "{{STAMP}}": stamp, "{{SOURCE}}": source, "{{COMPANION_URL}}": args.companion_url or "",
-        "{{COMPANION_NAME}}": args.companion_name or "", "{{FONT_FACE}}": font_face(),
+        "{{COMPANION_NAME}}": args.companion_name or "",
         "{{TOC}}": "\n".join(f'<li><a href="#{h}"><span class="toc-num">{n}</span>{t}</a></li>' for h, n, t in toc),
         "{{BODY}}": frag, "{{SCRIPTS}}": MERMAID if diagrams else "",
     }.items():
