@@ -2,7 +2,7 @@
 I/me = user. Source `~/dev/claude-code-config`, stowed to `~/.claude`; internals, hook pipeline, key commands: `README.md`.
 
 ## Precedence
-This file = my personal invariants; beats a conflicting project CLAUDE.md/AGENTS.md/INSTRUCTIONS.md: follow this, flag conflict in one chat line. Project wins on build/test/lint commands and code style (use project's existing style). Editing scope/execution rules here → sync `config/standing-constraints.md` (hooks re-inject it first prompt, after each compact, every 25 prompts, into every subagent).
+This file = my personal invariants; beats a conflicting project CLAUDE.md/AGENTS.md/INSTRUCTIONS.md: follow this, flag conflict in one chat line. Project wins on build/test/lint commands and code style (use project's existing style). Editing scope/execution rules here → sync `config/standing-constraints.md` (hooks re-inject it after each compact, every 25 prompts, into every subagent; never on the first prompt, so any rule there must also live here).
 
 ## General Guidelines
 - "Generate X"/"write Y"/"give me a curl for Z" → action first: produce output, skip scaffolding reads.
@@ -68,7 +68,7 @@ Always check for a handoff: vault `~/Recharge-Notes/handoffs/<project>/` (`featu
 Full rules in auto-firing skills `feature-management` (feature folder lifecycle, "create a plan" disambiguation, feature-scoped routing, doit list convention, three-spec model) and `workspace-rules` (`.giantmem/` dir selection, format, verbosity, anti-patterns, naming, scope registry, lifecycle tiers, artifact search, caveman-on-first-write). Root invariants, before a skill fires and as fallback if it misses:
 - Feature `in_progress` → plans/research/reviews/filebox inside that feature dir.
 - Never write to repo `docs/` unprompted → `.giantmem/context/` or active feature's `research/`.
-- "The vault"/"write to vault"/"publish" = `~/Recharge-Notes`, always. `~/giantmem-vault` = read-only Obsidian view of every non-archived `.giantmem` under `$HOME` (archived workspaces stay in giantmem CLI/GUI), never a write target: workspace docs go to the repo's own `.giantmem/` path (`guard_protected_paths.py` blocks writes through the view).
+- "The vault"/"write to vault"/"publish" = `~/Recharge-Notes`, always. `~/giantmem-vault` = read-only Obsidian view of every non-archived `.giantmem` under `$HOME` (archived workspaces stay in giantmem CLI/GUI), never a write target: workspace docs go to the repo's own `.giantmem/` path (`guard_protected_paths.py` blocks writes through the view). The vault pushes to GitHub: no secrets, no query dumps.
 - Durable knowledge not tied to a feature (runbook, incident writeup, design note, reference, how-to, decision record) → Obsidian vault via `obsidian-note` skill (`areas/<area>/<domain>/`, script owns frontmatter). Never `~/Desktop`. Team sharing → claude.ai artifact via `claude-artifact` skill, built from the vault note (rev + timestamp stamp, never a changelog, URL + account linked in note frontmatter). Never publish an artifact unasked: write the note; I run `/claude-artifact <note.md>` when I want one. Artifacts stay inside the org: never offer, suggest, or flag public/outside-org sharing. rc-team vs rc-inc = account limit, not audience choice; the note's `artifact_account` builds every rev and the other account mirrors the same rev (`claude-artifact` `## Mirror`), both linked from the note.
 - "Create a plan" → MUST AskUserQuestion (feature vs session work) before any file write.
 - Every `.md`/`.yaml` under `.giantmem/` MUST have YAML frontmatter (`type:`, `status:`, `feature:` or `repo:`); JSON: same keys top-level. Backfill: `python3 ~/dev/giant-tooling/workspace/scripts/backfill_frontmatter.py`.
@@ -156,6 +156,14 @@ Tests exempt.
 - API URLs snake_case, not kebab-case (`/api/admin/auth/validate_credentials`).
 - MUST run every test created or modified, confirm pass before reporting done. Run command unclear → read project CLAUDE.md or ask; don't guess.
 - LSP (Python/pyright, TypeScript, Rust, Lua): all ops take `filePath` + 1-based `line` + `character`, so locate the symbol with Grep/Read first, then use LSP for navigation. Grep/Glob for what LSP can't see (comments, strings, config values, log messages, cross-file regex). Before renaming a symbol or changing a signature, MUST run `findReferences`. LSP has no diagnostics: run `py-check` skill after Python edits, `ts-check` after TS/TSX edits, before reporting done.
+
+## Tool Routing
+Route by this map; never declare "no tool for X" unchecked. Deferred tools: ToolSearch `select:<name>`. A server listing only `authenticate` has lapsed OAuth: call it, give me the URL or `/mcp`. A server disabled for this project (`claude mcp list`: "Disabled for this project") comes back via `/mcp`.
+- Splunk search: watchtower `splunk_search` or `splunk_create_job` + `splunk_job_status` + `splunk_job_results`; `mcp__splunk__*` and splunk-cli are dashboards only.
+- Chronosphere reads: watchtower `chronosphere_*`. Dashboards: repo `chronosphere/gen_*_dashboard.py` → `env -u CHRONOSPHERE_API_TOKEN chronoctl apply -f <yaml>`; never `kai:chronosphere-expert` / `kai:chronoctl`. Incidents: `kai:incident-investigator`.
+- Sentry `sentry_*`; New Relic `nr_*` reads, `newrelic_*` writes. App DB: `dba-mcp-{prod,stage}`. Warehouse: `recharge-snowflake-mcp`. Store metrics: `recharge-mcp`.
+- Jira/Confluence `mcp__plugin_kai_atlassian__*`; Slack `mcp__plugin_slack_slack__*`; GitLab `glab`; GitHub `gh` (orgs skio-org, RechargePayments get babysit and Greptile); Greptile MCP or CLI; todos `mcp__doit__*`.
+- Repo architecture: `knowledge-base`, then code; repo not checked out: `local-cerebro`. Past sessions: `mcp__giantmem-search__*`; MR origin: `giantmem mr whose <ref>`; past runs: `find_tool_uses` + `get_session_bundle`.
 
 ## Agent Tool Use
 - Explore subagents in parallel when work splits into independent searches or a trace would flood main context. Work directly when a handful of tool calls finishes it; symbol usages via LSP findReferences. Never spawn a subagent only to double-check your own work.

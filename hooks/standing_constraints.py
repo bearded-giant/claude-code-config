@@ -4,8 +4,9 @@
 Prints config/standing-constraints.md so scope / artifact-vs-execution
 invariants land late in context. CLAUDE.md already carries these in the system
 prompt for the whole session; what erodes them is compaction, not turn count,
-so this fires on the first prompt, after each compact, and every REINJECT_EVERY
-prompts as a drift backstop. Best-effort: any error prints nothing.
+so this fires after each compact and every REINJECT_EVERY prompts as a drift
+backstop, never on the first prompt, where CLAUDE.md is fresh. Best-effort: any
+error prints nothing.
 """
 
 import json
@@ -37,11 +38,7 @@ def _should_inject(session_id: str) -> bool:
     count = int(state.get("count", 0)) + 1
     last = int(state.get("last_inject", 0))
     stamp = _compact_stamp(session_id)
-    inject = (
-        count == 1
-        or stamp != state.get("compact_seen", "")
-        or count - last >= REINJECT_EVERY
-    )
+    inject = stamp != state.get("compact_seen", "") or count - last >= REINJECT_EVERY
 
     try:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
