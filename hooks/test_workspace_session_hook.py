@@ -38,6 +38,9 @@ def main():
     out = mod.format_context_output({"current_plan": filled}, "/x/proj", False)
     assert "=== ACTIVE PLAN ===" in out and "ship the cache fix" in out, out
 
+    out = mod.format_context_output({"workspace_md": "# ws\n", "current_plan": None}, "/x/proj", False)
+    assert "=== WORKSPACE CONTEXT ===" in out and "ACTIVE PLAN" not in out, out
+
     start = mod.claude_process_start()
     assert start is None or start <= time.time()
     print("ok")

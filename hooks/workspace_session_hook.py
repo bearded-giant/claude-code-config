@@ -184,7 +184,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
         parts.append(context["workspace_md"])
         parts.append("")
 
-    if plan_has_body(context.get("current_plan", "")):
+    if plan_has_body(context.get("current_plan") or ""):
         parts.append("=== ACTIVE PLAN ===")
         parts.append(context["current_plan"])
         parts.append("")
