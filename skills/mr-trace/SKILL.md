@@ -1,6 +1,7 @@
 ---
 name: mr-trace
-description: Find the Claude session and worktree behind an MR/PR, or list the MRs/PRs that sessions opened or touched, with live status. Backed by giantmem's index of the harness `pr-link` records and `glab mr create` / `gh pr create` calls. Auto-fires when user says "which session opened X", "where did this MR come from", "where did this PR come from", "find the session for MR", "what MRs do I have open", "my open MRs", "what MRs did this session open", or invokes /mr-trace. Read-only.
+description: >-
+  Find the Claude session and worktree behind an MR/PR, or list the MRs/PRs that sessions opened or touched, with live status. Auto-fires when user says "which session opened X", "where did this MR come from", "where did this PR come from", "find the session for MR", "what MRs do I have open", "my open MRs", "what MRs did this session open", or invokes /mr-trace. Read-only.
 ---
 
 Every MR/PR a Claude session creates, pushes to, or updates is already in giantmem. Ask giantmem. Never grep `~/.claude/projects/**/*.jsonl` by hand: it is slow, and a URL mention is not authorship.

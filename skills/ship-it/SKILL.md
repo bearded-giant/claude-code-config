@@ -1,7 +1,7 @@
 ---
 name: ship-it
 description: >-
-  End-to-end ship chain — commit + push + write MR description + open MR; on GitLab with `glmon-jirad` enabled it also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` on every GitLab MR and every GitHub PR in the orgs skio-org / RechargePayments. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed (GitLab→concise-kai: kai headers at compressed caveman density; GitHub skio-org / RechargePayments→Skio four-header format; other GitHub→personal bullets); override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
+  End-to-end ship chain: commit + push + MR description + open MR; on GitLab with `glmon-jirad` enabled also creates or syncs the Jira ticket; in Greptile repos also triggers a re-review on an existing MR; starts `/loop 5m /babysit <worktree>` on every GitLab MR and every GitHub PR in the orgs skio-org / RechargePayments. Returns description and MR URL. Auto-fires when user says "ship it", "ship this", "ship the branch", "ship and open MR", or invokes /ship-it. MR description format is remote-keyed; override with "brief"/"short"/"--brief" (bullets) or "full"/"standard"/"--full" (verbose org kai template). Runs every step in order with no re-confirmation between. Skip if on base branch (main/master/stage).
 ---
 
 # ship-it

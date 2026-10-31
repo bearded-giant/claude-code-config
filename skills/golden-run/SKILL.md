@@ -1,6 +1,7 @@
 ---
 name: golden-run
-description: Replay a CSV of golden churn questions against an investigator-v2 deployment, pull every run's complete document, grade each run with a per-row opus subagent (answered, correct, evidence, failure class), diff against an earlier batch, and write the report into the active feature. Auto-fires when the user says "run the goldens", "golden run", "replay the batch", "rerun the 31", "grade this batch", "compare batch X with Y", or invokes /golden-run <questions.csv|batch_id> [--against <batch_id>] [--base-url <url>] [--no-run]. Manual analyst loop, not the judge or evals pages.
+description: >-
+  Replay a CSV of golden churn questions against an investigator-v2 deployment, grade each run with opus subagents, diff against an earlier batch, and write the report into the active feature. Auto-fires when the user says "run the goldens", "golden run", "replay the batch", "rerun the 31", "grade this batch", "compare batch X with Y", or invokes /golden-run <questions.csv|batch_id> [--against <batch_id>] [--base-url <url>] [--no-run]. Manual analyst loop, not the judge or evals pages.
 ---
 
 One loop for the lone engineer: run, pull, grade, diff, report. The repo side is `scripts/golden_batch.py` in investigator-v2 (`make golden-run`, `golden-pull`, `golden-diff`); this skill drives it and does the grading the script cannot.

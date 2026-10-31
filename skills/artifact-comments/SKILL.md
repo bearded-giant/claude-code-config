@@ -1,6 +1,7 @@
 ---
 name: artifact-comments
-description: Work the reader comment threads on a published claude.ai artifact - fix what they caught in the vault note and the body, answer each thread in a closing "Questions readers asked" section (one bold question, one or two bullets), republish the next rev, resolve the threads sent to Claude, and tell the user which stay open. Auto-fires when the user says "address the artifact comments", "go through the comments on the artifact", "answer the comments", "clear the comments", "work the threads", "move the comments to a Q&A", or invokes /artifact-comments <note.md|artifact url>. Skip for MR/PR review threads (babysit, accept-kai-feedback).
+description: >-
+  Work the reader comment threads on a published claude.ai artifact - fix what they caught in the vault note and the body, answer each thread in a closing "Questions readers asked" section, republish the next rev, resolve the threads sent to Claude, and tell the user which stay open. Auto-fires when the user says "address the artifact comments", "go through the comments on the artifact", "answer the comments", "clear the comments", "work the threads", "move the comments to a Q&A", or invokes /artifact-comments <note.md|artifact url>. Skip for MR/PR review threads (babysit, accept-kai-feedback).
 ---
 <!-- caveman:compressed -->
 
