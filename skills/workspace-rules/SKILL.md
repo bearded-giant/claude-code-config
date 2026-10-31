@@ -114,7 +114,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = artifacts hub page (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
+`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact, or the artifacts hub when asked (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
 
 Preview: Obsidian (`obsidian-preview`) only when the user asks (preview / render / open). After writing a `.md`, return its path.
 

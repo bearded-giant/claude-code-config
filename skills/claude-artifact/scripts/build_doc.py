@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import html
+import os
 import re
 import subprocess
 import sys
@@ -11,13 +13,20 @@ from pathlib import Path
 
 VAULT = Path.home() / "Recharge-Notes"
 TEMPLATE = Path(__file__).resolve().parent.parent / "doc-template" / "template.html"
+# licensed face: read from the recharge-auth checkout, never copied into this (public) repo
+FONT = Path(os.environ.get(
+    "ARTIFACT_DISPLAY_FONT",
+    Path.home() / "dev/python/recharge-auth-wt/main/app/static/fonts/mackinac-book.woff2",
+))
+# claude.ai wraps the page and renders mermaid itself; the hub serves the file as-is
+HUB_HEAD = '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+HUB_FONT = ('@font-face {\n  font-family: "Mackinac Pro";\n  font-weight: 350;\n  font-style: normal;\n'
+            '  font-display: swap;\n  src: url("/fonts/mackinac-book.woff2") format("woff2");\n}\n')
+MERMAID = ('<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>\n'
+           '<script>mermaid.initialize({ startOnLoad: true, '
+           'theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });</script>\n')
 IMG_RE = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\.png\)$", re.M)
 NUM_RE = re.compile(r"^([0-9]+|[A-Z])\.\s+(.*)$", re.S)
-MERMAID = (
-    '<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>\n'
-    "<script>mermaid.initialize({ startOnLoad: true, "
-    'theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });</script>\n'
-)
 
 
 def body_of(note: Path) -> str:
@@ -29,6 +38,15 @@ def body_of(note: Path) -> str:
 def slug(text: str) -> str:
     text = re.sub(r"^([0-9]+|[A-Z])\.\s+", "", html.unescape(re.sub(r"<[^>]+>", "", text)))
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def font_face() -> str:
+    if not FONT.exists():
+        print(f"warn: {FONT} missing, headings fall back to Georgia", file=sys.stderr)
+        return ""
+    data = base64.b64encode(FONT.read_bytes()).decode()
+    return ('@font-face {\n  font-family: "Mackinac Pro";\n  font-weight: 350;\n  font-style: normal;\n'
+            f'  font-display: swap;\n  src: url(data:font/woff2;base64,{data}) format("woff2");\n}}\n')
 
 
 def build_html(note: Path, out: Path, args) -> None:
@@ -90,15 +108,17 @@ def build_html(note: Path, out: Path, args) -> None:
     for key, val in {
         "{{DOCTITLE}}": args.doc_title or title, "{{TITLE}}": title, "{{EYEBROW}}": args.eyebrow,
         "{{STAMP}}": stamp, "{{SOURCE}}": source, "{{COMPANION_URL}}": args.companion_url or "",
-        "{{COMPANION_NAME}}": args.companion_name or "",
+        "{{COMPANION_NAME}}": args.companion_name or "", "{{FONT_FACE}}": HUB_FONT if args.hub else font_face(),
         "{{TOC}}": "\n".join(f'<li><a href="#{h}"><span class="toc-num">{n}</span>{t}</a></li>' for h, n, t in toc),
-        "{{BODY}}": frag, "{{SCRIPTS}}": MERMAID if diagrams else "",
+        "{{BODY}}": frag,
     }.items():
         page = page.replace(key, val)
     if not args.companion_url:
         page = re.sub(r'\s*<a class="companion"[^>]*>[^<]*</a>', "", page)
     if not args.eyebrow:
         page = re.sub(r'\s*<p class="eyebrow"></p>', "", page)
+    if args.hub:
+        page = HUB_HEAD + page + (MERMAID if diagrams else "")
     out.write_text(page)
     print(f"{out}  {stamp}  toc={len(toc)} diagrams={len(diagrams)}")
 
@@ -185,6 +205,7 @@ def main() -> None:
     ap.add_argument("--companion-name", help="bold text in the note to link, and the header link label")
     ap.add_argument("--replace", nargs=2, action="append", default=[], metavar=("OLD", "NEW"),
                     help="artifact-only text swap, e.g. a dated line the note keeps")
+    ap.add_argument("--hub", action="store_true", help="artifacts hub page: full document, font served by the hub, mermaid loader")
     ap.add_argument("--docx", type=Path, help="also write a .docx with diagrams embedded")
     args = ap.parse_args()
     if not args.out and not args.docx:

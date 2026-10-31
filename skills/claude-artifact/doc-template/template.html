@@ -1,23 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{DOCTITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="source-note" content="{{SOURCE}}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inconsolata:wght@500;600&family=Space+Mono&display=swap">
 <style>
-/* licensed face, served by the artifacts hub; claude-code-config never holds the file */
-@font-face {
-  font-family: "Mackinac Pro";
-  font-weight: 350;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/mackinac-book.woff2") format("woff2");
-}
-/* layout: Spark-blue title band, then one reading column with a sticky section index; the index folds above the text on phones.
+{{FONT_FACE}}/* layout: Spark-blue title band, then one reading column with a sticky section index; the index folds above the text on phones.
    color roles from Spark 2.0: blue = structure (band, h2, table heads, row labels), teal = identifiers (h3, code), lime = markers */
 :root {
   --bg: #f8f4f1;
@@ -191,8 +179,6 @@ td code { white-space: nowrap; overflow-wrap: normal; }
   .doc h2 { font-size: 26px; }
 }
 </style>
-</head>
-<body>
 <header class="band">
   <div class="gutter masthead">
     <p class="eyebrow">{{EYEBROW}}</p>
@@ -216,5 +202,3 @@ td code { white-space: nowrap; overflow-wrap: normal; }
     </article>
   </div>
 </div>
-{{SCRIPTS}}</body>
-</html>

@@ -1,10 +1,10 @@
 ---
 name: obsidian-note
-description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<area>/<domain>/) with the vault frontmatter contract plus a creation timestamp, list vault notes by area/domain/project/tag to pull prior context, and link a note to its artifacts hub page. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `handoffs/`).
+description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<area>/<domain>/) with the vault frontmatter contract plus a creation timestamp, list vault notes by area/domain/project/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `handoffs/`).
 ---
 <!-- caveman:compressed -->
 
-Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. `~/giantmem-vault` is a read-only Obsidian view of repo `.giantmem` dirs, never a target. Vault = source of truth, default target of "publish". Team sharing = artifacts hub page via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
+Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. `~/giantmem-vault` is a read-only Obsidian view of repo `.giantmem` dirs, never a target. Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
 
 ## Write
 
@@ -59,7 +59,7 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` once linked, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_mirror_<acct>` + `artifact_mirror_<acct>_rev` once mirrored (`rc-team` → `rc_team`), `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
 
 ## Bump or set status on a ticket note
 
@@ -80,9 +80,9 @@ After a `claude-artifact` publish of this note's content:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "one line on what changed"
 ```
 
-Upserts `artifact:` (the hub URL) / `artifact_rev:`, drops legacy claude.ai keys (`artifact_account`, `artifact_mirror_*`), and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
+Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--mirror` upserts `artifact_mirror_<acct>:` / `artifact_mirror_<acct>_rev:` instead, logs `mirror <acct> <url>`, leaves the source keys alone, and exits when the account is the source or the note already records a different mirror URL for it. `--hub` upserts `artifact_hub:` / `artifact_hub_rev:` instead and logs `hub <url>`, claude.ai keys untouched. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
 
-Building the artifact → `claude-artifact` `## From a note`.
+`note.py account [<note.md>]` prints the session's label (keychain slot `subscriptionType`: `team` rc-team, `enterprise` rc-inc; else `~/.claude.json`) and exits non-zero when the note's artifact lives in another account. `note.py role <note.md> [--account X]` prints `new`, `source N`, `unknown N` (linked with no account), or `mirror M S <cached html or ->`. Building or mirroring the artifact → `claude-artifact` `## From a note`.
 
 ## Read before write
 
