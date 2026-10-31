@@ -102,7 +102,7 @@ Every `.md` and `.yaml` artifact MUST start with YAML frontmatter:
 
 ```yaml
 ---
-type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | notes | pattern | facts | handoff}
+type: {one of: source-spec | delta-spec | proposal | design | tasks | plan | research | review | notes | pattern | facts | handoff | mr | run | diagram | prompt}  # giantmem folds grill-run/grill-final/findings→review, mr-description→mr, brief→prompt, reference/report/rca→research
 feature: {name}              # for feature-scoped artifacts
 repo: {repo-name}            # for repo-level artifacts (one of feature or repo)
 status: {draft | ready | done | blocked | stale}
