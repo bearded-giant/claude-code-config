@@ -30,7 +30,7 @@ The note's `artifact_account` owns the artifact: only a session on that account 
 
 ## Hub
 
-Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`, https://artifacts-hub-ten.vercel.app; the `deploy` Actions workflow ships every push to `main`). Readers sign in with a rechargeapps.com Google account, and every artifact starts closed to everyone but the hub admins (the user) until shared. Previews stay behind Vercel Authentication. Any claude.ai account publishes.
+Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`, https://artifacts.beardedgiant.tools; the `deploy` Actions workflow ships every push to `main`). Readers sign in with a rechargeapps.com Google account, and every artifact starts closed to everyone but the hub admins (the user) until shared. Previews stay behind Vercel Authentication. Any claude.ai account publishes.
 
 1. Read the whole note. N = `artifact_hub_rev` + 1, else 1. Name = last path segment of `artifact_hub:`, else the note stem lowercased. publish.sh refuses an existing name without `FORCE=1`: another note holds it, so use `<stem>-<domain>` and say so.
 2. Distill per `## Content`, then `build_doc.py <note.md> --out <scratchpad>/<name>.html --rev N --hub [...]` per `## Build`: full document, Mackinac served by the hub at `/fonts/`, pinned mermaid loader. A hand-built page: full document, nothing from claude.ai's runtime (`window.claude`, `window.storage`); hub validation rejects those.
