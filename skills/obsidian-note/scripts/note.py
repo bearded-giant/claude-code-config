@@ -296,9 +296,18 @@ def cmd_link(a):
         fm.append(f"artifact_account: {account}")
     body = text[end + 4 :].rstrip("\n")
     if log:
-        if "\n## Artifact revisions" not in body:
-            body += "\n\n## Artifact revisions\n"
-        body += f"\n- rev {a.rev} · {now_iso()} · {log}"
+        head, sep, tail = body.partition("\n## Artifact revisions")
+        cut = tail.find("\n## ")
+        cut = len(tail) if cut < 0 else cut
+        entries = tail[:cut].rstrip("\n") or "\n"
+        rest = "\n" + tail[cut:] if cut < len(tail) else ""
+        body = (
+            head
+            + (sep or "\n\n## Artifact revisions")
+            + entries
+            + f"\n- rev {a.rev} · {now_iso()} · {log}"
+            + rest
+        )
     path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
     print(path)
     return path
@@ -707,6 +716,12 @@ def self_test():
             raise AssertionError("mirror link on the source account must exit")
         except SystemExit as e:
             assert "source" in str(e), e
+        r.write_text(r.read_text() + "\n## Working notes\n\nscratch\n")
+        link("https://claude.ai/artifact/S", 4, log="after a trailing section")
+        text = r.read_text()
+        assert text.endswith("\n\n## Working notes\n\nscratch\n"), text
+        assert "· mirror rc-team https://claude.ai/artifact/M\n- rev 4 · " in text, text
+        assert "· after a trailing section\n\n## Working notes" in text, text
         slot("")
     print("ok")
 
