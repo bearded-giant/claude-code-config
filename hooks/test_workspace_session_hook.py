@@ -31,6 +31,13 @@ def main():
         vars(mod).update(claude_process_start=lambda: None)
         assert mod.restart_notice("clear") == ""
 
+    template = "---\ntype: plan\nstatus: active\n---\n\n# Current Plan\n\n## Steps\n\n<!-- add -->\n"
+    out = mod.format_context_output({"current_plan": template}, "/x/proj", False)
+    assert "ACTIVE PLAN" not in out, out
+    filled = template + "1. ship the cache fix\n"
+    out = mod.format_context_output({"current_plan": filled}, "/x/proj", False)
+    assert "=== ACTIVE PLAN ===" in out and "ship the cache fix" in out, out
+
     start = mod.claude_process_start()
     assert start is None or start <= time.time()
     print("ok")

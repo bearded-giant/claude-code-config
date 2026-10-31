@@ -28,6 +28,7 @@ from __future__ import annotations
 import sys
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -157,6 +158,14 @@ def read_workspace_context(cwd: str) -> dict:
     return context
 
 
+def plan_has_body(plan: str) -> bool:
+    body = re.sub(r"\A---\n.*?\n---\n", "", plan, flags=re.DOTALL)
+    body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+    return any(
+        line.strip() and not line.lstrip().startswith("#") for line in body.splitlines()
+    )
+
+
 def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
     """
     Format workspace context for injection into Claude session.
@@ -175,7 +184,7 @@ def format_context_output(context: dict, cwd: str, bootstrapped: bool) -> str:
         parts.append(context["workspace_md"])
         parts.append("")
 
-    if context.get("current_plan"):
+    if plan_has_body(context.get("current_plan", "")):
         parts.append("=== ACTIVE PLAN ===")
         parts.append(context["current_plan"])
         parts.append("")
