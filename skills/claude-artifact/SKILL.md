@@ -21,7 +21,7 @@ Vault note = working source, for the user. Artifact = distilled team view on the
    - `artifact:` is a hub URL → its last path segment; republish with `FORCE=1`.
    - `artifact:` is a claude.ai URL (legacy) or absent → note stem, lowercased. No `FORCE`: publish.sh refuses a name another note already holds; then use `<stem>-<domain>` and say so.
 2. Build per `## Build`, distilling per `## Content`. The note is the only source; no session context.
-3. Publish: `[FORCE=1] ~/dev/ai/artifact-publish/publish.sh <scratchpad>/<name>.html <name>`. Validates (claude.ai-only runtime, credential shapes, kebab name), commits, pushes `main`, prints the URL; Vercel deploys on push. `hooks/artifact_gate.py` blocks the call when the page lacks the stamp or carries a changelog heading.
+3. Publish: `[FORCE=1] ~/dev/ai/artifact-publish/publish.sh <scratchpad>/<name>.html <name>`. Validates (claude.ai-only runtime, credential shapes, kebab name), commits, pushes `main`, prints the URL; the hub's `deploy` GitHub Actions workflow deploys `main`. `hooks/artifact_gate.py` blocks the call when the page lacks the stamp or carries a changelog heading.
 4. `python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <url> --rev N --log "<what changed, one line>"`. Writes `artifact:` + `artifact_rev:`, drops legacy `artifact_account` / `artifact_mirror_*` keys, appends `- rev N · <ts> · <log>` under `## Artifact revisions`. The change history lives there, only there.
 5. Report: URL, rev. Nothing else. No sharing advice: the hub is org-internal; never public or outside-org.
 
