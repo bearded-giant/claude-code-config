@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import csv
 import json
 import os
 import re
@@ -151,11 +152,9 @@ def github_repo(top):
 
 def babysit_merge(top):
     try:
-        lines = REPOS_CSV.read_text().splitlines()
-    except OSError:
+        rows = list(csv.reader(REPOS_CSV.read_text().splitlines()))
+    except (OSError, csv.Error):
         return False
-    # notes is the unquoted rest of the row and holds commas
-    rows = (line.split(",", 2) for line in lines)
     return any(len(r) == 3 and "babysit-merge" in r[2] and Path(top).is_relative_to(r[1]) for r in rows)
 
 

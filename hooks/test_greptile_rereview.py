@@ -129,9 +129,13 @@ assert gh_request(comments=[{"body": "@greptileai review", "created_at": "2026-1
 import tempfile
 
 with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as f:
-    f.write("names,path,notes\nr,/tmp,origin = GitHub (PRs, Greptile); merge: github; babysit-merge\nq,/tmpx,\n")
+    f.write(
+        'names,path,notes\nr,/tmp,"origin = GitHub (PRs, Greptile); merge: github; babysit-merge"\nq,/tmpx,\n'
+        '"s,t",/tmpy,"merge: github, babysit-merge"\n'
+    )
 mod.REPOS_CSV = Path(f.name)
 assert mod.babysit_merge("/tmp") and mod.babysit_merge("/tmp/feat") and not mod.babysit_merge("/tmpx/feat")
+assert mod.babysit_merge("/tmpy/feat")
 assert gh_request() == (None, [])
 mod.REPOS_CSV = Path(f.name + ".missing")
 assert not mod.babysit_merge("/tmp") and gh_request()[1]
