@@ -208,6 +208,8 @@ export DISCORD_DAEMON_URL=http://127.0.0.1:7777
 export DISCORD_DAEMON_TOKEN=$TOKEN
 [ -f "$DOTFILES/.creds.secret" ] && source "$DOTFILES/.creds.secret"
 [ -f "$DOTFILES/shell/.bash_aliases" ] && source "$DOTFILES/shell/.bash_aliases"
+# worktree prefix functions (ccw, few, ...) so sessions open repo worktrees the same way as on the laptop
+for __wt in "$DOTFILES"/shell/scripts/worktrees/wt-*.sh; do [ -f "\$__wt" ] && source "\$__wt"; done 2>/dev/null; unset __wt
 # claude must see the OAuth slot, not the API key from .creds.secret (remote-control needs claude.ai login);
 # these override the laptop aliases sourced above
 alias claude='env -u ANTHROPIC_API_KEY DEBUG= claude'
