@@ -68,7 +68,7 @@ def build_html(note: Path, out: Path, args) -> None:
         if not mmd.exists():
             sys.exit(f"{mmd} missing: artifacts cannot load local images, give each diagram a sibling .mmd")
         diagrams.append((m.group(1), mmd.read_text()))
-        return f"MERMAIDSLOT{len(diagrams) - 1}"
+        return f"MERMAIDSLOT{len(diagrams) - 1}\n"
 
     body = IMG_RE.sub(stash, body)
     frag = subprocess.run(["pandoc", "-f", "gfm", "-t", "html5", "--wrap=none"], input=body, text=True,
