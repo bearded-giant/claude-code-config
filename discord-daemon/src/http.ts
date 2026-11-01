@@ -51,6 +51,8 @@ export function startHTTP(bot: DiscordBot): { stop: () => void } {
   const server = Bun.serve({
     hostname: BIND_HOST,
     port: BIND_PORT,
+    // bun's default 10s idle timeout closes the SSE inbox between 25s keep-alives
+    idleTimeout: 255,
     fetch: (req) => handle(req, bot),
   })
   process.stderr.write(`daemon: HTTP listening on ${BIND_HOST}:${BIND_PORT}\n`)
