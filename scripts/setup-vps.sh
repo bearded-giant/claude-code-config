@@ -1,33 +1,33 @@
 #!/usr/bin/env bash
-# Idempotent VPS bootstrap. Runs ON the VPS, expects:
-#   - ~/dev/claude-code-config/   (code present — rsync first if needed)
-#   - Ubuntu 24.04 or compatible
-#   - Run as a sudo-capable non-root user
+# Idempotent devbox bootstrap. Runs ON the box (Debian 13) as the sudo-capable
+# login user. scripts/bootstrap-vps.sh drives it from the laptop and rsyncs
+# the code first. Expects:
+#   ~/dev/claude-code-config/    (rsynced)
+#   ~/dev/giant-tooling/         (rsynced)
+#   ~/dev/lua/do-it.nvim/        (rsynced, doit MCP)
+#   ~/.local/bin/giantmem        (cross-built on the laptop, scp'd)
 #
-# This script performs everything install-vps.sh + the manual fix-ups we did
-# the first time, in one pass. Re-runnable. Skips finished steps.
-#
-# What it does NOT do:
-#   - Provision the VPS (use scripts/provision-hetzner.sh first)
-#   - Tailscale join (cloud-init handles it, or run `sudo tailscale up`)
-#   - claude /login (interactive — see end of script)
-#
-# Restore a previous daemon state by setting BACKUP_FILE to an age-encrypted
-# tarball that contains the channels/discord tree. AGE_KEY must point at the
-# matching private key.
+# Env knobs:
+#   SESSIONS_CHANNEL_ID  Discord channel that holds session threads
+#   BACKUP_FILE/AGE_KEY  restore an age-encrypted daemon state tarball
+#   SKIP_EMBED=1         skip the sentence-transformers venv (torch CPU, ~2 GB)
+#   SKIP_LSP=1           skip pyright/tsserver/rust-analyzer/lua-language-server
 #
 # Usage:
-#   ssh bryan@claude-vps 'bash -s' < scripts/setup-vps.sh
-#
-# Or after scp'ing onto the VPS:
-#   bash ~/setup-vps.sh
+#   ssh devbox 'SESSIONS_CHANNEL_ID=... bash -s' < scripts/setup-vps.sh
 
 set -euo pipefail
 
-CONFIG_DIR="${CONFIG_DIR:-$HOME/dev/claude-code-config}"
-TOOLING_DIR="${TOOLING_DIR:-$HOME/dev/giant-tooling}"
-TOOLING_REPO="${TOOLING_REPO:-https://github.com/bearded-giant/giant-tooling.git}"
+# laptop home. stowed hooks, config/repos.csv, ~/.claude/projects slugs and
+# giantmem path keys all hold /Users/bryan/..., so the box answers to it too.
+BRIDGE=/Users/bryan
+CONFIG_DIR="$BRIDGE/dev/claude-code-config"
+TOOLING_DIR="$BRIDGE/dev/giant-tooling"
+DOIT_DIR="$BRIDGE/dev/lua/do-it.nvim"
 STATE_DIR="$HOME/.claude/channels/discord"
+VENV="$HOME/.venvs/giant-ai"
+BIN="$HOME/.local/bin"
+SESSIONS_CHANNEL_ID="${SESSIONS_CHANNEL_ID:-1507722242551971870}"
 BACKUP_FILE="${BACKUP_FILE:-}"
 AGE_KEY="${AGE_KEY:-$HOME/.config/age/discord-daemon.key}"
 
@@ -36,151 +36,103 @@ green() { printf '\033[0;32m%s\033[0m\n' "$*"; }
 dim()   { printf '\033[0;90m%s\033[0m\n' "$*"; }
 step()  { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
 
-if [ ! -d "$CONFIG_DIR" ]; then
-  red "missing: $CONFIG_DIR"
-  red "run from laptop:  rsync -av --exclude=node_modules ~/dev/claude-code-config bryan@<vps>:~/dev/"
-  exit 1
-fi
+step "Path bridge $BRIDGE -> $HOME"
+sudo mkdir -p "$(dirname "$BRIDGE")"
+[ -L "$BRIDGE" ] || sudo ln -sfn "$HOME" "$BRIDGE"
+green "  $(readlink -f "$BRIDGE")"
 
-# === 1. apt deps ===
+for d in "$CONFIG_DIR" "$TOOLING_DIR" "$DOIT_DIR"; do
+  [ -d "$d" ] || { red "missing: $d (run scripts/bootstrap-vps.sh from the laptop)"; exit 1; }
+done
+[ -d "$BRIDGE/dotfiles/shell" ] || dim "no $BRIDGE/dotfiles/shell: laptop aliases and .creds.secret not sourced"
+
 step "apt deps"
-sudo apt-get update -y
-sudo apt-get install -y \
-  curl git unzip ca-certificates jq mosh stow \
-  python3 python3-pip patch
-green "  apt deps ok"
+sudo apt-get update -qq
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+  curl git unzip ca-certificates jq stow patch rsync ripgrep sqlite3 tmux openssl \
+  python3 python3-venv python3-pip nodejs npm >/dev/null
+green "  apt ok (node $(node --version))"
 
-# === 2. Bun runtime ===
+step "systemd user services survive logout, journal readable"
+sudo loginctl enable-linger "$USER"
+id -nG | tr " " "\n" | grep -qx systemd-journal || sudo usermod -aG systemd-journal "$USER"
+green "  linger on for $USER; journalctl --user works from the next login"
+
 step "Bun"
-if [ ! -x "$HOME/.bun/bin/bun" ]; then
-  curl -fsSL https://bun.sh/install | bash
-fi
-"$HOME/.bun/bin/bun" --version
-green "  bun ok"
+[ -x "$HOME/.bun/bin/bun" ] || curl -fsSL https://bun.sh/install | bash >/dev/null
+green "  bun $("$HOME/.bun/bin/bun" --version)"
 
-# === 3. /Users/bryan bridge + node bridge ===
-step "Laptop-path bridges (so stowed configs resolve)"
-sudo mkdir -p /Users
-[ -L /Users/bryan ] || sudo ln -sfn "$HOME" /Users/bryan
-green "  /Users/bryan → $HOME"
-
-# Node 22 LTS via NodeSource — Ubuntu 24.04 ships v18, too old for
-# typescript-language-server (requires >=20). Reinstall if current is <20.
-NODE_MAJOR_REQ=20
-need_node=true
-if command -v node >/dev/null; then
-  cur="$(node -p 'process.versions.node.split(".")[0]')"
-  [ "$cur" -ge "$NODE_MAJOR_REQ" ] && need_node=false
-fi
-if $need_node; then
-  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-  sudo apt-get install -y nodejs
-fi
-NODE_BIN="$(command -v node)"
+# settings.json pins the laptop's nvm node for the doit MCP
+step "node shim for settings.json"
 mkdir -p "$HOME/.nvm/versions/node/v24.11.1/bin"
-ln -sfn "$NODE_BIN" "$HOME/.nvm/versions/node/v24.11.1/bin/node"
-green "  node bridge → $NODE_BIN ($(node --version))"
+ln -sfn "$(command -v node)" "$HOME/.nvm/versions/node/v24.11.1/bin/node"
+green "  ~/.nvm/versions/node/v24.11.1/bin/node -> $(command -v node)"
 
-# === 3b. LSP runtimes for claude-code-config ===
-# claude-code-config enables 4 LSP plugins (settings.json):
-#   pyright-lsp, typescript-lsp, rust-analyzer-lsp, lua-lsp
-# These need their language servers on PATH or the LSP tool no-ops.
-# Notes:
-#   - rust-analyzer not in Ubuntu 24.04 apt; snap beta is stale (2023). Use rustup.
-#   - typescript-language-server requires node >=20 (handled above).
-step "LSP runtimes"
-sudo npm install -g --silent pyright typescript-language-server typescript
-if ! command -v rustup >/dev/null; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
-fi
-"$HOME/.cargo/bin/rustup" component add rust-analyzer
-# lua-language-server: not in apt or snap. GitHub release tarball.
-LLS_VER=3.18.2
-if [ ! -x "$HOME/.local/lua-language-server/bin/lua-language-server" ]; then
-  mkdir -p "$HOME/.local/lua-language-server" "$HOME/.local/bin"
-  curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VER}/lua-language-server-${LLS_VER}-linux-x64.tar.gz" \
-    | tar -xz -C "$HOME/.local/lua-language-server"
-fi
-ln -sf "$HOME/.local/lua-language-server/bin/lua-language-server" "$HOME/.local/bin/lua-language-server"
-green "  pyright + typescript-language-server + rust-analyzer + lua-language-server ok"
-
-# === 4. giant-tooling sibling ===
-step "giant-tooling sibling repo"
-if [ ! -d "$TOOLING_DIR" ]; then
-  git clone "$TOOLING_REPO" "$TOOLING_DIR"
-fi
-ln -sfn "$TOOLING_DIR/workspace" "$CONFIG_DIR/lib/workspace" 2>/dev/null || true
-green "  $TOOLING_DIR ok"
-
-# === 5. State dir + restore (or fresh) ===
-step "Daemon state dir"
-mkdir -p "$STATE_DIR/inbox" "$STATE_DIR/approved"
-chmod 700 "$STATE_DIR"
-
-if [ -n "$BACKUP_FILE" ]; then
-  if [ ! -r "$BACKUP_FILE" ]; then red "  BACKUP_FILE not readable: $BACKUP_FILE"; exit 1; fi
-  if [ ! -r "$AGE_KEY" ]; then red "  AGE_KEY not readable: $AGE_KEY"; exit 1; fi
-  command -v age >/dev/null || { red "  install age first (apt install age) — OR run from laptop with AGE pipe"; exit 1; }
-  age -d -i "$AGE_KEY" < "$BACKUP_FILE" | tar -C "$HOME/.claude/channels" -x
-  green "  restored from $BACKUP_FILE"
-else
-  if [ ! -f "$STATE_DIR/.env" ]; then
-    cat > "$STATE_DIR/.env" <<EOF
-DISCORD_BOT_TOKEN=
-DISCORD_SESSIONS_CHANNEL_ID=
-DAEMON_TOKEN=$(openssl rand -hex 32)
-DAEMON_BIND_HOST=0.0.0.0
-DAEMON_BIND_PORT=7777
-EOF
-    chmod 600 "$STATE_DIR/.env"
-    dim "  fresh .env created — fill DISCORD_BOT_TOKEN + DISCORD_SESSIONS_CHANNEL_ID"
-  else
-    dim "  .env exists, untouched"
+if [ "${SKIP_LSP:-0}" != "1" ]; then
+  step "LSP runtimes (settings.json enables pyright, typescript, rust-analyzer, lua)"
+  mkdir -p "$BIN"
+  npm install -g --silent --prefix "$HOME/.local" pyright typescript-language-server typescript
+  if ! [ -x "$HOME/.cargo/bin/rustup" ]; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable >/dev/null
   fi
-  if [ ! -f "$STATE_DIR/access.json" ]; then
-    cat > "$STATE_DIR/access.json" <<EOF
-{
-  "dmPolicy": "allowlist",
-  "allowFrom": [],
-  "groups": {},
-  "pending": {}
+  "$HOME/.cargo/bin/rustup" component add rust-analyzer >/dev/null 2>&1 || true
+  LLS_VER=3.18.2
+  if [ ! -x "$HOME/.local/lua-language-server/bin/lua-language-server" ]; then
+    mkdir -p "$HOME/.local/lua-language-server"
+    curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VER}/lua-language-server-${LLS_VER}-linux-x64.tar.gz" \
+      | tar -xz -C "$HOME/.local/lua-language-server"
+  fi
+  ln -sf "$HOME/.local/lua-language-server/bin/lua-language-server" "$BIN/lua-language-server"
+  green "  pyright, typescript-language-server, rust-analyzer, lua-language-server"
+fi
+
+step "Claude Code CLI"
+[ -x "$BIN/claude" ] || curl -fsSL https://claude.ai/install.sh | bash >/dev/null
+green "  $("$BIN/claude" --version)"
+
+step "gh + glab (user-space)"
+install_release_bin() {
+  local name="$1" url="$2" tmp
+  tmp=$(mktemp -d)
+  curl -fsSL "$url" -o "$tmp/pkg"
+  case "$url" in
+    *.tar.gz) tar -xzf "$tmp/pkg" -C "$tmp" && find "$tmp" -type f -name "$name" -perm -u+x -exec install -m 0755 {} "$BIN/$name" \; ;;
+    *.deb)    dpkg-deb -x "$tmp/pkg" "$tmp/x" && install -m 0755 "$tmp/x/usr/bin/$name" "$BIN/$name" ;;
+  esac
+  rm -rf "$tmp"
 }
-EOF
-    chmod 600 "$STATE_DIR/access.json"
-    dim "  fresh access.json — add your Discord user ID to allowFrom"
-  else
-    dim "  access.json exists, untouched"
+if ! [ -x "$BIN/gh" ]; then
+  GH_VER=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | jq -r .tag_name | sed 's/^v//')
+  install_release_bin gh "https://github.com/cli/cli/releases/download/v${GH_VER}/gh_${GH_VER}_linux_amd64.tar.gz"
+fi
+if ! [ -x "$BIN/glab" ]; then
+  GLAB_VER=$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases?per_page=1" | jq -r '.[0].tag_name' | sed 's/^v//')
+  install_release_bin glab "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VER}/downloads/glab_${GLAB_VER}_linux_amd64.deb"
+fi
+green "  $("$BIN/gh" --version | head -1), $("$BIN/glab" --version | head -1)"
+
+step "giantmem"
+if [ -x "$BIN/giantmem" ]; then
+  green "  $("$BIN/giantmem" version | head -1)"
+else
+  red "  ~/.local/bin/giantmem missing; bootstrap-vps.sh cross-builds and scp's it"
+fi
+if [ "${SKIP_EMBED:-0}" != "1" ]; then
+  if ! "$VENV/bin/python3" -c 'import sentence_transformers' 2>/dev/null; then
+    dim "  building embedder venv at $VENV (torch cpu + sentence-transformers)"
+    python3 -m venv "$VENV"
+    "$VENV/bin/pip" install -q --upgrade pip
+    "$VENV/bin/pip" install -q torch --index-url https://download.pytorch.org/whl/cpu
+    "$VENV/bin/pip" install -q sentence-transformers
   fi
+  green "  embedder venv ok: $VENV"
 fi
 
-# === 6. Install daemon + session-mcp deps ===
-step "Bun install for daemon + session-mcp"
-( cd "$CONFIG_DIR/discord-daemon" && "$HOME/.bun/bin/bun" install --production ) | tail -3
-( cd "$CONFIG_DIR/session-mcp"    && "$HOME/.bun/bin/bun" install --production ) | tail -3
-green "  deps installed"
-
-# === 7. systemd unit ===
-step "systemd unit"
-SVC_SRC="$CONFIG_DIR/discord-daemon/systemd/discord-daemon.service"
-if [ ! -f "$SVC_SRC" ]; then red "  missing unit file: $SVC_SRC"; exit 1; fi
-# Patch WorkingDirectory to the stowed-path layout
-sudo sed "s|/home/bryan/discord-daemon|$CONFIG_DIR/discord-daemon|g; s|/home/bryan|$HOME|g" "$SVC_SRC" \
-  | sudo tee /etc/systemd/system/discord-daemon.service >/dev/null
-sudo systemctl daemon-reload
-green "  unit installed"
-
-# === 8. Stow personal claude config ===
-step "Stow ~/.claude"
+step "install.sh (stow ~/.claude, settings merge, ccmd)"
 mkdir -p "$HOME/.claude"
-if [ ! -L "$HOME/.claude" ]; then
-  if ! stow_out="$( cd "$(dirname "$CONFIG_DIR")" && stow --restow -t "$HOME/.claude" "$(basename "$CONFIG_DIR")" 2>&1 )"; then
-    red "  stow failed:"; printf '%s\n' "$stow_out"; exit 1
-  fi
-  [ -z "$stow_out" ] || printf '%s\n' "$stow_out"
-fi
-# settings.local.json overlay
-TOKEN=$(grep DAEMON_TOKEN "$STATE_DIR/.env" | cut -d= -f2)
-cat > "$HOME/.claude/settings.local.json" <<EOF
+export PATH="$BIN:$PATH"
+bash "$CONFIG_DIR/install.sh" --tooling-dir "$TOOLING_DIR"
+cat > "$HOME/.claude/settings.local.json" <<'JSON'
 {
   "enabledPlugins": {
     "discord@claude-plugins-official": false
@@ -189,132 +141,155 @@ cat > "$HOME/.claude/settings.local.json" <<EOF
     "defaultMode": "bypassPermissions"
   }
 }
-EOF
+JSON
 chmod 600 "$HOME/.claude/settings.local.json"
-green "  stow + settings.local.json ok"
+green "  stowed + settings.local.json"
 
-# === 9. Claude CLI ===
-step "Claude Code CLI"
-if [ ! -x "$HOME/.local/bin/claude" ]; then
-  curl -fsSL https://claude.ai/install.sh | bash
+step "doit MCP deps"
+( cd "$DOIT_DIR/mcp" && npm install --silent --omit=dev >/dev/null 2>&1 ) || dim "  npm install in do-it.nvim/mcp failed; node_modules may already be in place"
+green "  $DOIT_DIR/mcp"
+
+step "Daemon state dir"
+mkdir -p "$STATE_DIR/inbox" "$STATE_DIR/approved"
+chmod 700 "$STATE_DIR"
+if [ -n "$BACKUP_FILE" ]; then
+  [ -r "$BACKUP_FILE" ] || { red "  BACKUP_FILE not readable: $BACKUP_FILE"; exit 1; }
+  [ -r "$AGE_KEY" ] || { red "  AGE_KEY not readable: $AGE_KEY"; exit 1; }
+  command -v age >/dev/null || sudo apt-get install -y -qq age >/dev/null
+  age -d -i "$AGE_KEY" < "$BACKUP_FILE" | tar -C "$HOME/.claude/channels" -x
+  green "  restored from $BACKUP_FILE"
 fi
-case ":$PATH:" in
-  *":$HOME/.local/bin:"*) ;;
-  *) echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc" ;;
-esac
-"$HOME/.local/bin/claude" --version
-green "  claude installed"
-
-# === 10. Shell env exports ===
-step "Shell env (bashrc additions)"
-RC="$HOME/.bashrc"
-add_export() {
-  local line="$1"
-  grep -qxF "$line" "$RC" || echo "$line" >> "$RC"
+touch "$STATE_DIR/.env"; chmod 600 "$STATE_DIR/.env"
+ensure_env() {
+  local key="$1" val="$2"
+  if grep -q "^${key}=" "$STATE_DIR/.env"; then
+    if [ -n "$val" ] && [ -z "$(grep "^${key}=" "$STATE_DIR/.env" | cut -d= -f2-)" ]; then
+      sed -i "s|^${key}=.*|${key}=${val}|" "$STATE_DIR/.env"
+    fi
+  else
+    echo "${key}=${val}" >> "$STATE_DIR/.env"
+  fi
 }
-add_export "export PATH=\"\$HOME/.local/bin:\$HOME/.cargo/bin:\$PATH\""
-# Also write PATH to ~/.profile. Reason: tmux launches dclaude via `bash -lc`
-# (login + command, NON-interactive). Ubuntu's default ~/.bashrc returns
-# early for non-interactive shells, so PATH exports below the interactive
-# guard never run. ~/.profile is read by login shells regardless.
-PROFILE="$HOME/.profile"
-if ! grep -q "# LSP runtimes + giantmem" "$PROFILE" 2>/dev/null; then
-  cat >> "$PROFILE" <<'EOF'
-
-# LSP runtimes + giantmem (visible to login non-interactive shells like bash -lc)
-export PATH="$HOME/.local/bin:$HOME/.local/go/bin:$HOME/.cargo/bin:$PATH"
-EOF
+ensure_env DISCORD_BOT_TOKEN ""
+ensure_env DISCORD_SESSIONS_CHANNEL_ID "$SESSIONS_CHANNEL_ID"
+ensure_env DAEMON_TOKEN "$(openssl rand -hex 32)"
+ensure_env DAEMON_BIND_HOST 127.0.0.1
+ensure_env DAEMON_BIND_PORT 7777
+if [ ! -f "$STATE_DIR/access.json" ]; then
+  printf '{\n  "dmPolicy": "allowlist",\n  "allowFrom": [],\n  "groups": {},\n  "pending": {}\n}\n' > "$STATE_DIR/access.json"
+  chmod 600 "$STATE_DIR/access.json"
+  dim "  fresh access.json: add your Discord user id to allowFrom"
 fi
-add_export "export GIANT_TOOLING_DIR=\"$TOOLING_DIR\""
-add_export "[ -f \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\" ] && source \"\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh\""
-add_export "export DISCORD_DAEMON_TOKEN=$TOKEN"
-add_export "export DISCORD_DAEMON_URL=http://127.0.0.1:7777"
-# claude wrapper: launches w/ Discord channel wired up. Separate name so plain
-# `claude` stays usable for non-Discord work.
-add_export "dclaude() { claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions \"\$@\"; }"
-# one-shot exit: detaches VPS tmux (so claude keeps running) then exits ssh.
-add_export "alias bye='tmux detach 2>/dev/null; exit'"
-green "  bashrc updated"
+TOKEN=$(grep '^DAEMON_TOKEN=' "$STATE_DIR/.env" | cut -d= -f2-)
+BOT_TOKEN=$(grep '^DISCORD_BOT_TOKEN=' "$STATE_DIR/.env" | cut -d= -f2-)
+CHANNEL=$(grep '^DISCORD_SESSIONS_CHANNEL_ID=' "$STATE_DIR/.env" | cut -d= -f2-)
+green "  $STATE_DIR/.env (bot token: $([ -n "$BOT_TOKEN" ] && echo set || echo EMPTY), channel: ${CHANNEL:-EMPTY})"
 
-# === 10b. tmux config ===
-# VPS tmux uses C-b (default). Local convention is C-a → no leader collision
-# when nesting local tmux + VPS tmux. Red status bar makes the layer obvious.
+step "Bun deps for daemon + session-mcp"
+( cd "$CONFIG_DIR/discord-daemon" && "$HOME/.bun/bin/bun" install --production 2>&1 | tail -1 )
+( cd "$CONFIG_DIR/session-mcp"    && "$HOME/.bun/bin/bun" install --production 2>&1 | tail -1 )
+
+step "systemd user unit"
+mkdir -p "$HOME/.config/systemd/user"
+install -m 0644 "$CONFIG_DIR/discord-daemon/systemd/discord-daemon.service" "$HOME/.config/systemd/user/discord-daemon.service"
+systemctl --user daemon-reload
+green "  ~/.config/systemd/user/discord-daemon.service"
+
+step "Shell env"
+DOTFILES="$BRIDGE/dotfiles"
+[ -f "$DOTFILES/shell/.recharge-aliases" ] && ln -sfn "$DOTFILES/shell/.recharge-aliases" "$HOME/.recharge-aliases"
+cat > "$HOME/.claude-devbox.sh" <<ENV
+# sourced from ~/.profile (login, non-interactive: tmux bash -lc) and ~/.bashrc
+export PATH="\$HOME/.local/bin:\$HOME/.bun/bin:\$HOME/.cargo/bin:\$PATH"
+export GIANT_TOOLING_DIR="$TOOLING_DIR"
+[ -f "\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh" ] && source "\$GIANT_TOOLING_DIR/workspace/workspace-lib.sh"
+export GIANTMEM_EMBED_PYTHON="$VENV/bin/python3"
+export DISCORD_DAEMON_URL=http://127.0.0.1:7777
+export DISCORD_DAEMON_TOKEN=$TOKEN
+[ -f "$DOTFILES/.creds.secret" ] && source "$DOTFILES/.creds.secret"
+[ -f "$DOTFILES/shell/.bash_aliases" ] && source "$DOTFILES/shell/.bash_aliases"
+# claude must see the OAuth slot, not the API key from .creds.secret (remote-control needs claude.ai login);
+# these override the laptop aliases sourced above
+alias claude='env -u ANTHROPIC_API_KEY DEBUG= claude'
+alias claude-team='env -u ANTHROPIC_API_KEY CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HOME/.claude-team claude'
+alias claude-ent='env -u ANTHROPIC_API_KEY CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HOME/.claude-ent claude'
+alias clc='claude-team'
+alias clce='claude-ent'
+dclaude() { env -u ANTHROPIC_API_KEY claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions "\$@"; }
+alias bye='tmux detach 2>/dev/null; exit'
+ENV
+chmod 600 "$HOME/.claude-devbox.sh"
+for rc in "$HOME/.profile" "$HOME/.bashrc"; do
+  grep -q 'claude-devbox.sh' "$rc" 2>/dev/null || printf '\n[ -f "$HOME/.claude-devbox.sh" ] && . "$HOME/.claude-devbox.sh"\n' >> "$rc"
+done
+green "  ~/.claude-devbox.sh sourced from .profile and .bashrc"
+
 step "tmux.conf"
 if [ ! -f "$HOME/.tmux.conf" ]; then
-  cat > "$HOME/.tmux.conf" <<'TMUX_EOF'
+  cat > "$HOME/.tmux.conf" <<'TMUX'
 unbind C-a
 set -g prefix C-b
 bind C-b send-prefix
-
 set -g status-bg colour52
 set -g status-fg white
-set -g status-left "#[bg=colour88,fg=white,bold] VPS #[default] "
-
+set -g status-left "#[bg=colour88,fg=white,bold] DEVBOX #[default] "
 set -g mouse on
 set -g history-limit 50000
 set -g base-index 1
 setw -g pane-base-index 1
-
-# vi-mode in copy-mode
 setw -g mode-keys vi
-# OSC52: emit clipboard escape so outer (laptop) tmux forwards to terminal.
 set -s set-clipboard on
-TMUX_EOF
-  green "  ~/.tmux.conf written"
+TMUX
+  green "  ~/.tmux.conf written (C-b prefix, red bar: nests under the laptop's C-a)"
 else
-  green "  ~/.tmux.conf exists, leaving alone"
+  dim "  ~/.tmux.conf exists, untouched"
 fi
 
-# === 11. Start daemon ===
-step "Start discord-daemon"
-sudo systemctl enable --now discord-daemon
-sleep 2
-if sudo systemctl is-active discord-daemon >/dev/null; then
-  green "  discord-daemon active"
-  sudo journalctl -u discord-daemon -n 8 --no-pager | grep -E "daemon:" | grep -v Deprecation | tail -5
-else
-  red "  discord-daemon failed to start"
-  sudo journalctl -u discord-daemon -n 20 --no-pager
-  exit 1
-fi
+step "ssh key for git"
+mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+[ -f "$HOME/.ssh/id_ed25519" ] || ssh-keygen -q -t ed25519 -N "" -f "$HOME/.ssh/id_ed25519" -C "devbox-$(hostname)"
+for h in gitlab.rechargeapps.net github.com; do
+  grep -q "^$h " "$HOME/.ssh/known_hosts" 2>/dev/null || ssh-keyscan -H "$h" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+done
+green "  $(cat "$HOME/.ssh/id_ed25519.pub")"
 
-# === 12. Apply discord plugin patch (if plugin present) ===
-step "Discord plugin patch (idempotent)"
-if [ -f "$CONFIG_DIR/scripts/apply-discord-patch.sh" ]; then
-  bash "$CONFIG_DIR/scripts/apply-discord-patch.sh" || dim "  patch skipped (plugin not yet cached)"
-fi
-
-# === 13. Register discord MCP for the user ===
 step "claude mcp add discord (user scope)"
-if "$HOME/.local/bin/claude" mcp list 2>&1 | grep -q "^discord:"; then
-  dim "  discord MCP already registered"
+if "$BIN/claude" mcp list 2>/dev/null | grep -q '^discord'; then
+  dim "  already registered"
 else
-  "$HOME/.local/bin/claude" mcp add discord "$HOME/.bun/bin/bun" \
-    --scope user \
-    -e DISCORD_DAEMON_URL=http://127.0.0.1:7777 \
-    -e DISCORD_DAEMON_TOKEN="$TOKEN" \
-    -- run "$CONFIG_DIR/session-mcp/src/server.ts"
+  "$BIN/claude" mcp add discord "$HOME/.bun/bin/bun" --scope user \
+    -e DISCORD_DAEMON_URL=http://127.0.0.1:7777 -e DISCORD_DAEMON_TOKEN="$TOKEN" \
+    -- run "$CONFIG_DIR/session-mcp/src/server.ts" >/dev/null
+  green "  registered"
 fi
-"$HOME/.local/bin/claude" mcp list 2>&1 | head -5
 
-# === Done ===
-cat <<EOF
+step "discord-daemon"
+if [ -n "$BOT_TOKEN" ] && [ -n "$CHANNEL" ]; then
+  systemctl --user enable --now discord-daemon >/dev/null 2>&1
+  systemctl --user restart discord-daemon
+  sleep 3
+  if systemctl --user is-active discord-daemon >/dev/null; then
+    green "  active"
+    journalctl --user -u discord-daemon -n 6 --no-pager -o cat | grep -E "daemon:" | tail -4 || true
+  else
+    red "  failed"; journalctl --user -u discord-daemon -n 20 --no-pager -o cat; exit 1
+  fi
+else
+  dim "  not started: fill DISCORD_BOT_TOKEN and DISCORD_SESSIONS_CHANNEL_ID in $STATE_DIR/.env, then: systemctl --user enable --now discord-daemon"
+fi
 
-$(green "=== setup-vps.sh complete ===")
+cat <<DONE
 
-Next:
-  1. SSH in interactively: ssh bryan@$(hostname)
-  2. claude              # follow /login URL in laptop browser
-  3. tmux new -s main; cd ~/dev/test; claude --dangerously-load-development-channels server:discord
-  4. DM the bot — try 'list'
+$(green "=== setup-vps.sh complete on $(hostname) ===")
+
+Next, over ssh:
+  1. CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HOME/.claude-team claude auth login     (rc-team)
+     CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HOME/.claude-ent  claude auth login     (rc-inc)
+  2. add the key above to GitLab and GitHub, then: gh auth login; glab auth login --hostname gitlab.rechargeapps.net
+  3. tmux new -A -s main -c $BRIDGE/dev; dclaude
 
 Verify:
-  curl -H "x-daemon-token: $TOKEN" http://127.0.0.1:7777/health
-  curl http://127.0.0.1:7777/metrics | head -10
-  sudo journalctl -u discord-daemon -f
-
-State files (back these up):
-  $STATE_DIR/.env
-  $STATE_DIR/access.json
-  $STATE_DIR/sessions.json
-EOF
+  curl -s -H "x-daemon-token: $TOKEN" http://127.0.0.1:7777/health
+  systemctl --user status discord-daemon
+  journalctl --user -u discord-daemon -f
+DONE

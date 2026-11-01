@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push laptop's git config to the VPS. Idempotent. Run any time your
+# Push the laptop git config to the devbox. Idempotent. Run any time your
 # local gitconfig changes (new alias, identity tweak, signing key swap).
 #
 # Reads from XDG path (~/.config/git/config) with fallback to ~/.gitconfig.
@@ -8,12 +8,12 @@
 # Override with KEEP_GPG=1 if you've separately transferred the key.
 #
 # Usage:
-#   ./scripts/sync-gitconfig.sh                  # default remote = claude-vps
+#   ./scripts/sync-gitconfig.sh                  # default remote = devbox
 #   ./scripts/sync-gitconfig.sh other-host
 #   KEEP_GPG=1 ./scripts/sync-gitconfig.sh       # preserve signing settings
 
 set -euo pipefail
-REMOTE="${1:-claude-vps}"
+REMOTE="${1:-devbox}"
 
 if [ -f "$HOME/.config/git/config" ]; then
   SRC="$HOME/.config/git/config"

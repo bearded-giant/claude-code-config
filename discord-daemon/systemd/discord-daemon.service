@@ -1,27 +1,17 @@
 [Unit]
 Description=Discord multi-session daemon for Claude Code
-After=network-online.target tailscaled.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=bryan
-Group=bryan
-WorkingDirectory=/home/bryan/discord-daemon
-ExecStart=/home/bryan/.bun/bin/bun run src/server.ts
+WorkingDirectory=%h/dev/claude-code-config/discord-daemon
+ExecStart=%h/.bun/bin/bun run src/server.ts
 Restart=always
 RestartSec=5
-StandardOutput=journal
-StandardError=journal
-EnvironmentFile=/home/bryan/.claude/channels/discord/.env
-# Bind to tailnet interface only. Override DAEMON_BIND_HOST in EnvironmentFile.
+EnvironmentFile=%h/.claude/channels/discord/.env
 Environment=NODE_ENV=production
-# Hardening
 NoNewPrivileges=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/home/bryan/.claude/channels/discord
-PrivateTmp=yes
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

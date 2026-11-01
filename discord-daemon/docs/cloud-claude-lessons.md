@@ -38,10 +38,7 @@ Plugin `discord@claude-plugins-official` 0.0.4 has a `fetchAllowedChannel` bug: 
 
 Upstream fixed it at HEAD (commit `48aa4351`, PR #1365, 2026-04-14) using a different mechanism (`dmChannelUsers` cache). Marketplace hasn't published a new version yet.
 
-Workaround:
-- `scripts/patches/discord-dm-recipient.patch` — partial-fetch fallback
-- `scripts/apply-discord-patch.sh` — idempotent applicator
-- `hooks/discord_patch_apply.py` — SessionStart hook that re-applies after plugin cache is wiped
+Workaround at the time was a local patch to the plugin plus a SessionStart hook that re-applied it after a plugin cache wipe. Both were removed once the plugin was disabled in favour of the daemon.
 
 The daemon (our session-mcp path) does NOT have this bug — it owns the gateway and routes via thread membership, not partial DM channel introspection.
 
