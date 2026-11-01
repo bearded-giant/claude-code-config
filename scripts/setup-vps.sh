@@ -222,7 +222,9 @@ chmod 600 "$HOME/.claude-devbox.sh"
 for rc in "$HOME/.profile" "$HOME/.bashrc"; do
   grep -q 'claude-devbox.sh' "$rc" 2>/dev/null || printf '\n[ -f "$HOME/.claude-devbox.sh" ] && . "$HOME/.claude-devbox.sh"\n' >> "$rc"
 done
-green "  ~/.claude-devbox.sh sourced from .profile and .bashrc"
+# GitLab over https with the token from .creds.secret: no agent needed in daemon-started sessions
+git config --global credential."https://gitlab.rechargeapps.net".helper '!f() { echo username=oauth2; echo "password=$GITLAB_TOKEN"; }; f'
+green "  ~/.claude-devbox.sh sourced from .profile and .bashrc; gitlab https credential helper set"
 
 step "tmux.conf"
 if [ ! -f "$HOME/.tmux.conf" ]; then
