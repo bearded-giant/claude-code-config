@@ -216,7 +216,7 @@ function formatList(): string {
     const age = humanAge(Date.now() - s.registeredAt)
     const heartbeatAge = humanAge(Date.now() - s.lastHeartbeat)
     const tag = s.state === 'dormant' ? ' _(dormant)_' : ''
-    return `• \`${s.label}\`${tag} — ${s.cwd} — up ${age}, hb ${heartbeatAge} ago`
+    return `• \`${s.label}\`${tag} — \`${s.cwd}\` — up ${age}, hb ${heartbeatAge} ago`
   })
   return `**${sessions.length} session(s):**\n${rows.join('\n')}`
 }

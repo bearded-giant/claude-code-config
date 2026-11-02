@@ -4,7 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 process.env.DISCORD_STATE_DIR = mkdtempSync(join(tmpdir(), 'control-test-state-'))
-const { listProjectPaths, parseStartArgs, sessionNameFor } = await import('./control.ts')
+const { handleControlDM, listProjectPaths, parseStartArgs, sessionNameFor } = await import('./control.ts')
+const { registry } = await import('./registry.ts')
 
 describe('parseStartArgs', () => {
   test('relpath plus validated flags', () => {
@@ -43,5 +44,15 @@ describe('sessionNameFor', () => {
     expect(sessionNameFor('/Users/bryan/dev/python/cc-wt/master')).toBe('cc-wt-master')
     expect(sessionNameFor('/Users/bryan/dev/ai/kai')).toBe('kai')
     expect(sessionNameFor('/Users/bryan/scratch')).toBe('scratch')
+  })
+})
+
+describe('list', () => {
+  test('cwd sits in a code span so underscores never pair into italics', async () => {
+    registry.register({ sessionId: 's1', label: 'bryan_grimes_x', cwd: '/home/bryan_grimes_x', pid: 1, threadId: 't1' })
+    registry.markDormant('s1')
+    const out = await handleControlDM('list', 'u', null as never)
+    expect(out).toContain('• `bryan_grimes_x` _(dormant)_ — `/home/bryan_grimes_x` — up ')
+    registry.delete('s1')
   })
 })
