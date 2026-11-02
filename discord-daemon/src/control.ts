@@ -1,4 +1,4 @@
-import { spawn } from 'child_process'
+import { spawnSync } from 'child_process'
 import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
 import { basename, dirname, join, resolve } from 'path'
 import { HOME_ROOT } from './config.ts'
@@ -184,13 +184,9 @@ export function sessionNameFor(cwd: string): string {
 function spawnDclaude(sessionName: string, cwd: string, dclaudeArgs: string[], createdMsg: string): string {
   // detached tmux session; the login shell puts dclaude on PATH. args are allowlisted tokens, safe to join.
   const shell = `bash -lc "dclaude ${dclaudeArgs.join(' ')}"`
-  const args = ['new-session', '-d', '-s', sessionName, '-c', cwd, shell]
-  try {
-    const child = spawn('tmux', args, { stdio: 'ignore', detached: true })
-    child.unref()
-  } catch (err) {
-    return `tmux spawn failed: ${(err as Error).message}`
-  }
+  const r = spawnSync('tmux', ['new-session', '-d', '-s', sessionName, '-c', cwd, shell], { encoding: 'utf8', timeout: 10_000 })
+  if (r.error) return `tmux spawn failed: ${r.error.message}`
+  if (r.status !== 0) return `tmux spawn failed: ${r.stderr.trim() || `exit ${r.status}`}`
   const flags = dclaudeArgs.length ? ` with \`${dclaudeArgs.join(' ')}\`` : ''
   return `spawning \`${sessionName}\` in \`${cwd}\`${createdMsg}${flags} — Discord thread should appear in a few seconds`
 }

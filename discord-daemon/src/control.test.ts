@@ -1,11 +1,13 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-process.env.DISCORD_STATE_DIR = mkdtempSync(join(tmpdir(), 'control-test-state-'))
+const stateDir = mkdtempSync(join(tmpdir(), 'control-test-state-'))
+process.env.DISCORD_STATE_DIR = stateDir
 const { handleControlDM, listProjectPaths, parseStartArgs, sessionNameFor } = await import('./control.ts')
 const { registry } = await import('./registry.ts')
+afterAll(() => rmSync(stateDir, { recursive: true, force: true }))
 
 describe('parseStartArgs', () => {
   test('relpath plus validated flags', () => {
