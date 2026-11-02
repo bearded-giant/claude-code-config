@@ -65,7 +65,8 @@ if command -v go >/dev/null; then
       -ldflags "-s -w -X github.com/bearded-giant/giant-tooling/giantmem/cmd.Version=$V -X github.com/bearded-giant/giant-tooling/giantmem/cmd.Commit=$C -X github.com/bearded-giant/giant-tooling/giantmem/cmd.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       -o "$BUILD/giantmem" . )
   ssh "$VPS_HOST" 'mkdir -p ~/.local/bin'
-  scp -q "$BUILD/giantmem" "$VPS_HOST:.local/bin/giantmem"
+  # a running giantmem daemon keeps the binary busy; mv over it instead of writing into it
+  scp -q "$BUILD/giantmem" "$VPS_HOST:.local/bin/giantmem.new" && ssh "$VPS_HOST" 'mv -f ~/.local/bin/giantmem.new ~/.local/bin/giantmem'
   rm -rf "$BUILD"
 else
   echo "==> go not found on the laptop; giantmem binary not shipped"
@@ -99,3 +100,10 @@ fi
 echo "==> running setup-vps.sh on ${VPS_HOST}"
 # shellcheck disable=SC2029
 ssh "$VPS_HOST" "$EXTRA_ENV bash -s" < "$CONFIG_DIR/scripts/setup-vps.sh"
+
+# the devbox copy is a git clone: the rsync above only seeds a fresh box, origin/main is the truth
+if git -C "$CONFIG_DIR" status --porcelain | grep -q .; then
+  echo "WARN: laptop claude-code-config has uncommitted changes; the devbox clone follows origin/main"
+fi
+echo "==> claude-code-config: fast-forward the devbox clone"
+ssh "$VPS_HOST" 'bash -lc "cd ~/dev/claude-code-config && git checkout -- . && git pull --ff-only && git log -1 --format=\"    %h %s\""'
