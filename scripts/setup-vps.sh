@@ -316,7 +316,7 @@ Next, over ssh:
   3. tmux new -A -s main -c $BRIDGE/dev; dclaude
 
 Verify:
-  curl -s -H "x-daemon-token: $TOKEN" http://127.0.0.1:7777/health
+  curl -s -H "x-daemon-token: \$DISCORD_DAEMON_TOKEN" http://127.0.0.1:7777/health
   systemctl --user status discord-daemon
   journalctl --user -u discord-daemon -f
 DONE
