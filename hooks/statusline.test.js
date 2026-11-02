@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
   fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
-  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount,
+  matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount, slotTier,
 } = require('./statusline.js');
 
 const RST = '\x1b[0m';
@@ -312,4 +312,16 @@ test('pickOrgs: known org missing from the cache shows nothing, not another acco
 test('pickOrgs: unknown session org falls back to the switch filter', () => {
   assert.deepEqual(pickOrgs(ORGS, '', ['rc-team']).map(o => o.label), ['rc-team']);
   assert.deepEqual(pickOrgs(ORGS, '', null).map(o => o.label), ['rc-inc', 'rc-team']);
+});
+
+test('slotTier reads the slot dir credentials file off macOS', () => {
+  const fs = require('fs');
+  const dir = fs.mkdtempSync(require('path').join(require('os').tmpdir(), 'slot-'));
+  try {
+    assert.equal(slotTier(dir, 'linux'), '');
+    fs.writeFileSync(`${dir}/.credentials.json`, JSON.stringify({ claudeAiOauth: { subscriptionType: 'enterprise' } }));
+    assert.equal(slotTier(dir, 'linux'), 'enterprise');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

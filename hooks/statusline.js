@@ -329,12 +329,17 @@ function pinAccount(state, global, ppid, now) {
 
 const SLOT_TTL_MS = 60000;
 
-function slotTier(dir) {
+function slotTier(dir, platform = process.platform) {
   try {
-    const hash = require('crypto').createHash('sha256').update(dir.normalize('NFC')).digest('hex').slice(0, 8);
-    const raw = execFileSync('security', ['find-generic-password', '-s', `Claude Code-credentials-${hash}`, '-w'], {
-      encoding: 'utf8', timeout: 1000, stdio: ['ignore', 'pipe', 'ignore'],
-    });
+    let raw;
+    if (platform === 'darwin') {
+      const hash = require('crypto').createHash('sha256').update(dir.normalize('NFC')).digest('hex').slice(0, 8);
+      raw = execFileSync('security', ['find-generic-password', '-s', `Claude Code-credentials-${hash}`, '-w'], {
+        encoding: 'utf8', timeout: 1000, stdio: ['ignore', 'pipe', 'ignore'],
+      });
+    } else {
+      raw = fs.readFileSync(path.join(dir, '.credentials.json'), 'utf8');
+    }
     return JSON.parse(raw).claudeAiOauth?.subscriptionType || '';
   } catch (e) { return ''; }
 }
@@ -1159,5 +1164,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount,
+  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount, slotTier,
 };
