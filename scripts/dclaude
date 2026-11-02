@@ -33,8 +33,9 @@ case "$parent" in
   *-wt) export CLAUDE_SESSION_LABEL="${CLAUDE_SESSION_LABEL:-$parent-$(basename "$PWD")}" ;;
 esac
 
-# shortcut: interactive claude has no switch for the dev-channels warning or a fresh folder's trust
-# dialog, so inside tmux a watcher answers them from the pane text; drop it once the CLI grows a flag
+# shortcut: interactive claude has no switch for the dev-channels warning, a fresh folder's trust dialog, or
+# the external CLAUDE.md imports prompt, so inside tmux a watcher answers them from the pane text; drop it
+# once the CLI grows a flag
 if [ -n "${TMUX_PANE:-}" ]; then
   (
     for _ in $(seq 1 45); do
@@ -43,6 +44,7 @@ if [ -n "${TMUX_PANE:-}" ]; then
       case "$pane" in
         *"I am using this for local development"*) tmux send-keys -t "$TMUX_PANE" Enter ;;
         *"Yes, I trust this folder"*) tmux send-keys -t "$TMUX_PANE" Down Enter ;;
+        *"Yes, allow external imports"*) tmux send-keys -t "$TMUX_PANE" Down Enter ;;
         *"bypass permissions on"*) exit 0 ;;
       esac
     done
