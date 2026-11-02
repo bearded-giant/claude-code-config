@@ -16,10 +16,21 @@ bypass = "vercel_bypass"
 [vault.copy]
 "secret/ai-tools/prod/investigator-agent" = ["service_token:investigator_token"]
 
+# one flags store per environment, so a preview flip never touches production
 [[stores]]
 kind = "edge-config"
 name = "ai-platform-flags"
+environments = ["production"]
 [stores.items]
 kill = { investigate = false }
 require_ctx = false
 jobs = { churn_report = { live = false }, churn_chat = { live = false }, churn_suggestions = { live = false } }
+
+[[stores]]
+kind = "edge-config"
+name = "ai-platform-flags-preview"
+environments = ["preview"]
+[stores.items]
+kill = { investigate = false }
+require_ctx = false
+jobs = { churn_report = { live = true }, churn_chat = { live = true }, churn_suggestions = { live = true } }
