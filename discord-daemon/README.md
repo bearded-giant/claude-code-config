@@ -37,6 +37,8 @@ DAEMON_TOKEN=secret123 \
 bun run src/server.ts
 ```
 
+`DAEMON_HOME_ROOT` (optional) is the home spelling the `start` and `projects` DM commands use for session paths; the devbox sets it to its `/Users/bryan` bind mount so project slugs match the laptop.
+
 ## API surface (token-gated, header `x-daemon-token`)
 
 | Method | Path                          | Body / Notes                                   |

@@ -3,6 +3,7 @@ import { join } from 'path'
 import { readFileSync, chmodSync } from 'fs'
 
 export const STATE_DIR = process.env.DISCORD_STATE_DIR ?? join(homedir(), '.claude', 'channels', 'discord')
+export const HOME_ROOT = process.env.DAEMON_HOME_ROOT ?? homedir()
 export const ACCESS_FILE = join(STATE_DIR, 'access.json')
 export const APPROVED_DIR = join(STATE_DIR, 'approved')
 export const INBOX_DIR = join(STATE_DIR, 'inbox')

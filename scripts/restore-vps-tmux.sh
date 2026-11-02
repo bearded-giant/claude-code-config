@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# Restore claude sessions inside a tmux session on the VPS after reboot.
+# Restore dclaude sessions inside a tmux session on the devbox after reboot.
 # Reads a YAML-ish manifest at ~/.claude/vps-sessions.yml:
 #
 #   - cwd: ~/dev/foo
 #     label: foo                # optional, defaults to basename(cwd)
 #   - cwd: ~/dev/bar
 #
-# Creates one tmux window per entry inside `tmux:main`, runs claude with the
-# discord channel flag in each. Existing windows are not duplicated — the
+# Creates one tmux window per entry inside `tmux:main`, runs dclaude in each. Existing windows are not duplicated — the
 # script is idempotent (window name == label).
 
 set -euo pipefail
 
 TMUX_SESSION="${TMUX_SESSION:-main}"
 MANIFEST="${MANIFEST:-$HOME/.claude/vps-sessions.yml}"
-CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
-CHANNEL="${CHANNEL:-server:discord}"
+DCLAUDE="${DCLAUDE:-dclaude}"
 
-[ -x "$CLAUDE_BIN" ] || { echo "claude binary not found at $CLAUDE_BIN"; exit 1; }
+command -v "$DCLAUDE" >/dev/null || { echo "dclaude not on PATH"; exit 1; }
 [ -f "$MANIFEST" ]  || { echo "manifest not found: $MANIFEST"; exit 1; }
 
 if ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
@@ -33,9 +31,9 @@ flush_entry() {
   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' | grep -qx "$effective_label"; then
     echo "  - $effective_label: window exists, skipping"
   else
-    echo "  - $effective_label: cd $cwd && claude --dangerously-load-development-channels $CHANNEL"
+    echo "  - $effective_label: cd $cwd && $DCLAUDE"
     tmux new-window -t "$TMUX_SESSION" -n "$effective_label" \
-      "cd '${cwd/#\~/$HOME}' && '$CLAUDE_BIN' --dangerously-load-development-channels '$CHANNEL'"
+      "cd '${cwd/#\~/$HOME}' && '$DCLAUDE'"
   fi
   cwd=""; label=""
 }

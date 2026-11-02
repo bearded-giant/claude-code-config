@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Claude session on the Discord channel.
+#
+# Usage:
+#   dclaude [--acct team|ent] [claude args: --effort <level>, --model <name>, --resume <id>, ...]
+#
+# --acct picks the credentials slot ($DCLAUDE_ACCT, default team).
+
+set -euo pipefail
+
+acct="${DCLAUDE_ACCT:-team}"
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --acct)
+      [ $# -ge 2 ] || { echo "dclaude: --acct needs team|ent" >&2; exit 2; }
+      acct="$2"; shift 2 ;;
+    --acct=*) acct="${1#--acct=}"; shift ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+case "$acct" in
+  team|ent) ;;
+  *) echo "dclaude: --acct must be team or ent (got '$acct')" >&2; exit 2 ;;
+esac
+
+export CLAUDE_SECURESTORAGE_CONFIG_DIR="$HOME/.claude-$acct"
+unset ANTHROPIC_API_KEY DEBUG
+
+# worktree dirs all look like "master" or "main": label them <base>-wt-<branch>
+parent=$(basename "$(dirname "$PWD")")
+case "$parent" in
+  *-wt) export CLAUDE_SESSION_LABEL="${CLAUDE_SESSION_LABEL:-$parent-$(basename "$PWD")}" ;;
+esac
+
+# shortcut: interactive claude has no switch for the dev-channels warning or a fresh folder's trust
+# dialog, so inside tmux a watcher answers them from the pane text; drop it once the CLI grows a flag
+if [ -n "${TMUX_PANE:-}" ]; then
+  (
+    for _ in $(seq 1 45); do
+      sleep 2
+      pane=$(tmux capture-pane -p -t "$TMUX_PANE" 2>/dev/null) || exit 0
+      case "$pane" in
+        *"I am using this for local development"*) tmux send-keys -t "$TMUX_PANE" Enter ;;
+        *"Yes, I trust this folder"*) tmux send-keys -t "$TMUX_PANE" Down Enter ;;
+        *"bypass permissions on"*) exit 0 ;;
+      esac
+    done
+  ) >/dev/null 2>&1 &
+fi
+
+exec claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions ${args[@]+"${args[@]}"}

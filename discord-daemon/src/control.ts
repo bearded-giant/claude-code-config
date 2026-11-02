@@ -1,14 +1,20 @@
 import { spawn } from 'child_process'
 import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
-import { homedir } from 'os'
-import { join, resolve } from 'path'
+import { basename, dirname, join, resolve } from 'path'
+import { HOME_ROOT } from './config.ts'
 import { registry } from './registry.ts'
 import type { DiscordBot } from './discord.ts'
 import type { InboxEvent } from './types.ts'
 
-const PROJECTS_ROOT = join(homedir(), 'dev')
-const DEFAULT_SCRATCH = join(homedir(), 'scratch')
+const PROJECTS_ROOT = join(HOME_ROOT, 'dev')
+const DEFAULT_SCRATCH = join(HOME_ROOT, 'scratch')
 const PATH_OK = /^[A-Za-z0-9._/-]+$/
+const PROJECTS_DEPTH = 3
+const START_FLAGS: Record<string, readonly string[]> = {
+  acct: ['team', 'ent'],
+  effort: ['low', 'medium', 'high', 'xhigh', 'max'],
+  model: ['opus', 'sonnet', 'fable'],
+}
 
 // DM commands from allowlisted users. Returns text to send back, or null to ignore.
 // Sessions never receive DMs — DMs are control-only.
@@ -64,28 +70,12 @@ export async function handleControlDM(input: string, _userId: string, bot: Disco
       if (events.length === 0) return `\`${s.label}\` has no recent inbox events`
       return `**${s.label} — last ${events.length}:**\n${events.map(formatEvent).join('\n')}`
     }
-    case 'restart': {
-      const label = parts[1]
-      if (!label) return 'usage: `restart <label>` — signal session-mcp to exit so claude restarts cleanly'
-      const s = resolveSession(label)
-      if (!s) return `no session matching \`${label}\``
-      registry.deliver(s.sessionId, {
-        kind: 'message',
-        message_id: `restart-${Date.now()}`,
-        chat_id: s.threadId,
-        user: 'daemon',
-        user_id: '0',
-        ts: new Date().toISOString(),
-        content: '__daemon_restart_requested__',
-      })
-      return `restart signal sent to \`${s.label}\` (session-mcp may not exit on its own — manual claude restart still needed)`
-    }
     case 'projects':
     case 'projs':
       return listProjects()
     case 'start':
     case 'spawn':
-      return await startSession(parts.slice(1).join(' ').trim())
+      return startSession(parts.slice(1))
     default:
       return `unknown command: \`${cmd}\`\n\n${helpText()}`
   }
@@ -103,75 +93,106 @@ function helpText(): string {
     '`send <label> <text>` — post into a session\'s thread',
     '`tail <label> [n]` — last N inbox events',
     '`kill <label>` — unregister + archive thread',
-    '`restart <label>` — signal session restart',
-    '`projects` — list discoverable repos under `~/dev`',
-    '`start [relpath]` — spawn a new dclaude session. With no arg: `~/scratch`. With relpath: `$HOME/<relpath>` (mkdir -p if missing).',
+    `\`projects\` — repos and worktrees under \`${relFromRoot(PROJECTS_ROOT)}\``,
+    `\`start [relpath] [--acct team|ent] [--effort ${START_FLAGS.effort!.join('|')}] [--model ${START_FLAGS.model!.join('|')}]\` — spawn a dclaude session in \`${HOME_ROOT}/<relpath>\` (mkdir -p if missing; no relpath: \`${relFromRoot(DEFAULT_SCRATCH)}\`)`,
     '`help` — this',
     '',
     'For interactive chat with a session, post in its thread (not here).',
   ].join('\n')
 }
 
+export function parseStartArgs(tokens: string[]): { relpath: string; dclaudeArgs: string[] } | { error: string } {
+  let relpath = ''
+  const dclaudeArgs: string[] = []
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!
+    if (t.startsWith('--')) {
+      const eq = t.indexOf('=')
+      const name = eq === -1 ? t.slice(2) : t.slice(2, eq)
+      const allowed = START_FLAGS[name]
+      if (!allowed) return { error: `unknown flag \`${t}\`` }
+      const value = eq === -1 ? tokens[++i] : t.slice(eq + 1)
+      if (!value || !allowed.includes(value)) return { error: `\`--${name}\` takes one of ${allowed.join('|')}` }
+      dclaudeArgs.push(`--${name}`, value)
+    } else if (!relpath) {
+      relpath = t
+    } else {
+      return { error: `unexpected argument \`${t}\`` }
+    }
+  }
+  return { relpath, dclaudeArgs }
+}
+
+// repos (.git) and worktree layouts (.bare + one dir per worktree) up to `depth` levels under root
+export function listProjectPaths(root: string, depth = PROJECTS_DEPTH): string[] {
+  const found: string[] = []
+  const walk = (dir: string, level: number) => {
+    for (const name of safeReadDirs(dir)) {
+      const p = join(dir, name)
+      if (existsSync(join(p, '.bare'))) {
+        for (const wt of safeReadDirs(p)) found.push(join(p, wt))
+      } else if (existsSync(join(p, '.git'))) {
+        found.push(p)
+      } else if (level < depth) {
+        walk(p, level + 1)
+      }
+    }
+  }
+  walk(root, 1)
+  return found.map(p => p.slice(root.length + 1)).sort()
+}
+
 function listProjects(): string {
   if (!existsSync(PROJECTS_ROOT)) return `no \`${PROJECTS_ROOT}\` on this host`
-  const groups: string[] = []
-  const top = safeReadDirs(PROJECTS_ROOT)
-  for (const entry of top) {
-    const entryPath = join(PROJECTS_ROOT, entry)
-    if (looksLikeRepo(entryPath)) {
-      groups.push(`• \`${relFromHome(entryPath)}\``)
-      continue
-    }
-    const subs = safeReadDirs(entryPath)
-      .map(s => join(entryPath, s))
-      .filter(looksLikeRepo)
-    if (subs.length === 0) continue
-    groups.push(`**${entry}/**`)
-    for (const sub of subs) {
-      groups.push(`• \`${relFromHome(sub)}\``)
-    }
-  }
-  if (groups.length === 0) return `no repos found under \`${PROJECTS_ROOT}\``
-  return `**projects:**\n${groups.join('\n')}\n\nSpawn with: \`start <relpath>\``
+  const paths = listProjectPaths(PROJECTS_ROOT)
+  if (paths.length === 0) return `no repos found under \`${PROJECTS_ROOT}\``
+  const rel = relFromRoot(PROJECTS_ROOT)
+  return `**projects:**\n${paths.map(p => `• \`${rel}/${p}\``).join('\n')}\n\nSpawn with: \`start ${rel}/<path> [--acct ent] [--effort high]\``
 }
 
-async function startSession(arg: string): Promise<string> {
+function startSession(tokens: string[]): string {
+  const parsed = parseStartArgs(tokens)
+  if ('error' in parsed) return `${parsed.error}\n\n${helpText()}`
+  const { relpath, dclaudeArgs } = parsed
   let target: string
-  let createdMsg = ''
-  if (!arg) {
+  if (!relpath) {
     target = DEFAULT_SCRATCH
-    if (!existsSync(target)) {
-      try { mkdirSync(target, { recursive: true }); createdMsg = ` (created)` }
-      catch (err) { return `mkdir failed: ${(err as Error).message}` }
-    }
   } else {
-    if (arg.startsWith('/') || arg.includes('..') || !PATH_OK.test(arg)) {
-      return `invalid path: \`${arg}\` — must be relative to \$HOME, no \`..\`, chars [A-Za-z0-9._/-]`
+    if (relpath.startsWith('/') || relpath.includes('..') || !PATH_OK.test(relpath)) {
+      return `invalid path: \`${relpath}\` — must be relative to \`${HOME_ROOT}\`, no \`..\`, chars [A-Za-z0-9._/-]`
     }
-    target = resolve(homedir(), arg)
-    if (!target.startsWith(homedir() + '/') && target !== homedir()) {
-      return `path escapes \$HOME: \`${target}\``
-    }
-    if (!existsSync(target)) {
-      try { mkdirSync(target, { recursive: true }); createdMsg = ` (created)` }
-      catch (err) { return `mkdir failed: ${(err as Error).message}` }
+    target = resolve(HOME_ROOT, relpath)
+    if (!target.startsWith(HOME_ROOT + '/')) {
+      return `path escapes \`${HOME_ROOT}\`: \`${target}\``
     }
   }
-  const sessionName = sanitizeTmuxName(arg ? arg.split('/').pop() ?? 'scratch' : 'scratch')
-  return spawnDclaude(sessionName, target, createdMsg)
+  let createdMsg = ''
+  if (!existsSync(target)) {
+    try { mkdirSync(target, { recursive: true }); createdMsg = ' (created)' }
+    catch (err) { return `mkdir failed: ${(err as Error).message}` }
+  }
+  return spawnDclaude(sessionNameFor(target), target, dclaudeArgs, createdMsg)
 }
 
-function spawnDclaude(sessionName: string, cwd: string, createdMsg: string): string {
-  // Detached tmux session; inner shell sources bashrc so dclaude function exists.
-  const cmd = 'tmux'
-  const args = ['new-session', '-d', '-s', sessionName, '-c', cwd, 'bash -lc dclaude']
+// worktree dirs all look like "master" or "main": name them <base>-wt-<branch>, same as the cvps alias
+export function sessionNameFor(cwd: string): string {
+  const parent = basename(dirname(cwd))
+  const name = parent.endsWith('-wt') ? `${parent}-${basename(cwd)}` : basename(cwd)
+  return name.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 64) || 'session'
+}
+
+function spawnDclaude(sessionName: string, cwd: string, dclaudeArgs: string[], createdMsg: string): string {
+  // detached tmux session; the login shell puts dclaude on PATH. args are allowlisted tokens, safe to join.
+  const shell = `bash -lc "dclaude ${dclaudeArgs.join(' ')}"`
+  const args = ['new-session', '-d', '-s', sessionName, '-c', cwd, shell]
   try {
-    const child = spawn(cmd, args, { stdio: 'ignore', detached: true })
+    const child = spawn('tmux', args, { stdio: 'ignore', detached: true })
     child.unref()
   } catch (err) {
     return `tmux spawn failed: ${(err as Error).message}`
   }
-  return `spawning \`${sessionName}\` in \`${cwd}\`${createdMsg} — Discord thread should appear in a few seconds`
+  const flags = dclaudeArgs.length ? ` with \`${dclaudeArgs.join(' ')}\`` : ''
+  return `spawning \`${sessionName}\` in \`${cwd}\`${createdMsg}${flags} — Discord thread should appear in a few seconds`
 }
 
 function safeReadDirs(p: string): string[] {
@@ -183,17 +204,9 @@ function safeReadDirs(p: string): string[] {
   } catch { return [] }
 }
 
-function looksLikeRepo(p: string): boolean {
-  return existsSync(join(p, '.git'))
-}
-
-function relFromHome(p: string): string {
-  const h = homedir() + '/'
+function relFromRoot(p: string): string {
+  const h = HOME_ROOT + '/'
   return p.startsWith(h) ? p.slice(h.length) : p
-}
-
-function sanitizeTmuxName(s: string): string {
-  return s.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 64) || 'session'
 }
 
 function formatList(): string {

@@ -37,9 +37,13 @@ dim()   { printf '\033[0;90m%s\033[0m\n' "$*"; }
 step()  { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
 
 step "Path bridge $BRIDGE -> $HOME"
+# bind mount, not a symlink: getcwd() keeps the $BRIDGE spelling, so claude project slugs match the laptop
 sudo mkdir -p "$(dirname "$BRIDGE")"
-[ -L "$BRIDGE" ] || sudo ln -sfn "$HOME" "$BRIDGE"
-green "  $(readlink -f "$BRIDGE")"
+[ -L "$BRIDGE" ] && sudo rm "$BRIDGE"
+sudo mkdir -p "$BRIDGE"
+mountpoint -q "$BRIDGE" || sudo mount --bind "$HOME" "$BRIDGE"
+grep -q " $BRIDGE " /etc/fstab || echo "$HOME $BRIDGE none bind 0 0" | sudo tee -a /etc/fstab >/dev/null
+green "  $(cd "$BRIDGE" && pwd -P) (bind mount of $HOME)"
 
 for d in "$CONFIG_DIR" "$TOOLING_DIR" "$DOIT_DIR"; do
   [ -d "$d" ] || { red "missing: $d (run scripts/bootstrap-vps.sh from the laptop)"; exit 1; }
@@ -175,6 +179,7 @@ ensure_env DISCORD_SESSIONS_CHANNEL_ID "$SESSIONS_CHANNEL_ID"
 ensure_env DAEMON_TOKEN "$(openssl rand -hex 32)"
 ensure_env DAEMON_BIND_HOST 127.0.0.1
 ensure_env DAEMON_BIND_PORT 7777
+ensure_env DAEMON_HOME_ROOT "$BRIDGE"
 if [ ! -f "$STATE_DIR/access.json" ]; then
   printf '{\n  "dmPolicy": "allowlist",\n  "allowFrom": [],\n  "groups": {},\n  "pending": {}\n}\n' > "$STATE_DIR/access.json"
   chmod 600 "$STATE_DIR/access.json"
@@ -217,10 +222,10 @@ alias claude-team='env -u ANTHROPIC_API_KEY CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HO
 alias claude-ent='env -u ANTHROPIC_API_KEY CLAUDE_SECURESTORAGE_CONFIG_DIR=\$HOME/.claude-ent claude'
 alias clc='claude-team'
 alias clce='claude-ent'
-dclaude() { env -u ANTHROPIC_API_KEY claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions "\$@"; }
 alias bye='tmux detach 2>/dev/null; exit'
 ENV
 chmod 600 "$HOME/.claude-devbox.sh"
+ln -sfn "$CONFIG_DIR/scripts/dclaude" "$BIN/dclaude"
 for rc in "$HOME/.profile" "$HOME/.bashrc"; do
   grep -q 'claude-devbox.sh' "$rc" 2>/dev/null || printf '\n[ -f "$HOME/.claude-devbox.sh" ] && . "$HOME/.claude-devbox.sh"\n' >> "$rc"
 done
