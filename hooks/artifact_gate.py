@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import html
-import itertools
 import json
 import re
-import shlex
 import sys
 from pathlib import Path
 
@@ -39,15 +37,6 @@ def problems(src):
 
 def target(data):
     ti = data.get("tool_input") or {}
-    if data.get("tool_name") == "Bash":
-        try:
-            words = shlex.split(ti.get("command") or "")
-        except ValueError:
-            return ""
-        return next(
-            (nxt for w, nxt in itertools.pairwise(words) if w.endswith("publish.sh")),
-            "",
-        )
     if ti.get("action", "publish") != "publish" or ti.get("asset"):
         return ""
     return ti.get("file_path") or ""

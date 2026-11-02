@@ -172,19 +172,6 @@ def main() -> None:
         run(bash)
         assert "vault [[k8s]]" in today_text()
 
-        # hub publish.sh logs the url it prints; a failed publish prints none
-        hub = {
-            **bash,
-            "tool_input": {
-                "command": "FORCE=1 ~/dev/ai/artifact-publish/publish.sh /x/a.html auth-flow"
-            },
-            "tool_response": {"stdout": "https://hub.test/auth-flow/\n"},
-        }
-        run(hub)
-        run({**hub, "tool_response": {"stdout": "", "stderr": "name must be kebab"}})
-        links = mod.section(today_text(), mod.LINKS)
-        assert links.count("artifact [auth-flow](https://hub.test/auth-flow/)") == 1
-
         # handoff writes link the file, not a [[stem]] that every repo's main.md shares
         handoff = vault / "handoffs" / "proj" / "main.md"
         run({**write, "tool_input": {"file_path": str(handoff)}})

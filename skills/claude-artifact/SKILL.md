@@ -30,14 +30,14 @@ The note's `artifact_account` owns the artifact: only a session on that account 
 
 ## Hub
 
-Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`, https://artifacts.beardedgiant.tools; the `deploy` Actions workflow ships every push to `main`). Readers sign in with a rechargeapps.com Google account, and every artifact starts closed to everyone but the hub admins (the user) until shared. Previews stay behind Vercel Authentication. Any claude.ai account publishes.
+Opt-in side path, only when the user says hub; the claude.ai flow above stays the default. Hub = `~/dev/ai/artifact-publish` (GitHub `RechargePayments/ai-artifacts-hub`; Next.js app in `hub/`, Vercel project `artifacts-hub-next`, https://artifacts.beardedgiant.tools). Readers sign in with a rechargeapps.com Google account, and every artifact starts closed to everyone but the hub admins (the user) until shared in the hub UI (Share dialog). Any claude.ai account publishes.
 
-1. Read the whole note. N = `artifact_hub_rev` + 1, else 1. Name = last path segment of `artifact_hub:`, else the note stem lowercased. publish.sh refuses an existing name without `FORCE=1`: another note holds it, so use `<stem>-<domain>` and say so.
-2. Distill per `## Content`, then `build_doc.py <note.md> --out <scratchpad>/<name>.html --rev N --hub [...]` per `## Build`: full document, Mackinac served by the hub at `/fonts/`, pinned mermaid loader. A hand-built page: full document, nothing from claude.ai's runtime (`window.claude`, `window.storage`); hub validation rejects those.
-3. `[FORCE=1] ~/dev/ai/artifact-publish/publish.sh <scratchpad>/<name>.html <name>`: validates, commits, pushes `main`, prints the URL. Needs the checkout on `main`. `hooks/artifact_gate.py` blocks it without the stamp.
+1. Read the whole note. N = `artifact_hub_rev` + 1, else 1. Name = last path segment of `artifact_hub:`, else the note stem lowercased. A republish of the same slug creates a new version; another note holding the slug means use `<stem>-<domain>` and say so.
+2. Distill per `## Content`, then `build_doc.py <note.md> --out <scratchpad>/<name>.html --rev N --hub [...]` per `## Build`: full document, Mackinac inlined, pinned mermaid loader. A hand-built page: full document, nothing from claude.ai's runtime (`window.claude`, `window.storage`); hub validation rejects those.
+3. From `~/dev/ai/artifact-publish`: `cd hub && env AUTH_PROVIDER=none DB_DRIVER=neon BLOB_DRIVER=vercel DATABASE_URL=<pooled> DATABASE_URL_UNPOOLED=<unpooled> BLOB_READ_WRITE_TOKEN=<prod store> HEADING_FONT_URL=fonts/heading.woff2 ADMIN_EMAILS=<owner> ORG_NAME=Recharge HUB_ORIGIN=https://artifacts.beardedgiant.tools pnpm exec tsx scripts/import.ts <file.html> [slug]` (until `art publish` lands). The slug argument names the artifact; same content is unchanged, new content is a new version. `hooks/artifact_gate.py` does not see this call, so check the `Rev N` stamp yourself first.
 4. `note.py link <note.md> --hub --url <url> --rev N --log "<one line>"`: writes `artifact_hub:` + `artifact_hub_rev:`, logs `- rev N · <ts> · hub <url> · <log>`, claude.ai keys untouched.
-5. Share only when the user names people or says everyone: `~/dev/ai/artifact-publish/share.sh <name> <email>... | all | none | -<email>` (rechargeapps.com addresses only; commits and pushes `shares.mjs`). Never `all` unasked.
-6. Report: URL, rev, access (`share.sh <name>` prints it), and the deploy run (`gh run list -R RechargePayments/ai-artifacts-hub --limit 1`).
+5. Share only when the user names people or says everyone: the hub UI Share dialog (rechargeapps.com addresses only), which is the user's step. Never everyone unasked.
+6. Report: URL, rev, and who it is shared with (from the hub UI).
 
 ## Build
 

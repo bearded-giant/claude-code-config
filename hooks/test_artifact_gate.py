@@ -76,13 +76,7 @@ def main():
         assert run(file_path=page("img.png", "x")) == ""
         assert run(action="list") == ""
 
-        hub = "~/dev/ai/artifact-publish/publish.sh"
-        assert "stamp" in bash(f"FORCE=1 {hub} {nostamp} my-doc")
-        assert "stamp" in bash(f"cd /x && '{hub}' '{nostamp}' && echo done")
-        assert bash(f"{hub} {good} my-doc") == ""
         assert bash(f"cat {nostamp}") == ""
-        assert bash(f"{hub}") == ""
-        assert bash("echo 'unterminated") == ""
     print("ok")
 
 

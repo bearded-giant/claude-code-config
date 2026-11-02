@@ -201,16 +201,6 @@
         ]
       },
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "in=$(cat); case $in in *publish.sh*) printf %s \"$in\" | python3 ~/.claude/hooks/artifact_gate.py;; esac",
-            "timeout": 10
-          }
-        ]
-      },
-      {
         "matcher": "Agent|Task",
         "hooks": [
           {
@@ -245,7 +235,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "in=$(cat); case $in in *glab*|*gh\\ *|*curl*|*mcp__*) printf %s \"$in\" | python3 ~/.claude/hooks/voice_gate.py;; esac",
+            "command": "in=$(cat); case $in in *glab*|gh\\ *|*[!a-zA-Z0-9_]gh\\ *|*curl*|*mcp__*) printf %s \"$in\" | python3 ~/.claude/hooks/voice_gate.py;; esac",
             "timeout": 20
           }
         ]
@@ -277,7 +267,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "in=$(cat); case $in in *git*push*) printf %s \"$in\" | python3 ~/.claude/hooks/greptile_rereview.py;; esac; case $in in *note.py*new*|*publish.sh*) printf %s \"$in\" | python3 ~/.claude/hooks/daily_note.py;; esac",
+            "command": "in=$(cat); case $in in *git*push*) printf %s \"$in\" | python3 ~/.claude/hooks/greptile_rereview.py;; esac; case $in in *note.py*new*) printf %s \"$in\" | python3 ~/.claude/hooks/daily_note.py;; esac",
             "timeout": 40
           }
         ]

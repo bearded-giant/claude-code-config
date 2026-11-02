@@ -20,8 +20,6 @@ FONT = Path(os.environ.get(
 ))
 # claude.ai wraps the page and renders mermaid itself; the hub serves the file as-is
 HUB_HEAD = '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-HUB_FONT = ('@font-face {\n  font-family: "Mackinac Pro";\n  font-weight: 350;\n  font-style: normal;\n'
-            '  font-display: swap;\n  src: url("/fonts/mackinac-book.woff2") format("woff2");\n}\n')
 MERMAID = ('<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>\n'
            '<script>mermaid.initialize({ startOnLoad: true, '
            'theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });</script>\n')
@@ -108,7 +106,7 @@ def build_html(note: Path, out: Path, args) -> None:
     for key, val in {
         "{{DOCTITLE}}": args.doc_title or title, "{{TITLE}}": title, "{{EYEBROW}}": args.eyebrow,
         "{{STAMP}}": stamp, "{{SOURCE}}": source, "{{COMPANION_URL}}": args.companion_url or "",
-        "{{COMPANION_NAME}}": args.companion_name or "", "{{FONT_FACE}}": HUB_FONT if args.hub else font_face(),
+        "{{COMPANION_NAME}}": args.companion_name or "", "{{FONT_FACE}}": font_face(),
         "{{TOC}}": "\n".join(f'<li><a href="#{h}"><span class="toc-num">{n}</span>{t}</a></li>' for h, n, t in toc),
         "{{BODY}}": frag,
     }.items():
