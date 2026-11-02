@@ -10,7 +10,7 @@ domains = ["rc-ai-agent-api.vercel.app"]
 
 [vault]
 path = "secret/ai-tools/prod/ai-agent-api"
-generate = ["token_script", "ctx_pepper_production", "ctx_pepper_preview"]
+generate = ["token_script", "token_hub", "ctx_pepper_production", "ctx_pepper_preview"]
 bypass = "vercel_bypass"
 
 [vault.copy]
