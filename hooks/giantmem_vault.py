@@ -17,7 +17,8 @@ PRUNE = {
     "venv",
 }
 MAX_DEPTH = 7
-SELF = "_giantmem"
+SELF = "_repo"
+OTHER = "_other"
 
 
 def find_workspaces(root, max_depth=MAX_DEPTH):
@@ -34,14 +35,39 @@ def find_workspaces(root, max_depth=MAX_DEPTH):
     return found
 
 
-def desired_links(root, repos):
-    rels = {r.relative_to(root) for r in repos}
-    ancestors = {p for r in rels for p in r.parents}
-    # a workspace with workspaces below it stays a real dir, or their links would land inside its .giantmem
+def flat(rel):
+    return "-".join(rel.parts)
+
+
+def project_of(root, ws):
+    repo = None
+    for a in [ws, *ws.parents]:
+        if a == root:
+            break
+        if (a / ".bare").is_dir():
+            return a, a.name.removesuffix("-wt"), True
+        if repo is None and (a / ".git").exists():
+            repo = a
+    return (repo, repo.name, False) if repo else (None, "", False)
+
+
+def desired_links(root, workspaces):
+    projects = {}
+    for ws in workspaces:
+        proot, name, container = project_of(root, ws)
+        if proot is None:
+            proot, name = ws, f"{OTHER}/{flat(ws.relative_to(root)) or 'home'}"
+        projects.setdefault(proot, [Path(name), container, []])[2].append(ws)
+    names = [p[0] for p in projects.values()]
     links = {}
-    for rel in rels:
-        name = rel / SELF if rel in ancestors or not rel.parts else rel
-        links[name] = root / rel / ".giantmem"
+    for proot, (name, container, members) in projects.items():
+        if names.count(name) > 1:
+            name = Path(f"{name} ({flat(proot.relative_to(root))})")
+        if not container and members == [proot]:
+            links[name] = proot / ".giantmem"
+            continue
+        for ws in members:
+            links[name / (flat(ws.relative_to(proot)) or SELF)] = ws / ".giantmem"
     return links
 
 
