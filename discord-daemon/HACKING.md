@@ -145,7 +145,7 @@ DAEMON_ARCHIVE_ON_EXIT=1                    # optional — archive threads on SI
 }
 ```
 
-`groups` and `mentionPatterns` are reserved for non-thread guild channels; the daemon currently routes only thread messages, so these fields are unused in the multi-session flow.
+`groups` and `mentionPatterns` are reserved for non-thread guild channels; the daemon routes only thread messages, so these fields are unused in the multi-session flow.
 
 ### `sessions.json` (chmod 600, written by daemon)
 
@@ -180,7 +180,7 @@ Plain text file. Contents: the DM channel ID. Written by the `/discord:access pa
 
 - **Unit/integration**: `discord-daemon/scripts/smoke-test.sh` — boots daemon in `MOCK_DISCORD=1`, exercises every HTTP route, asserts side effects via log scraping + JSON parsing. Add cases here when you ship a new endpoint.
 - **Typecheck**: `cd discord-daemon && ./node_modules/.bin/tsc --noEmit` and same in `session-mcp/`. CI not yet wired; run before push.
-- **Live**: deploy via `rsync` to `~/dev/claude-code-config/discord-daemon/` on VPS, `sudo systemctl restart discord-daemon`, watch `journalctl -u discord-daemon -f`.
+- **Live**: push, then `scripts/bootstrap-vps.sh devbox --skip-embed --skip-lsp` (pulls the clone, reruns setup, restarts the user unit); watch `journalctl --user -u discord-daemon -f` on the box.
 
 ## Don'ts
 
