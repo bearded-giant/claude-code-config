@@ -1,17 +1,17 @@
 # Cloud Claude — Architecture
 
-Multi-session Claude Code on a remote VPS, controllable from a phone via Discord, with the laptop as the git/identity source of truth. File state is **bi-directional** — edits on either host land on the other via Mutagen `two-way-resolved`. Git remotes (push/pull, signing keys, ZTNA-gated corporate repos) live on the laptop; the VPS edits files but never pushes.
+Multi-session Claude Code on a GCP devbox, controllable from a phone via Discord. Repos are git clones on both machines and push from either side; transcripts, doit lists, the vault, and per-repo `.giantmem` dirs move both ways through Mutagen `two-way-resolved`.
 
 ## Doc index (start here)
 
 | If you want to… | Read |
 |---|---|
-| Stand it up the first time | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) |
+| Stand it up the first time | [`devbox.md`](devbox.md) |
 | Understand the system end-to-end | this doc |
-| Re-provision from scratch / debug bootstrap | [`cloud-claude-provisioning-runbook.md`](cloud-claude-provisioning-runbook.md) |
+| Debug the bootstrap | [`devbox.md`](devbox.md) "Troubleshooting" |
 | Extend the daemon or session-mcp | [`../HACKING.md`](../HACKING.md) |
 | Check what surprised people before | [`cloud-claude-lessons.md`](cloud-claude-lessons.md) |
-| Day-to-day ops (DM commands, metrics, backups) | [`cloud-claude-quickstart.md`](cloud-claude-quickstart.md) "Day-to-day use" |
+| Day-to-day ops (DM commands, sync, backups) | [`devbox.md`](devbox.md) "Day to day" |
 | API reference | [`../README.md`](../README.md) |
 | Module map | [`../HACKING.md`](../HACKING.md) |
 
@@ -30,9 +30,9 @@ Multi-session Claude Code on a remote VPS, controllable from a phone via Discord
             │              │              │
             ▼              ▼              ▼
        ┌────────┐    ┌──────────┐    ┌────────────┐
-       │ Hetzner│    │ Tailscale│    │  Discord   │
-       │  VPS   │    │  (mesh   │    │  (mobile + │
-       │ (claude│    │   VPN)   │    │   desktop) │
+       │ devbox │    │ Twingate │    │  Discord   │
+       │ (GCP)  │    │  (ZTNA   │    │  (mobile + │
+       │ (claude│    │  tunnel) │    │   desktop) │
        │ +daemon│    │          │    │            │
        └────────┘    └──────────┘    └────────────┘
             ▲              ▲              ▲
@@ -42,7 +42,7 @@ Multi-session Claude Code on a remote VPS, controllable from a phone via Discord
                      talks to Claude models)
 ```
 
-Three external systems: Hetzner (compute), Tailscale (network identity), Discord (UI). Everything else lives inside the VPS.
+Three external systems: the GCP devbox (compute), Twingate (network access), Discord (UI). Everything else lives inside the devbox.
 
 ---
 
@@ -53,29 +53,29 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 │                            Laptop (macOS)                                │
 │                                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │  Tailscale   │  │   Mutagen    │  │  ~/dev (src) │  │   tmux +     │ │
-│  │  app (mesh)  │  │  daemon      │  │   80GB raw,  │  │   mosh/ssh   │ │
-│  │              │  │  (two-way-   │  │  ~12GB sync  │  │              │ │
+│  │  Twingate    │  │   Mutagen    │  │  ~/dev (git) │  │   tmux +     │ │
+│  │  client      │  │  daemon      │  │  clones, no  │  │   ssh        │ │
+│  │              │  │  (two-way-   │  │  sync        │  │              │ │
 │  │              │  │  resolved)   │  │              │  │              │ │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
-│         │ tailnet         │ SSH (public IP) │                 │ SSH/mosh│
+│         │ tunnel          │ SSH (Twingate)  │                 │ SSH     │
 └─────────┼─────────────────┼─────────────────┼─────────────────┼─────────┘
           │                 │                 │                 │
           │                 │                 │                 │
 ┌─────────┼─────────────────┼─────────────────┼─────────────────┼─────────┐
 │         ▼                 ▼                 ▼                 ▼          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                       Hetzner CCX33 (Ubuntu 24.04)              │    │
+│  │                       GCP devbox (Debian)                       │    │
 │  │                                                                 │    │
 │  │  ┌───────────────┐         ┌───────────────────────┐            │    │
-│  │  │ Tailscale +   │◄────────┤ tmux (persistent)     │            │    │
-│  │  │ public sshd   │         │                       │            │    │
+│  │  │ sshd over     │◄────────┤ tmux (persistent)     │            │    │
+│  │  │ Twingate      │         │                       │            │    │
 │  │  └───────────────┘         │  pane: claude session │ ─── stdio ─┼─►  │
 │  │                            │  pane: claude session │     MCP    │    │
 │  │  ┌───────────────┐         │  pane: claude session │            │    │
 │  │  │ Mutagen agent │ ◄─────► │                       │            │    │
-│  │  │ ↔ /home/bryan │  two-   │  each `dclaude`       │            │    │
-│  │  │   /dev        │  way    │   alias loads the     │            │    │
+│  │  │ ↔ state dirs  │  two-   │  each `dclaude`       │            │    │
+│  │  │   (no repos)  │  way    │   script loads the    │            │    │
 │  │  └───────────────┘         │   server:discord MCP  │            │    │
 │  │                            └──────────┬────────────┘            │    │
 │  │                                       │ HTTP + SSE              │    │
@@ -119,11 +119,11 @@ Three external systems: Hetzner (compute), Tailscale (network identity), Discord
 
 ---
 
-## C4 — Level 3: Inside the VPS
+## C4 — Level 3: Inside the devbox
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                      Hetzner VPS (claude-vps)                           │
+│                      GCP devbox                                         │
 │                                                                         │
 │ ┌─────────────────────────────────────────────────────────────────┐    │
 │ │           Per-session subprocess tree (one per pane)            │    │
@@ -248,31 +248,29 @@ Discord user DMs the bot
 
 | Tool | Where | Purpose | Key interactions |
 |---|---|---|---|
-| **Hetzner Cloud (CCX33)** | external | Hosts the VPS (8 vCPU / 32GB / 240GB / ~$40/mo) | provisioned by `scripts/provision-hetzner.sh` via `hcloud` CLI |
-| **hcloud CLI** | laptop | Talks to Hetzner Cloud API | `hcloud context create claude` once; provisioning script uses it |
-| **Tailscale** | laptop + VPS (NOT phone) | Mesh VPN. Stable hostnames + identity-based ACL. Phone uses Discord directly, no tailnet membership needed. | `tailscale up --ssh` on VPS; `ssh bryan@claude-vps` resolves from laptop |
-| **OpenSSH (regular, port 22)** | VPS public IP | File transfer + Mutagen agent (Tailscale SSH strips exec bits) | `scp`, `rsync`, Mutagen — always public IP |
-| **Tailscale SSH** | tailnet | Interactive shell, no key management | `ssh bryan@claude-vps` |
-| **Mutagen** | laptop daemon + VPS agent | Continuous bi-directional file sync laptop ↔ VPS (`two-way-resolved`). Conflicts resolved newest-mtime-wins. `.git/` excluded — git state is per-host, commits + pushes happen on laptop only. | `scripts/mutagen-sync-state.sh` creates the sessions |
-| **GNU stow** | VPS (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
-| **GNU bash + bun + node** | VPS | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
-| **discord-daemon** | VPS systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
-| **session-mcp** | VPS, per-claude | Stdio MCP server, HTTP client of daemon | This repo's `session-mcp/` |
-| **Claude Code CLI** | VPS (per pane) | The AI agent | `claude --dangerously-load-development-channels server:discord` |
+| **GCP devbox** | external | Hosts the sessions and the daemon; company-provisioned, reached only over Twingate | ssh alias `devbox` in `~/.ssh/config` |
+| **Twingate** | laptop | ZTNA tunnel to the devbox; ssh and Mutagen ride it, the phone uses Discord directly | Mutagen sessions pause while it is down |
+| **OpenSSH** | devbox | Shell, file transfer, Mutagen agent | `ssh devbox`, `scp`, `rsync` |
+| **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, newest mtime wins): transcripts, doit, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
+| **GNU stow** | devbox (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
+| **GNU bash + bun + node** | devbox | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
+| **discord-daemon** | devbox systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
+| **session-mcp** | devbox, per-claude | Stdio MCP server, HTTP client of daemon | This repo's `session-mcp/` |
+| **Claude Code CLI** | devbox (per pane) | The AI agent | `claude --dangerously-load-development-channels server:discord` |
 | **Discord bot (`BG-CLC`)** | external | UI surface for chat + control | Channel threads = chat, DM = control |
-| **systemd** | VPS | Daemon supervision | `discord-daemon.service` |
-| **journalctl** | VPS | Daemon logs | `sudo journalctl -u discord-daemon -f` |
+| **systemd** | devbox | Daemon supervision | `discord-daemon.service` |
+| **journalctl** | devbox | Daemon logs | `sudo journalctl -u discord-daemon -f` |
 
 ---
 
 ## Nested tmux
 
-**Current setup — likely to change.** VPS-side tmux is how sessions survive ssh disconnects today. The shape of that may change (single-pane-per-window, drop VPS tmux for screen, or skip it entirely for users who don't want nesting). Documented here so the friction is visible:
+**Current setup — likely to change.** devbox-side tmux is how sessions survive ssh disconnects today. The shape of that may change (single-pane-per-window, drop devbox tmux for screen, or skip it entirely for users who don't want nesting). Documented here so the friction is visible:
 
 | Layer | Leader | Notes |
 |---|---|---|
 | Local tmux | `C-a` | per user's local config |
-| VPS tmux | `C-b` (default) | set explicitly in `~/.tmux.conf` on the VPS; red status bar tagged `VPS` |
+| devbox tmux | `C-b` (default) | set explicitly in `~/.tmux.conf` on the devbox; red status bar tagged `devbox` |
 
 Distinct prefixes mean keys for the outer tmux don't accidentally fire on the inner one. Users not already on tmux will still find nested-tmux confusing — open ergonomics question.
 
@@ -282,15 +280,14 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 
 | Boundary | Mechanism |
 |---|---|
-| Hetzner firewall | Only SSH (22) + ICMP open from public internet. 7777 blocked publicly. |
-| Daemon HTTP | Binds `0.0.0.0:7777` → reachable only via loopback (same-host sessions) + tailnet interface (laptop). Public ingress blocked by Hetzner firewall. |
+| Network | No public ingress on the devbox; everything arrives over Twingate. |
+| Daemon HTTP | Binds `127.0.0.1:7777`; sessions on the box use loopback, the laptop an ssh port-forward. |
 | Daemon auth | `x-daemon-token` header, constant-time compare. Token in `.env` chmod 600. |
 | Discord access | `access.json` allowlist of Discord user IDs. Bot ignores messages from non-allowlisted senders. |
 | Bot pairing | `/discord:access pair <code>` skill; codes expire 1h; 3 max concurrent. |
 | chat_id authorization | Session can only act on its own `threadId`. Cross-session calls return 403. |
 | File send sandbox | `assertSendable` blocks sending daemon state files via `reply`. |
-| Tailscale ACL | Lock to your own tailnet only (admin console). |
-| Public SSH | Tailscale SSH (`--ssh`) handles interactive auth via tailnet identity. Public sshd keeps key auth (no passwords). |
+| SSH | Key auth only, over Twingate; agent forwarding from the laptop, the devbox's own key for unattended pushes. |
 
 ---
 
@@ -298,13 +295,13 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 
 | Event | What happens |
 |---|---|
-| Laptop closes | SSH/mosh sessions disconnect. VPS tmux + claude + daemon keep running. Phone Discord still works. |
-| Reopen laptop | `ssh bryan@claude-vps; tmux attach -t main` → exact prior state. |
+| Laptop closes | SSH/mosh sessions disconnect. devbox tmux + claude + daemon keep running. Phone Discord still works. |
+| Reopen laptop | `cvps` from the repo dir (or `ssh devbox; tmux attach`) → exact prior state. |
 | Daemon crashes | systemd restarts (Restart=always, 5s). Sessions reconnect SSE on backoff. |
 | Discord gateway drops | discord.js auto-reconnects. SessionsMC keep heartbeating. |
 | Claude session crashes | Heartbeat stops. After 90s daemon marks session dormant + archives its thread (thread mapping retained — next `dclaude` in same cwd reattaches). |
 | Claude session ended normally + resumed (`claude --resume`) | Same cwd → same `session_id` → daemon reuses existing thread. Archive auto-clears on first outbound send. |
-| VPS reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
+| devbox reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
 | Mutagen network drop | Reconnects automatically. Edits queued. No data loss. |
 | Both sides edit same file | two-way-resolved picks newest mtime. Older edit overwritten. Avoid simultaneous editing in same file from both hosts. |
 | Token rotation needed | Edit `~/.claude/channels/discord/.env`, `sudo systemctl restart discord-daemon`. |
@@ -338,30 +335,30 @@ All live under `~/.claude/channels/discord/` on the host running the daemon.
 
 ~/.claude/                        stowed from claude-code-config
   settings.json                   committed, shared
-  settings.local.json             VPS overlay candidate (gitignored)
+  settings.local.json             devbox overlay candidate (gitignored)
   channels/discord/               daemon state (NOT in stow source)
     .env                          bot token, daemon token
     access.json                   user allowlist
 ```
 
-### VPS
+### Devbox
 
 ```
-/home/bryan/
-  dev/                            (Mutagen beta — bi-directional)
-    claude-code-config/           rsync'd then mutagen-synced
-      discord-daemon/             daemon source
+<bridge>/                         bind mount of $HOME at the laptop's home path (BRIDGE in setup-vps.sh)
+  dev/                            git clones laid out like the laptop (devbox-clone-repos.sh)
+    claude-code-config/           clone; bootstrap-vps.sh fast-forwards it
+      discord-daemon/             daemon source (the unit runs it from here)
       session-mcp/                MCP source
-    giant-tooling/                cloned by install.sh
-    <your repos>/                 synced from laptop
-  .claude/                        stowed from ~/dev/claude-code-config
-    settings.local.json           VPS-specific overlay (gitignored)
+      scripts/dclaude             linked into ~/.local/bin
+    giant-tooling/                rsync'd; giantmem binary cross-built on the laptop
+  .claude/                        stowed from dev/claude-code-config
+    projects/                     transcripts, mutagen session claude-projects
     channels/discord/             daemon state
-      .env                        DISCORD_BOT_TOKEN, DAEMON_TOKEN, DAEMON_BIND_HOST
+      .env                        DISCORD_BOT_TOKEN, DISCORD_SESSIONS_CHANNEL_ID, DAEMON_TOKEN, DAEMON_BIND_HOST, DAEMON_HOME_ROOT
       access.json
-  .claude.json                    claude mcp registry (created by `claude mcp add`)
-  .local/bin/claude               claude CLI (installed by install.sh)
-  .bun/bin/bun                    bun runtime
-/Users/bryan → /home/bryan        root-level symlink so laptop-absolute symlinks resolve
-/etc/systemd/system/discord-daemon.service
+  .claude-team/ .claude-ent/      credentials slots (.credentials.json each)
+  .claude-devbox.sh               PATH, tokens, aliases; sourced by .profile and .bashrc
+  .local/share/nvim/doit/         doit lists, mutagen session doit
+  .local/bin/{claude,giantmem,dclaude,gh,glab}
+  .config/systemd/user/           discord-daemon, giantmemd, giantmem-ingest.{service,timer}
 ```

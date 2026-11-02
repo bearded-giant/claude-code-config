@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Enable Ubuntu unattended-upgrades for security patches on the VPS.
-# Run via SSH: ssh bryan@claude-vps 'sudo bash -s' < scripts/setup-unattended-upgrades.sh
+# Enable unattended-upgrades for security patches on the devbox.
+# Run via SSH: ssh devbox 'sudo bash -s' < scripts/setup-unattended-upgrades.sh
 
 set -euo pipefail
 

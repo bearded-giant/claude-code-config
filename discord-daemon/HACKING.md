@@ -37,7 +37,7 @@ session-mcp:
 1. **`discord-daemon/src/control.ts`** — add a `case` for the verb in `handleControlDM`. Use existing helpers (`resolveSession`, `humanAge`). Return a string for the bot to reply with, or `null` to ignore.
 2. **`discord-daemon/src/control.ts`** — append the verb + one-line description to `helpText()`.
 3. **`discord-daemon/scripts/smoke-test.sh`** — add a curl check that proves the command works (use the mock-injection path to set up a session, then exercise via mock DM logic if applicable; or add unit-level coverage).
-4. **`docs/cloud-claude-quickstart.md`** — add the command to the DM commands table.
+4. **`docs/devbox.md`** — add the command to the DM commands table.
 
 Verification: `./discord-daemon/scripts/smoke-test.sh`.
 
@@ -70,15 +70,15 @@ Verification: extend `smoke-test.sh` with a `curl_json` invocation + assertion.
 
 1. **`src/metrics.ts`** — register the counter or gauge in the constructor.
 2. **Wherever the event happens** — call `metrics.incr` / `metrics.setGauge`.
-3. **`docs/cloud-claude-quickstart.md`** — mention the new metric name in the metrics section.
+3. **`docs/devbox.md`** — mention the new metric name under daemon ops.
 
-Verification: `curl http://claude-vps:7777/metrics | grep daemon_<your_name>`.
+Verification on the devbox: `curl http://127.0.0.1:7777/metrics | grep daemon_<your_name>`.
 
 ### Add a new env var
 
 1. **`src/config.ts`** — read it, give a sensible default, export.
-2. **`scripts/install-vps.sh`** — if it should be in `.env`, append to the generated stub.
-3. **Docs:** mention in `cloud-claude-quickstart.md` env-vars/tokens table.
+2. **`scripts/setup-vps.sh`** — if it should be in `.env`, add an `ensure_env` line.
+3. **Docs:** mention in `README.md` next to the other env vars.
 4. **systemd unit** in `discord-daemon/systemd/discord-daemon.service` — only edit if the value needs to be read at process spawn (it shouldn't; `loadEnvFile()` handles `.env`).
 
 ### Add a SessionStart hook
@@ -155,7 +155,7 @@ DAEMON_ARCHIVE_ON_EXIT=1                    # optional — archive threads on SI
     {
       "sessionId": "cwd-<sha1(cwd)[:16]>",
       "label": "feature-foo",
-      "cwd": "/home/bryan/dev/feature-foo",
+      "cwd": "/Users/<you>/dev/feature-foo",
       "pid": 12345,
       "threadId": "1500000000000000000",
       "registeredAt": 1779000000000,
@@ -187,7 +187,7 @@ Plain text file. Contents: the DM channel ID. Written by the `/discord:access pa
 - Don't add MCPs to `~/.claude/settings.json` `mcpServers` block — they aren't auto-loaded. Use `claude mcp add` so they land in `~/.claude.json`.
 - Don't sync `node_modules/` via Mutagen — already excluded in `scripts/mutagen-sync-dev.sh`.
 - Don't store secrets outside `.env`. Tokens in `settings.json` would be checked into git via stow.
-- Don't bind the daemon to a public interface. `0.0.0.0` is OK because Hetzner firewall blocks 7777, but if you change cloud provider, verify the firewall first.
+- Don't bind the daemon to a public interface. The devbox unit binds `127.0.0.1`; sessions on the box reach it over loopback and the laptop through an ssh port-forward.
 - Don't archive threads on every shutdown — that's only for intentional teardown (`DAEMON_ARCHIVE_ON_EXIT=1`). Default behavior preserves threads so restarts are seamless.
 
 ## Lessons & ongoing notes

@@ -23,8 +23,9 @@ src/
   discord.ts       # gateway client, thread lifecycle, send/edit/react
   control.ts       # DM command handler (list/status/kill/help)
   http.ts          # Bun.serve REST + SSE inbox
-systemd/discord-daemon.service
-scripts/install-vps.sh
+systemd/discord-daemon.service   # user unit, installed by scripts/setup-vps.sh
+scripts/smoke-test.sh            # mock-mode end-to-end check
+scripts/daemon-cli.sh            # HTTP helper
 ```
 
 ## Run locally
@@ -104,4 +105,4 @@ Disabled otherwise.
 - Permission relay (the `notifications/claude/channel/permission_request` flow with Allow/Deny buttons) — bundled plugin has it, this daemon doesn't yet. Add later if you want permission prompts via Discord across sessions.
 - Group channel support (non-thread guild channels) — daemon currently only writes to its own session threads. Read fetch_messages also restricted to own thread.
 
-See [`docs/cloud-claude-quickstart.md`](docs/cloud-claude-quickstart.md) for the full VPS + Tailscale + Mutagen walkthrough.
+See [`docs/devbox.md`](docs/devbox.md) for the devbox bootstrap, day-to-day commands, and troubleshooting.
