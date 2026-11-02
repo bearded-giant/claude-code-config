@@ -112,10 +112,21 @@ def ensure_project(cfg, apply):
         run("vercel", "project", "add", name, "--scope", team)
     proj = vercel(team, f"/v9/projects/{name}")
 
-    want = {"framework": cfg.get("framework"), "nodeVersion": cfg.get("node"), "autoExposeSystemEnvs": True}
+    want = {
+        "framework": cfg.get("framework"),
+        "nodeVersion": cfg.get("node"),
+        "rootDirectory": cfg.get("root_directory"),
+        "autoExposeSystemEnvs": True,
+    }
     drift = {k: v for k, v in want.items() if v is not None and proj.get(k) != v}
-    if cfg.get("fluid", True) and not (proj.get("resourceConfig") or {}).get("fluid"):
-        drift["resourceConfig"] = {"fluid": True}
+    rc = proj.get("resourceConfig") or {}
+    rc_want = {}
+    if cfg.get("fluid", True) and not rc.get("fluid"):
+        rc_want["fluid"] = True
+    if cfg.get("function_timeout") and rc.get("functionDefaultTimeout") != cfg["function_timeout"]:
+        rc_want["functionDefaultTimeout"] = cfg["function_timeout"]
+    if rc_want:
+        drift["resourceConfig"] = {"fluid": rc.get("fluid", cfg.get("fluid", True)), **rc_want}
     if drift and apply:
         proj = vercel(team, f"/v9/projects/{proj['id']}", "PATCH", drift)
     step("vercel settings", "fixed" if drift and apply else "drift" if drift else "ok", ", ".join(drift) or proj["id"])

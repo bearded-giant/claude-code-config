@@ -13,7 +13,7 @@ Needs `vercel` (logged in, team scope rechargeapps), `glab`, `vault` (token with
 
 ## Project bootstrap
 
-1. Config: `projects/<vercel project>.toml` next to this file (copy `projects/example.toml`). Keys: `project`, `gitlab`, `framework`, `node`, `domains`, `env_sync_job`, `[tokens]`, `[vault]` (`path`, `generate`, `bypass`, `[vault.copy]`), `[[stores]]`.
+1. Config: `projects/<vercel project>.toml` next to this file (copy `projects/example.toml`). Keys: `project`, `gitlab` (omit for a GitHub Actions repo: no CI tokens, protected tag or env-sync job; mint tokens with `token --vault` and copy them into GitHub secrets), `framework`, `node`, `root_directory` (monorepo app dir), `function_timeout` (Fluid default max duration, seconds), `domains`, `env_sync_job`, `[tokens]`, `[vault]` (`path`, `generate`, `bypass`, `[vault.copy]`), `[[stores]]`.
 2. Run from the repo root (so `.gitlab-ci.yml` VERCEL_PROJECT_ID gets checked):
    ```
    python3 $VBS check <project>    # read-only, exit 1 lists what is not ready
