@@ -135,7 +135,8 @@ fi
 step "install.sh (stow ~/.claude, settings merge, ccmd)"
 mkdir -p "$HOME/.claude"
 export PATH="$BIN:$PATH"
-bash "$CONFIG_DIR/install.sh" --tooling-dir "$TOOLING_DIR"
+# physical paths: stow checks link ownership by real path, and ~/.claude links are relative to $HOME
+bash "$HOME/dev/claude-code-config/install.sh" --tooling-dir "$HOME/dev/giant-tooling"
 cat > "$HOME/.claude/settings.local.json" <<'JSON'
 {
   "enabledPlugins": {
