@@ -42,7 +42,7 @@ RSYNC=(rsync -az --delete --exclude=node_modules --exclude=.giantmem --exclude=s
        --exclude='*.jsonl' --exclude='*.db' --exclude='*.db-*' --exclude=.DS_Store)
 echo "==> rsync claude-code-config -> ${VPS_HOST}:~/dev/"
 ssh "$VPS_HOST" 'mkdir -p ~/dev/lua'
-"${RSYNC[@]}" --exclude='plugins/cache' --exclude='plugins/marketplaces' --exclude='plugins/repos' --exclude='plugins/subtask' \
+"${RSYNC[@]}" --exclude='plugins/cache' --exclude='plugins/marketplaces' --exclude='plugins/repos' --exclude='plugins/subtask' --exclude=.git \
   "$CONFIG_DIR/" "$VPS_HOST:dev/claude-code-config/"
 echo "==> rsync giant-tooling -> ${VPS_HOST}:~/dev/ (gui excluded)"
 "${RSYNC[@]}" --exclude='giantmem/gui' "$TOOLING_DIR/" "$VPS_HOST:dev/giant-tooling/"
