@@ -66,7 +66,7 @@ export class DiscordBot {
       })
     })
 
-    this.client.once('ready', c => {
+    this.client.once('clientReady', c => {
       process.stderr.write(`daemon: gateway connected as ${c.user.tag}\n`)
       metrics.setGauge('gateway_connected', 1)
       void alert('info', `gateway connected as ${c.user.tag}`)
