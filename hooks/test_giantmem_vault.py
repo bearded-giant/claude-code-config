@@ -98,3 +98,23 @@ def test_real_dir_in_the_way_is_left_alone(tmp_path):
     gv.sync(root, vault)
     assert (vault / "a/notes.md").read_text() == "mine"
     assert not (vault / "a").is_symlink()
+
+
+def test_empty_stray_files_removed(tmp_path):
+    root, vault = tmp_path / "dev", tmp_path / "vault"
+    mk(root, "a")
+    gv.sync(root, vault)
+    (root / "a/.giantmem/blank.md").write_text("")
+    (vault / "~/dev/x").mkdir(parents=True)
+    (vault / "~/dev/x/stray.md").write_text("")
+    (vault / "empty.md").write_text("")
+    (vault / "mine.md").write_text("keep")
+    (vault / ".obsidian").mkdir()
+    (vault / ".obsidian/empty.json").write_text("")
+    gv.sync(root, vault)
+    assert not (vault / "~").exists()
+    assert not (vault / "empty.md").exists()
+    assert (vault / "mine.md").read_text() == "keep"
+    assert (vault / ".obsidian/empty.json").exists()
+    assert (root / "a/.giantmem/blank.md").exists()
+    assert links(vault) == {"a": str(root / "a/.giantmem")}

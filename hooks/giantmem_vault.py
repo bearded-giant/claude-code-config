@@ -54,7 +54,11 @@ def sync(root=ROOT, vault=VAULT):
         dirnames[:] = [d for d in dirnames if d != ".obsidian"]
         for n in dirnames + filenames:
             p = Path(dirpath) / n
-            if p.is_symlink() and want.get(p) != os.readlink(p):
+            if p.is_symlink():
+                if want.get(p) != os.readlink(p):
+                    p.unlink()
+            # obsidian creates an empty note when an unresolved link is clicked
+            elif n in filenames and p.stat().st_size == 0:
                 p.unlink()
     for dirpath, _, _ in os.walk(vault, topdown=False):
         p = Path(dirpath)
