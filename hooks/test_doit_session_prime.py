@@ -342,6 +342,26 @@ def link_cases() -> None:
             assert pane_list == "solo", pane_list
             assert opt("@doit-window-list") == "daily"
 
+            # tmux 3.5 prints the separator as the text \037
+            T("set-option", "-wqu", "-t", "s:a b", "@doit-window-list")
+            with open(mod.SESSION_FILE, "w", encoding="utf-8") as fh:
+                json.dump({"sessions": {}}, fh)
+            real_run = subprocess.run
+
+            def escaping_run(*a, **kw):
+                out = real_run(*a, **kw)
+                if isinstance(out.stdout, str):
+                    out.stdout = out.stdout.replace(mod.TMUX_SEP, "\\037")
+                return out
+
+            subprocess.run = escaping_run
+            try:
+                linked = mod.link_window("esc")
+            finally:
+                subprocess.run = real_run
+            assert linked == ("s:a b", "esc", True), linked
+            assert opt("@doit-window-list") == "esc"
+
             # no pane id: an untargeted query would answer for another window
             pane = os.environ.pop("TMUX_PANE")
             assert mod.link_window("proj") is None

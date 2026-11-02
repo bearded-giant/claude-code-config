@@ -92,7 +92,9 @@ def link_window(name: str, follow=("", "daily")):
             timeout=2,
             check=False,
         )
-        win_id, live, key = out.stdout.rstrip("\n").split(TMUX_SEP, 2)
+        # tmux 3.5 prints the separator as the literal text \037
+        fields = out.stdout.rstrip("\n").replace("\\037", TMUX_SEP)
+        win_id, live, key = fields.split(TMUX_SEP, 2)
     except (OSError, subprocess.SubprocessError, ValueError):
         return None
     session = read_session_file()
