@@ -248,8 +248,38 @@ def ensure_vault(cfg, proj, apply):
     return apply
 
 
+def ensure_edge_config(cfg, proj, store, apply):
+    name = store["name"]
+    envs = store.get("environments", ["production", "preview"])
+    label = f"edge-config {name}"
+    listing = vercel(cfg["team"], "/v1/edge-config")
+    configs = listing if isinstance(listing, list) else listing.get("edgeConfigs") or []
+    found = next((c for c in configs if c.get("slug") == name), None)
+    records = vercel(cfg["team"], f"/v10/projects/{proj['id']}/env").get("envs") or []
+    have = {t for e in records if e.get("key") == "EDGE_CONFIG" for t in e.get("target") or []}
+    missing = [t for t in envs if t not in have]
+    if found and not missing:
+        step(label, "ok")
+        return False
+    if not apply:
+        step(label, "missing", "connect " + ", ".join(missing) if found else "create + connect")
+        return False
+    if not found:
+        body = {"slug": name, **({"items": store["items"]} if store.get("items") else {})}
+        created = vercel(cfg["team"], "/v1/edge-config", "POST", body)
+        found = created if "id" in created else created["edgeConfig"]
+    # one read token per project; the connection string is what @vercel/edge-config reads from EDGE_CONFIG
+    token = vercel(cfg["team"], f"/v1/edge-config/{found['id']}/token", "POST", {"label": proj["name"]})["token"]
+    record = {"key": "EDGE_CONFIG", "value": f"https://edge-config.vercel.com/{found['id']}?token={token}", "type": "sensitive", "target": missing}
+    vercel(cfg["team"], f"/v10/projects/{proj['id']}/env?upsert=true", "POST", [record])
+    step(label, "fixed", "connected " + ", ".join(missing) if have else "created + connected")
+    return True
+
+
 def ensure_store(cfg, proj, store, apply):
     kind, name = store["kind"], store["name"]
+    if kind == "edge-config":
+        return ensure_edge_config(cfg, proj, store, apply)
     envs = store.get("environments", ["production", "preview"])
     found = next((s for s in vercel(cfg["team"], "/v1/storage/stores").get("stores", []) if s["name"] == name), None)
     connected = found and any(p.get("name") == proj["name"] for p in found.get("projectsMetadata") or [])
@@ -483,8 +513,8 @@ def main():
     t.add_argument("--vault", help="PATH:KEY")
     t.set_defaults(func=cmd_token)
 
-    s = sub.add_parser("store", help="create or connect a neon | upstash | blob store")
-    s.add_argument("kind", choices=("neon", "upstash", "blob"))
+    s = sub.add_parser("store", help="create or connect a neon | upstash | blob | edge-config store")
+    s.add_argument("kind", choices=("neon", "upstash", "blob", "edge-config"))
     s.add_argument("name")
     s.add_argument("--project", required=True)
     s.add_argument("--team", default="rechargeapps")

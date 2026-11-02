@@ -1,6 +1,6 @@
 ---
 name: vercel-bootstrap
-description: Bootstrap and maintain Vercel projects that deploy from GitLab CI (prod on release tag, previews on MRs/branches) with one idempotent CLI, `vbs.py`. Creates or fixes the Vercel project (framework, Node, Fluid, system envs, automation bypass), mints project-scoped deploy/preview tokens into GitLab CI variables and vault (re-mints dead ones), protects the release tag, fills a vault path (generated secrets, keys copied from other paths, the bypass secret), creates or connects Neon / Upstash Redis / Blob stores, keeps `.gitlab-ci.yml` VERCEL_PROJECT_ID in step, and plays the env-sync job. Also vault keys/put/patch/copy and one-off token mint / store add. Auto-fires when the user says "bootstrap a vercel project", "new vercel project", "set up vercel for <repo>", "add redis / postgres / neon / blob to <project>", "mint a vercel token", "copy creds from vault X to Y", "vault put/patch", "vercel console steps", or invokes /vercel-bootstrap.
+description: Bootstrap and maintain Vercel projects that deploy from GitLab CI (prod on release tag, previews on MRs/branches) with one idempotent CLI, `vbs.py`. Creates or fixes the Vercel project (framework, Node, Fluid, system envs, automation bypass), mints project-scoped deploy/preview tokens into GitLab CI variables and vault (re-mints dead ones), protects the release tag, fills a vault path (generated secrets, keys copied from other paths, the bypass secret), creates or connects Neon / Upstash Redis / Blob / Edge Config stores, keeps `.gitlab-ci.yml` VERCEL_PROJECT_ID in step, and plays the env-sync job. Also vault keys/put/patch/copy and one-off token mint / store add. Auto-fires when the user says "bootstrap a vercel project", "new vercel project", "set up vercel for <repo>", "add redis / postgres / neon / blob / edge config to <project>", "mint a vercel token", "copy creds from vault X to Y", "vault put/patch", "vercel console steps", or invokes /vercel-bootstrap.
 ---
 
 One CLI replaces the console checklist. Never hand the user Vercel / GitLab / vault console steps that `vbs.py` covers; run it.
@@ -35,6 +35,7 @@ python3 $VBS token <project> --gitlab-var ai-tooling/<repo>:VERCEL_TOKEN --prote
 python3 $VBS store upstash redis-<p> --project <p> [--plan paid] [-m primaryRegion=iad1]
 python3 $VBS store neon neon-<p> --project <p> [--plan launch_v3] [--prefix X_]
 python3 $VBS store blob blob-<p> --project <p> --access private
+python3 $VBS store edge-config <p>-flags --project <p>   # read token into EDGE_CONFIG; seed items only from the toml
 ```
 
 `vault copy` with no keys copies every key. `@gen` = 32-byte hex. Store creates default to pay-as-you-go (Neon `launch_v3`, Upstash `paid` in `iad1`); free tiers cap compute and commands too low for agent traffic. Blob has no plan.

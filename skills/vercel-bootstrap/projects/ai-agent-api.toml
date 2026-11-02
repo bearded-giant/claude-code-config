@@ -15,3 +15,11 @@ bypass = "vercel_bypass"
 
 [vault.copy]
 "secret/ai-tools/prod/investigator-agent" = ["service_token:investigator_token"]
+
+[[stores]]
+kind = "edge-config"
+name = "ai-platform-flags"
+[stores.items]
+kill = { investigate = false }
+require_ctx = false
+jobs = { churn_report = { live = false }, churn_chat = { live = false }, churn_suggestions = { live = false } }

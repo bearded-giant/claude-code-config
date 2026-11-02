@@ -40,3 +40,9 @@ name = "redis-my-app"
 kind = "blob"
 name = "blob-my-app"
 access = "private"
+
+[[stores]]                            # Edge Config: found by slug, else created with the seed items; each project gets its own
+kind = "edge-config"                  # read token in EDGE_CONFIG (what @vercel/edge-config reads); one store can serve several projects
+name = "my-app-flags"
+[stores.items]                        # create only; later changes go through `vercel api /v1/edge-config/<id>/items -X PATCH`
+kill = { investigate = false }

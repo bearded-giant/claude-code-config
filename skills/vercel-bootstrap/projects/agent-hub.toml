@@ -21,3 +21,11 @@ bypass = "vercel_bypass"
 [[stores]]
 kind = "neon"
 name = "neon-investigator"
+
+[[stores]]
+kind = "edge-config"
+name = "ai-platform-flags"
+[stores.items]
+kill = { investigate = false }
+require_ctx = false
+jobs = { churn_report = { live = false }, churn_chat = { live = false }, churn_suggestions = { live = false } }
