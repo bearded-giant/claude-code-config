@@ -7,14 +7,14 @@
 #   brew install age
 #   age-keygen -o ~/.config/age/discord-daemon.key
 #   grep "public key" ~/.config/age/discord-daemon.key   # → age recipient
-#   AGE_RECIPIENT=age1... ./scripts/backup-daemon-state.sh claude-vps
+#   AGE_RECIPIENT=age1... ./scripts/backup-daemon-state.sh            # host: $VPS_HOST, default devbox
 #
 # Restore:
 #   age -d -i ~/.config/age/discord-daemon.key < backup.tar.age | tar -x -C /
 
 set -euo pipefail
 
-VPS_HOST="${1:-claude-vps}"
+VPS_HOST="${1:-${VPS_HOST:-devbox}}"
 AGE_RECIPIENT="${AGE_RECIPIENT:-}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/Backups/discord-daemon}"
 

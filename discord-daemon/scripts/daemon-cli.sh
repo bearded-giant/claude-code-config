@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Manage a discord-daemon over HTTP. Usable against local or remote (tailnet).
+# Manage a discord-daemon over HTTP. The devbox daemon binds loopback: reach it
+# through `ssh -L 7777:127.0.0.1:7777 devbox` and keep the default URL.
 #
 # Config via env or ~/.discord-daemon-cli:
 #   DAEMON_URL    default: http://127.0.0.1:7777
@@ -26,7 +27,7 @@ DAEMON_TOKEN="${DAEMON_TOKEN:-}"
 
 if [ -z "$DAEMON_TOKEN" ]; then
   echo "DAEMON_TOKEN unset. Export it or put in $CONFIG_FILE:" >&2
-  echo "  DAEMON_URL=http://claude-vps:7777" >&2
+  echo "  DAEMON_URL=http://127.0.0.1:7777" >&2
   echo "  DAEMON_TOKEN=..." >&2
   exit 1
 fi

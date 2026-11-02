@@ -81,7 +81,8 @@ Spawns daemon with `DAEMON_DISCORD_MOCK=1`, exercises the full HTTP+SSE surface,
 ## CLI helper
 
 ```
-DAEMON_TOKEN=... DAEMON_URL=http://claude-vps:7777 ./scripts/daemon-cli.sh list
+ssh -L 7777:127.0.0.1:7777 devbox -N &            # the devbox daemon binds loopback
+DAEMON_TOKEN=... ./scripts/daemon-cli.sh list
 ./scripts/daemon-cli.sh tail <session_id>     # follow SSE
 ./scripts/daemon-cli.sh kill <label>
 ```

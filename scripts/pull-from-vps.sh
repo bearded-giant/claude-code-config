@@ -17,9 +17,9 @@ if [ -z "$REL" ]; then
   exit 1
 fi
 
-VPS_HOST="${VPS_HOST:-claude-vps}"
+VPS_HOST="${VPS_HOST:-devbox}"
 LAPTOP_DIR="$HOME/dev/$REL"
-VPS_DIR="\$HOME/dev/$REL"
+VPS_DIR="$LAPTOP_DIR"
 
 if [ ! -d "$LAPTOP_DIR" ]; then
   echo "no laptop dir: $LAPTOP_DIR" >&2

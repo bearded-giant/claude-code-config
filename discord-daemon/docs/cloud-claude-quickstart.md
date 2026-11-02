@@ -259,7 +259,8 @@ ssh bryan@claude-vps '
 ### 9. (Optional, recommended) Mutagen file sync — bi-directional
 
 ```bash
-./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)"
+./scripts/mutagen-sync-state.sh                 # ~/.claude/projects, doit, vault
+./scripts/mutagen-sync-giantmem.sh <repo-alias>  # one repo's .giantmem
 mutagen sync list dev          # confirm "Watching for changes" eventually
 ```
 
@@ -271,7 +272,7 @@ If you already have an older one-way `dev` session, recreate:
 
 ```bash
 mutagen sync terminate dev
-./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)" --recreate
+./scripts/mutagen-sync-state.sh --recreate
 ```
 
 ### 10. (Optional) Personal claude config on VPS
@@ -494,7 +495,7 @@ Useful gauges/counters: `daemon_sessions_active`, `daemon_gateway_connected`, `d
 | `no MCP server configured with that name` | `claude mcp add ...` — settings.json `mcpServers` blocks aren't auto-loaded |
 | `download_attachment failed: channel not allowlisted` (bundled plugin) | Old `discord@claude-plugins-official 0.0.4` bug — apply `scripts/patches/discord-dm-recipient.patch` via `scripts/apply-discord-patch.sh`, then restart MCP |
 | Mutagen agent install fails with `Permission denied` | Use VPS **public IP**, not tailnet hostname — Tailscale SSH strips exec bits |
-| Sync stuck "Reconciling changes" with hundreds of conflicts | Plugin runtime caches diverged. Recreate with the `mutagen-sync-dev.sh` wrapper (its ignore list covers them) |
+| Sync stuck "Reconciling changes" with hundreds of conflicts | Plugin runtime caches diverged. Recreate with `mutagen-sync-state.sh --recreate` wrapper (its ignore list covers them) |
 | Hook errors `/Users/bryan/.nvm/.../node: not found` on VPS | Create `/Users/bryan → /home/bryan` symlink + bridge node path (step 10 above) |
 | Daemon's bot shows offline after restart | systemd restarted — `journalctl -u discord-daemon -n 20` to confirm reconnect; gateway usually back in <5s |
 | Session-mcp logs `Unable to connect` to daemon | `DAEMON_BIND_HOST=0.0.0.0` not set, or wrong; daemon isn't listening on loopback |

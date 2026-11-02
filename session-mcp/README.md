@@ -14,7 +14,7 @@ Claude-side MCP server that proxies Discord tool calls to a remote `discord-daem
 
 | Var | Required | Notes |
 |---|---|---|
-| `DISCORD_DAEMON_URL` | ✓ | e.g. `http://claude-vps:7777` or `http://127.0.0.1:7777` |
+| `DISCORD_DAEMON_URL` | ✓ | `http://127.0.0.1:7777` (the daemon binds loopback) |
 | `DISCORD_DAEMON_TOKEN` | ✓ | matches daemon's `DAEMON_TOKEN` |
 | `CLAUDE_SESSION_ID` | optional | persist across restarts to re-use thread |
 | `CLAUDE_SESSION_LABEL` | optional | default = `basename(cwd)` |
@@ -28,7 +28,7 @@ Claude-side MCP server that proxies Discord tool calls to a remote `discord-daem
       "command": "bun",
       "args": ["run", "/path/to/session-mcp/src/server.ts"],
       "env": {
-        "DISCORD_DAEMON_URL": "http://claude-vps:7777",
+        "DISCORD_DAEMON_URL": "http://127.0.0.1:7777",
         "DISCORD_DAEMON_TOKEN": "..."
       }
     }

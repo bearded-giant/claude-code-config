@@ -376,7 +376,7 @@ Post in the thread → claude session sees the message → replies in same threa
 brew install mutagen-io/mutagen/mutagen
 # Wrapper script bakes in the right flags + excludes (see Lessons Learned).
 # Pass the VPS public IP (NOT tailnet hostname).
-./scripts/mutagen-sync-dev.sh "$(hcloud server ip claude-vps)"
+./scripts/mutagen-sync-state.sh
 mutagen sync monitor dev
 ```
 
