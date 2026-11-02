@@ -121,6 +121,15 @@ if [ -x "$BIN/giantmem" ]; then
 else
   red "  ~/.local/bin/giantmem missing; bootstrap-vps.sh cross-builds and scp's it"
 fi
+if [ -d "$TOOLING_DIR/giantmem/systemd" ]; then
+  mkdir -p "$HOME/.config/systemd/user" "$HOME/.cache/giantmem"
+  install -m 0644 "$TOOLING_DIR"/giantmem/systemd/giantmem*.service "$TOOLING_DIR"/giantmem/systemd/giantmem*.timer "$HOME/.config/systemd/user/"
+  systemctl --user daemon-reload
+  # a hook may have started a daemon by hand; the unit owns the socket from here
+  systemctl --user is-active --quiet giantmemd || pkill -u "$USER" -xf '.*/giantmem daemon serve' || true
+  systemctl --user enable --now giantmemd giantmem-ingest.timer >/dev/null 2>&1
+  green "  giantmemd + giantmem-ingest.timer: $(systemctl --user is-active giantmemd) / $(systemctl --user is-active giantmem-ingest.timer)"
+fi
 if [ "${SKIP_EMBED:-0}" != "1" ]; then
   if ! "$VENV/bin/python3" -c 'import sentence_transformers' 2>/dev/null; then
     dim "  building embedder venv at $VENV (torch cpu + sentence-transformers)"

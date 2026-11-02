@@ -16,7 +16,7 @@ ARCHIVE_BASE = Path(
 )
 BUNDLES = ARCHIVE_BASE / "bundles"
 PROJECTS = Path.home() / ".claude" / "projects"
-TMP_GLOB = "/private/tmp/claude-*"
+TMP_GLOBS = ("/private/tmp/claude-*", "/tmp/claude-*")
 FULL_EVENTS = {"PreCompact", "SessionEnd"}
 CLAUDE_PARTS = ("subagents", "workflows", "tool-results")
 SID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -67,8 +67,19 @@ def nonempty(path):
     return path.is_dir() and any(p.is_file() for p in path.rglob("*"))
 
 
+def tmp_roots():
+    return sorted({Path(p).resolve() for g in TMP_GLOBS for p in glob.glob(g)})
+
+
 def tmp_dirs(sid):
-    return sorted(Path(p) for p in glob.glob(f"{TMP_GLOB}/*/{sid}") if Path(p).is_dir())
+    return sorted(
+        {
+            Path(p).resolve()
+            for g in TMP_GLOBS
+            for p in glob.glob(f"{g}/*/{sid}")
+            if Path(p).is_dir()
+        }
+    )
 
 
 def kind_of(rel):
@@ -286,7 +297,7 @@ def cli():
     if a.worker:
         worker(*a.worker)
     elif a.backfill:
-        roots = a.roots or sorted(glob.glob(TMP_GLOB))
+        roots = a.roots or [str(p) for p in tmp_roots()]
         for dest in backfill(roots):
             print(dest)
     else:

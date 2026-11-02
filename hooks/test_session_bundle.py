@@ -24,7 +24,10 @@ def main() -> None:
         root = Path(d)
         tmp_root = root / "tmp" / "claude-502"
         vars(mod).update(
-            TMP_GLOB=str(root / "tmp" / "claude-*"),
+            TMP_GLOBS=(
+                str(root / "tmp" / "claude-*"),
+                str(root / "tmp-alias" / "claude-*"),
+            ),
             PROJECTS=root / "projects",
             BUNDLES=root / "archive" / "bundles",
         )
@@ -72,6 +75,11 @@ def main() -> None:
         )
         with open(sess / "scratchpad" / "huge.bin", "wb") as fh:
             fh.truncate(21 * 1024 * 1024)
+
+        # the macOS /tmp -> /private/tmp alias must not double the roots or the session dirs
+        (root / "tmp-alias").symlink_to(root / "tmp")
+        assert mod.tmp_roots() == [tmp_root.resolve()], mod.tmp_roots()
+        assert mod.tmp_dirs(SID) == [sess.resolve()], mod.tmp_dirs(SID)
 
         # a Stop sync copies the tmp side only, minus junk, oversize files, and symlinks
         dest = mod.capture(
