@@ -264,6 +264,7 @@ def ensure_edge_config(cfg, proj, store, apply):
     if not apply:
         step(label, "missing", "connect " + ", ".join(missing) if found else "create + connect")
         return False
+    existed = found is not None
     if not found:
         body = {"slug": name, **({"items": store["items"]} if store.get("items") else {})}
         created = vercel(cfg["team"], "/v1/edge-config", "POST", body)
@@ -271,8 +272,9 @@ def ensure_edge_config(cfg, proj, store, apply):
     # one read token per project; the connection string is what @vercel/edge-config reads from EDGE_CONFIG
     token = vercel(cfg["team"], f"/v1/edge-config/{found['id']}/token", "POST", {"label": proj["name"]})["token"]
     record = {"key": "EDGE_CONFIG", "value": f"https://edge-config.vercel.com/{found['id']}?token={token}", "type": "sensitive", "target": missing}
-    vercel(cfg["team"], f"/v10/projects/{proj['id']}/env?upsert=true", "POST", [record])
-    step(label, "fixed", "connected " + ", ".join(missing) if have else "created + connected")
+    # one record, not a list: `vercel api --input` takes a JSON object only
+    vercel(cfg["team"], f"/v10/projects/{proj['id']}/env?upsert=true", "POST", record)
+    step(label, "fixed", "connected " + ", ".join(missing) if existed else "created + connected")
     return True
 
 
