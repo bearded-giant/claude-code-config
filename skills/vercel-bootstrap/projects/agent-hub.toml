@@ -1,6 +1,7 @@
 project = "agent-hub"
 gitlab = "ai-tooling/agent-hub"
 framework = "nextjs"
+root_directory = "apps/hub"
 node = "24.x"
 domains = ["rc-agent-hub.vercel.app"]
 env_sync_job = "vercel-env-sync"
