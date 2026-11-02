@@ -21,3 +21,5 @@ After it runs, only if warranted (the CLI leaves these to you):
 1. Clean up facts.md (final commands, key files, drop placeholders).
 2. Mark `## Acceptance Criteria` items `[x]`; if some are unmet and there were no delta-specs, flag to the user.
 
+Always: the feature's doit list (`python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"`) at 0 pending → AskUserQuestion: delete it (`clear_done` + `delete_list`) / keep it. Name any tmux window `list_lists` shows linked to it. Skip when `/wrap` already asked this session.
+

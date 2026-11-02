@@ -6,7 +6,7 @@ description: >-
 
 The user is about to lose this session's context or close a feature. Anything not written down is gone. Run the checklist, fix what is safe to fix, and report the rest.
 
-Without asking: commit and push tested work (CLAUDE.md git_rules), run branch cleanup (CLAUDE.md `## Branches and Worktrees`), and delete what this session created. Never remove a worktree or offer to, including the one this session runs in. Merge, opening or updating an MR ("ship it"), killing a process, and any other deletion go into ONE batched AskUserQuestion at the end of the checklist, and only when one of them is live.
+Without asking: commit and push tested work (CLAUDE.md git_rules), run branch cleanup (CLAUDE.md `## Branches and Worktrees`), and delete what this session created. Never remove a worktree or offer to, including the one this session runs in. Merge, opening or updating an MR ("ship it"), killing a process, deleting a doit list left at 0 pending, and any other deletion go into ONE batched AskUserQuestion at the end of the checklist, and only when one of them is live.
 
 ## Mode
 
@@ -31,7 +31,7 @@ Gather first, in parallel, using the same sources as `/feature-next` Gather step
    - Run the `doit-prune` skill's classify + `landed` steps on the session list (pushed in an MR counts as landed). Its deletes and rewrites ride the batched ask, not a second ask.
    - New items: code follow-ups should already be done (CLAUDE.md `### Proactive execution`). Work the session could do but did not finish goes in the handoff's `Start here`, not doit. Code blocked on me (operator detail, dangerous change) gets a code item that deps on its owed or decision item, no ask. Open decisions go in the doc's Open Questions and mirror per `feature-management` → `### Decision mirror`. User actions that pass the daily bar (`feature-management` → `### Owed items → daily twin`) become owed items (`add_todo owe=true`), no ask; the handoff's `Open edges` lists them by `daily #N (<label>)`. Review/merge asks, tags, deploys, conditional confirms, and "say ship it" go in the handoff's `Open edges` as plain lines, never owed. Last doit call: leave the next item `in_progress` (`start_todo`): the one waiting on me, else the top pending one; when no item covers the ask the session stops on, `add_todo type=gate` (no `owe`) and start it.
    - Every `claude:` item must be burnable cold: `ref:` line, paths, commands, and identifiers in its text or description. Fill thin ones in.
-   - `feature` mode: list would end with 0 pending → offer `delete_list` in the batched ask.
+   - Any mode: each list this session used (the session list, plus any other list it wrote to; never `daily`) that would end with 0 pending → offer `clear_done` + `delete_list` in the batched ask, one option per list, naming any tmux window `list_lists` shows linked to it. Such a list gets no `in_progress` or `gate` item to keep it alive. `delete_list` refuses the active list: report that list under `Gaps`.
 3. **Docs:**
    - Feature: `tasks.md` checkboxes match reality, and `{name}-notes.md` / `facts.md` hold this session's new identifiers, commands, gotchas, and decisions.
    - Bare repo: route per workspace-rules (`context/`, `plans/current.md`).
