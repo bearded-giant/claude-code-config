@@ -40,10 +40,19 @@ fi
 
 RSYNC=(rsync -az --delete --exclude=node_modules --exclude=.giantmem --exclude=scratch --exclude=archive
        --exclude='*.jsonl' --exclude='*.db' --exclude='*.db-*' --exclude=.DS_Store)
-echo "==> rsync claude-code-config -> ${VPS_HOST}:~/dev/"
 ssh "$VPS_HOST" 'mkdir -p ~/dev/lua'
-"${RSYNC[@]}" --exclude='plugins/cache' --exclude='plugins/marketplaces' --exclude='plugins/repos' --exclude='plugins/subtask' --exclude=.git \
-  "$CONFIG_DIR/" "$VPS_HOST:dev/claude-code-config/"
+# the devbox copy is a git clone and origin/main is the truth; rsync only seeds a box that has no clone yet
+if ssh "$VPS_HOST" 'test -d ~/dev/claude-code-config/.git'; then
+  if git -C "$CONFIG_DIR" status --porcelain | grep -q .; then
+    echo "WARN: laptop claude-code-config has uncommitted changes; the devbox clone follows origin/main"
+  fi
+  echo "==> claude-code-config: fast-forward the devbox clone"
+  ssh "$VPS_HOST" 'bash -lc "cd ~/dev/claude-code-config && git pull --ff-only && git log -1 --format=\"    %h %s\""'
+else
+  echo "==> rsync claude-code-config -> ${VPS_HOST}:~/dev/ (seed; turn it into a clone of origin afterwards)"
+  "${RSYNC[@]}" --exclude='plugins/cache' --exclude='plugins/marketplaces' --exclude='plugins/repos' --exclude='plugins/subtask' --exclude=.git \
+    "$CONFIG_DIR/" "$VPS_HOST:dev/claude-code-config/"
+fi
 echo "==> rsync giant-tooling -> ${VPS_HOST}:~/dev/ (gui excluded)"
 "${RSYNC[@]}" --exclude='giantmem/gui' "$TOOLING_DIR/" "$VPS_HOST:dev/giant-tooling/"
 echo "==> rsync do-it.nvim -> ${VPS_HOST}:~/dev/lua/"
@@ -100,10 +109,3 @@ fi
 echo "==> running setup-vps.sh on ${VPS_HOST}"
 # shellcheck disable=SC2029
 ssh "$VPS_HOST" "$EXTRA_ENV bash -s" < "$CONFIG_DIR/scripts/setup-vps.sh"
-
-# the devbox copy is a git clone: the rsync above only seeds a fresh box, origin/main is the truth
-if git -C "$CONFIG_DIR" status --porcelain | grep -q .; then
-  echo "WARN: laptop claude-code-config has uncommitted changes; the devbox clone follows origin/main"
-fi
-echo "==> claude-code-config: fast-forward the devbox clone"
-ssh "$VPS_HOST" 'bash -lc "cd ~/dev/claude-code-config && git checkout -- . && git pull --ff-only && git log -1 --format=\"    %h %s\""'
