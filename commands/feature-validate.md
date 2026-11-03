@@ -88,7 +88,7 @@ reindex). Never modifies user-written content.
       - `{name}-notes.md` → touch
    4. Add missing `features/_index.md` row.
    5. Resync `meta.json.status` ↔ `features.json[{name}].status` — prefer `features.json` as authority. Print diff before writing.
-   6. Run `giantmem artifact reindex`.
+   6. Call MCP `reindex_artifacts` (CLI `giantmem artifact reindex`).
 
    Report what was repaired. Re-run validation after fixes and report new status.
 

@@ -9,11 +9,9 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
 
 1. Artifacts:
 
-   ```bash
-   python3 ~/dev/giant-tooling/workspace/scripts/feature.py --cwd "$(pwd)" next [feature]
-   ```
+   MCP `mcp__giantmem-search__feature` with `action: "next"`, `cwd` = the worktree, optional `name`. MCP not connected → `giantmem feature next [feature]` from the worktree.
 
-   Feature is inferred from the in_progress one when omitted. Exit 1 with `no active feature` means bare-repo mode: skip this step and the `tasks.md` part of step 4, and keep the rest.
+   Feature is inferred from the in_progress one when omitted. An error with `no active feature` means bare-repo mode: skip this step and the `tasks.md` part of step 4, and keep the rest.
 
 2. doit list: use the name from the SessionStart `doit session list` line. Re-derive only if cwd or feature changed:
 
@@ -58,7 +56,7 @@ Next: claude
 Done
 - ...
 Artifacts
-<feature.py next output, verbatim>
+<feature next output, verbatim>
 ```
 
 - Next leads with the doit item that is `in_progress` (the active one a prior turn or session left), under its owner. Then it merges the doit order (`N.` prefix, priority bucket) with MR state. Owed items (`owed in daily #M`) and an MR waiting on review or merge are user items; name the `daily #M` handle. A failing pipeline or an unresolved thread claude can fix is a claude item.

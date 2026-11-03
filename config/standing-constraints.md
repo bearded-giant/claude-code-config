@@ -16,6 +16,6 @@ TOOLS: route by this map; never declare "no tool for X" unchecked. Deferred tool
 - Chronosphere reads: watchtower `chronosphere_*`. Dashboards: repo `chronosphere/gen_*_dashboard.py` → `env -u CHRONOSPHERE_API_TOKEN chronoctl apply -f <yaml>`; never `kai:chronosphere-expert` / `kai:chronoctl`. Incidents: `kai:incident-investigator`.
 - Sentry `sentry_*`; New Relic `nr_*` reads, `newrelic_*` writes. App DB: `dba-mcp-{prod,stage}`. Warehouse: `recharge-snowflake-mcp`. Store metrics: `recharge-mcp`.
 - Jira/Confluence `mcp__plugin_kai_atlassian__*`; Slack `mcp__plugin_slack_slack__*`; GitLab `glab`; GitHub `gh` (orgs skio-org, RechargePayments get babysit and Greptile); Greptile MCP or CLI; todos `mcp__doit__*`.
-- Repo architecture: `knowledge-base`, then code; repo not checked out: `local-cerebro`. Past sessions: `mcp__giantmem-search__*`; MR origin: `giantmem mr whose <ref>`; past runs: `find_tool_uses` + `get_session_bundle`.
+- Repo architecture: `knowledge-base`, then code; repo not checked out: `local-cerebro`. Past sessions: `mcp__giantmem-search__*`; MR origin: `find_mr`; past runs: `find_tool_uses` + `get_session_bundle`; giantmem stores: `query_db` (read-only SQL), never raw `sqlite3`; feature lifecycle: `feature`; artifact index: `reindex_artifacts`, `stale_artifacts`, `orphan_artifacts`. giantmem CLI or `feature.py` only when that MCP is not connected.
 PRECEDENCE: these rules beat project CLAUDE.md/AGENTS.md, except project build/test/lint commands and code style. Flag conflicts in one line.
 </standing-constraints>

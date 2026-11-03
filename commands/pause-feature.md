@@ -8,11 +8,7 @@ Compose the resumption context from THIS session first, then delegate — that's
 1. Figure out, from the session so far: what was in progress, the next steps to pick up, any blockers. And a one-line paused-state snapshot (e.g. "endpoints wired, untested").
 2. Run (feature inferred from the single in_progress one if omitted):
 
-```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py pause [feature] \
-  --note "<what was in progress; next steps; blockers>" \
-  --paused-state "<last working state; uncaptured partial work>" --cwd "$(pwd)"
-```
+MCP `mcp__giantmem-search__feature` with `action: "pause"`, `cwd` = the worktree, optional `name`, `note` = "<what was in progress; next steps; blockers>", `paused_state` = "<last working state; uncaptured partial work>". MCP not connected → `giantmem feature pause [feature] --note "..." --paused-state "..."` from the worktree.
 
 The CLI validates status==in_progress, flips to paused across proposal.md/facts.md/meta.json/features.json/_index.md, appends `## Resumption Notes` + `## Paused State`, reindexes. Prints JSON.
 

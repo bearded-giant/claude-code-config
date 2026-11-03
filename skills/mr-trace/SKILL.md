@@ -8,6 +8,8 @@ Every MR/PR a Claude session creates, pushes to, or updates is already in giantm
 
 ## Lookup: one MR → its sessions
 
+MCP `find_mr` with `ref` (load it with ToolSearch `select:mcp__giantmem-search__find_mr`); `live: false` skips glab/gh. Same lookup from a shell:
+
 ```bash
 giantmem mr whose <ref>            # live status
 giantmem mr whose <ref> --json     # for further processing
@@ -26,6 +28,8 @@ giantmem mr whose <ref> --no-status  # offline, skip glab/gh
 A bare `!N` that matches more than one repo returns all of them. List every match. Never pick one, since repos share ids (`recharge-auth!62` and `investigator-agent!62` both exist).
 
 ## List: running MRs
+
+MCP `find_mr` with no `ref` (`project`, `since`, `include_closed`). Same list from a shell:
 
 ```bash
 giantmem mr list                       # open MRs/PRs, last 30d, live status

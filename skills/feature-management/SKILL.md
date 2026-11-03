@@ -89,9 +89,10 @@ Adjacent CLI surface (not Claude commands — terminal):
 | `giantmem artifact list` | typed artifact query in current repo |
 | `giantmem artifact list -f {feature}` | per-feature view |
 | `giantmem artifact list --type delta-spec --status ready` | filter |
-| `giantmem artifact reindex` | rebuild `.giantmem/artifacts.json` |
+| `giantmem artifact reindex` (MCP `reindex_artifacts`) | rebuild `.giantmem/artifacts.json` |
 | `giantmem artifact show {id}` | print frontmatter + body |
-| `giantmem artifact orphans` | files lacking frontmatter |
+| `giantmem artifact orphans` (MCP `orphan_artifacts`) | files lacking frontmatter |
+| MCP `feature` (CLI `giantmem feature <verb>`) | every lifecycle verb: new, start, pause, reopen, complete, abandon, next, facts, list, archive, move |
 
 ## "Create a plan" disambiguation — CRITICAL
 

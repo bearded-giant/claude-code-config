@@ -52,7 +52,7 @@ Walk `lifecycle: candidate` artifacts and decide each: promote to durable, demot
       - **r**: rewrite `lifecycle: candidate` -> `lifecycle: deprecated` and bump `updated: <today>`.
       - **s**: leave file untouched.
       - **q**: stop immediately.
-   5. After every approve/reject, run `giantmem artifact reindex` so `artifacts.json` reflects the new state. Use a single trailing reindex if walking many — bunch the reindex calls to one per repo at the end.
+   5. After every approve/reject, call MCP `reindex_artifacts` with `cwd` = that repo (CLI `giantmem artifact reindex`) so `artifacts.json` reflects the new state. Use a single trailing reindex if walking many — bunch the reindex calls to one per repo at the end.
 
 3. **Frontmatter edit rules**
 

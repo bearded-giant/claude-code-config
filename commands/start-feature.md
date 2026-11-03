@@ -5,11 +5,9 @@ argument-hint: "[feature-name] [--branch=X] [--base=Y]"
 
 Delegates to the feature CLI. Do NOT walk the steps by hand.
 
-```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py start [feature] [--branch=X] [--base=Y] --cwd "$(pwd)"
-```
+Call MCP `mcp__giantmem-search__feature` with `action: "start"`, `cwd` = the worktree, and optional `name`, `branch`, `base`. MCP not connected → `giantmem feature start [feature] [--branch=X] [--base=Y]` from the worktree.
 
-If no feature given and multiple `pending` exist → list them (`feature.py migrate` then read `features.json`, or just `list-features`) and ask which. One pending → it's safe to pass it.
+If no feature given and multiple `pending` exist → list them (MCP `feature` with `action: "list"`, `status: "pending"`) and ask which. One pending → it's safe to pass it.
 
 The CLI flips status pending→in_progress across proposal.md/facts.md/meta.json/features.json/_index.md, resolves+checks out the branch (defaults to the feature name off the detected base), reindexes, pins topic. Prints JSON.
 

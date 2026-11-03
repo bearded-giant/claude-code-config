@@ -31,7 +31,7 @@ Each entry mirrors 1:1 to a doit `decision` item, written with the doc and close
 
 | Directory | Format | Verbosity | Example |
 |---|---|---|---|
-| `artifacts.json` | Live artifact index | Machine-built, never hand-edit | Built by `giantmem artifact reindex` |
+| `artifacts.json` | Live artifact index | Machine-built, never hand-edit | Built by MCP `reindex_artifacts` (CLI `giantmem artifact reindex`) |
 | `features/_index.md` | Registry table | Terse, table rows | Feature name, status, beta flag |
 | `features/{name}/proposal.md` | Feature intent (renamed from spec.md) | Medium, structured | Intent + scope + approach |
 | `features/{name}/design.md` | Technical design (optional) | Medium | Architecture, decisions, file changes |
@@ -231,7 +231,7 @@ Two new pieces let memory cross worktrees + age gracefully:
 |---|---|---|
 | **scope registry** | `~/.giantmem-global/scopes.yaml` | Named scopes (`personal`, `recharge-customcheckout`, ...) → list of repo names. Artifact membership = repo match OR explicit `scope:` frontmatter. Edit via `giantmem scope init|list|show|add-repo|sync`. |
 | **lifecycle** | per-artifact frontmatter `lifecycle:` | `durable` (default, never auto-prunes), `candidate` (review pending), `deprecated` (kept but excluded from default packs). Walk candidates via `/review-memory`. |
-| **retention tier** | derived from `type:` | Tier A (proposal/design/source-spec) never expires; Tier B (pattern/research/notes) 180d; Tier C (tasks/plan/review/facts/delta-spec) 90d. Surfaced by `giantmem artifact stale --days 0`. |
+| **retention tier** | derived from `type:` | Tier A (proposal/design/source-spec) never expires; Tier B (pattern/research/notes) 180d; Tier C (tasks/plan/review/facts/delta-spec) 90d. Surfaced by MCP `stale_artifacts` with `days: 0` (CLI `giantmem artifact stale --days 0`). |
 
 Filter by scope or lifecycle anywhere artifacts are listed:
 
@@ -244,7 +244,7 @@ giantmem access top --limit 10             # most-touched artifacts in last 30d
 giantmem access prune --older-than 180d    # trim access_log table
 ```
 
-MCP `find_artifact` accepts `scope` + `lifecycle` args (same semantics). MCP `get_stats` returns counts by type/lifecycle/status/repo plus recent access metrics.
+MCP `find_artifact` accepts `scope` + `lifecycle` args (same semantics); MCP `stale_artifacts` takes `days`, `all_repos`, `scope`, `lifecycle`, `apply`. MCP `get_stats` returns counts by type/lifecycle/status/repo plus recent access metrics.
 
 ## Finding artifacts (cross-repo)
 
@@ -258,9 +258,9 @@ Before grepping or scanning, use the typed index:
 | Interactive picker (fzf) | `gma` (default `--repo all`) |
 | One artifact full content | `giantmem artifact show <id>` |
 | Forgotten / stale | `giantmem artifact stale [--all-repos]` |
-| From inside Claude (no shell) | MCP tools `find_artifact`, `get_artifact`, `list_features_with_artifacts` |
+| From inside Claude (prefer over the CLI) | MCP tools `find_artifact`, `get_artifact`, `list_features_with_artifacts`, `stale_artifacts`, `orphan_artifacts`; ad-hoc SQL over `live.db`/`archives.db` via `query_db` |
 
-Rebuild the index after any feature command writes new files: `giantmem artifact reindex` (already wired into `/new-feature` and `/complete-feature`).
+Feature lifecycle actions reindex on their own. After any other frontmatter change made outside Write/Edit, call MCP `reindex_artifacts` (CLI `giantmem artifact reindex`).
 
 Full search cheat sheet (typed + content + interactive + MCP): [`docs/gma-search.md`](docs/gma-search.md).
 

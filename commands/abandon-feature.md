@@ -5,10 +5,7 @@ argument-hint: "[feature-name] [--reason=...] [--no-archive]"
 
 For a feature that got framed and is not getting built. NOT the same as complete — no delta-spec merge, so nothing leaks into a source-spec.
 
-```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py abandon [feature] \
-  [--reason "scope died"] [--no-archive] --cwd "$(pwd)"
-```
+Call MCP `mcp__giantmem-search__feature` with `action: "abandon"`, `cwd` = the worktree, and `name`, `reason` (e.g. "scope died"), optional `no_archive`. MCP not connected → `giantmem feature abandon [feature] [--reason "..."] [--no-archive]` from the worktree.
 
 Works from any status except `archived`/`abandoned`. Name required unless there's exactly one in_progress feature. The CLI:
 - stamps `status: abandoned` + `abandoned: <date>` + `lifecycle: deprecated` on proposal.md, appends `## Abandoned` with the reason
@@ -20,4 +17,4 @@ Artifacts are left untouched on the way out; `live_docs` rows stay searchable vi
 
 After the CLI: close every pending item on the feature's doit list (`python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"`) with `complete_todo` + `WONTFIX {ts} feature abandoned: <reason>`, then AskUserQuestion: delete the list (`clear_done` + `delete_list`) / keep it. Name any tmux window `list_lists` shows linked to it.
 
-Ask the user for a `--reason` if they didn't give one — it's the only record of why the feature died. Do not offer to salvage or re-scope the feature unless they ask.
+Ask the user for a `reason` if they didn't give one — it's the only record of why the feature died. Do not offer to salvage or re-scope the feature unless they ask.

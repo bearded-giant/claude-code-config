@@ -7,10 +7,7 @@ Delegates to the feature CLI for the mechanical close-out.
 
 Before the CLI: list the feature's doit list (`python3 ~/.claude/hooks/doit_session_prime.py --name-only --cwd "$(pwd)"`) with `list_todos` `filter: "all"` and keep items not done (`filter: "pending"` skips `in_progress`). Any open → AskUserQuestion naming each (`<list> #N (<label>)`, owed ones marked): complete the feature with them dangling / stop. Stop → end here, CLI not run.
 
-```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py complete [feature] \
-  [--quick] [--no-merge] [--reason "shipped"] --cwd "$(pwd)"
-```
+Call MCP `mcp__giantmem-search__feature` with `action: "complete"`, `cwd` = the worktree, and optional `name`, `quick`, `no_merge`, `reason` (e.g. "shipped"). MCP not connected → `giantmem feature complete [feature] [--quick] [--no-merge] [--reason "shipped"]` from the worktree.
 
 Feature inferred from the single in_progress/paused one if omitted. The CLI:
 - flips status→complete (`done` in proposal frontmatter) + completed date across proposal.md/meta.json/features.json/_index.md (moves the index row to Completed)

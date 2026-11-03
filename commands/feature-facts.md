@@ -4,8 +4,6 @@ description: Quick lookup of feature facts (beta flags, config keys, endpoints, 
 
 Delegates to the feature CLI (partial name match supported):
 
-```bash
-python3 ~/dev/giant-tooling/workspace/scripts/feature.py facts <name> --cwd "$(pwd)"
-```
+Call MCP `mcp__giantmem-search__feature` with `action: "facts"`, `name`, `cwd` = the worktree. MCP not connected → `giantmem feature facts <name>` from the worktree.
 
 Prints `# feature: {name}  last_session: {date}` then the full facts.md. If the name is ambiguous it prints `{"ambiguous": [...]}` — show those and ask which. Then answer the user's actual question (beta flag / config key / endpoint / test command) from the facts content.
