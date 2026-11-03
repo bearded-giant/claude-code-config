@@ -62,7 +62,7 @@ launchctl load ~/Library/LaunchAgents/local.eod-status.plist
 launchctl kickstart gui/$(id -u)/local.eod-status   # run now
 ```
 
-`run.sh` pins PATH and Homebrew python, kills a run after 40 minutes, and logs to `logs/cron.log`. A failed run posts a desktop notification (`terminal-notifier`) whose click retries.
+`run.sh` pins PATH and Homebrew python, sources `~/dotfiles/.creds.secret` for `GITLAB_TOKEN` (launchd has no shell env, and glab's stored token expires), kills a run after 40 minutes, and logs to `logs/cron.log`. A failed run posts a desktop notification (`terminal-notifier`) whose click retries.
 
 ## Tests
 

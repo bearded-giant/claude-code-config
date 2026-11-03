@@ -1,5 +1,7 @@
 #!/bin/bash
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+# launchd has no login shell; without the shell's GITLAB_TOKEN, glab falls back to its stored token, which expires
+[ -f "$HOME/dotfiles/.creds.secret" ] && . "$HOME/dotfiles/.creds.secret"
 LOG_DIR="${EOD_STATUS_HOME:-$HOME/.config/eod-status}/logs"
 mkdir -p "$LOG_DIR"
 cd "$(dirname "$0")" || exit 1
