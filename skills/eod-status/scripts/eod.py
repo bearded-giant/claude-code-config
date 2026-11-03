@@ -375,7 +375,7 @@ def github_prs(since: datetime) -> list[dict]:
                 "--json",
                 "number,title,url,state,repository,isDraft",
                 "--limit",
-                "50",
+                "1000",
             ],
             capture_output=True,
             text=True,
