@@ -129,18 +129,17 @@ def link_window(name: str, follow=("", "daily")):
     return key, name, True
 
 
-def stamp_pane(name: str) -> None:
+def stamp_pane(name: str, session_id=None) -> None:
     pane = os.environ.get("TMUX_PANE")
     if not os.environ.get("TMUX") or not pane:
         return
     # every pane in a window shares its link, so the board needs each claude pane's own list
+    cmd = ["tmux", "set-option", "-pq", "-t", pane, "@doit-pane-list", name]
+    # the devbox daemon's restart resumes the pane's transcript by this id
+    if session_id:
+        cmd += [";", "set-option", "-pq", "-t", pane, "@claude_session_id", session_id]
     with contextlib.suppress(OSError, subprocess.SubprocessError):
-        subprocess.run(
-            ["tmux", "set-option", "-pq", "-t", pane, "@doit-pane-list", name],
-            capture_output=True,
-            timeout=2,
-            check=False,
-        )
+        subprocess.run(cmd, capture_output=True, timeout=2, check=False)
 
 
 def hook_input():
@@ -449,7 +448,7 @@ def main() -> None:
     resume = f"claude --resume {session_id}" if session_id else "claude --continue"
     window = tmux_window() or "none"
     if interactive():
-        stamp_pane(name)
+        stamp_pane(name, session_id)
     link = link_window(name) if exists and interactive() else None
     if link:
         key, linked, changed = link

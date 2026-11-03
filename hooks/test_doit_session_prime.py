@@ -349,15 +349,15 @@ def link_cases() -> None:
             assert opt("@doit-window-list") == "daily"
 
             # each claude pane names its own list; the window link stays shared
-            mod.stamp_pane("solo")
+            mod.stamp_pane("solo", "sid-123")
             pane_list = T(
                 "display-message",
                 "-p",
                 "-t",
                 os.environ["TMUX_PANE"],
-                "#{@doit-pane-list}",
+                "#{@doit-pane-list}|#{@claude_session_id}",
             )
-            assert pane_list == "solo", pane_list
+            assert pane_list == "solo|sid-123", pane_list
             assert opt("@doit-window-list") == "daily"
 
             # tmux 3.5 prints the separator as the text \037

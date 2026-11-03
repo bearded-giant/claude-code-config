@@ -67,6 +67,7 @@ DM the bot. Sessions never read DMs; DMs are control only.
 | `send <label> <text>` | post into that session's thread without opening it |
 | `tail <label> [n]` | last n inbox events |
 | `kill <label>` | hard-remove the registry entry and archive the thread |
+| `restart <label>\|all [--force] [--dry-run]` | relaunch claude in its tmux pane on the same transcript, `--acct`/`--effort`/`--model` and Discord thread; a pane mid-turn, waiting on a question, or running a background shell restarts once idle unless `--force`; `remote-control` panes rerun their start command |
 
 The relpath is relative to the bridged home, so `start dev/python/cc-wt/master --acct ent` starts the monolith session. The tmux session and the Discord thread take the directory's name (worktree dirs: `<base>-wt-<branch>`), the same name `cvps` uses, so `cvps` from that directory on the laptop attaches to the session the phone started. `start` into a directory whose tmux session already exists reports the clash and creates nothing. `start` has no resume; a phone-started session is always fresh.
 
@@ -121,7 +122,8 @@ Shipping a change to the box after a push to `claude-code-config`:
 | Changed | Do |
 |---|---|
 | scripts (`dclaude`, `setup-vps.sh`, anything under `scripts/`) | `ssh devbox 'bash -lc "git -C $BRIDGE/dev/claude-code-config pull --ff-only"'`; `dclaude` is a symlink into the clone, running sessions keep the old copy until restarted |
-| daemon, session-mcp, the unit, setup steps | `scripts/bootstrap-vps.sh devbox --skip-embed --skip-lsp`: pulls, reruns setup, restarts the daemon. Running sessions reconnect their SSE stream and keep their threads |
+| daemon, session-mcp, the unit, setup steps | `scripts/bootstrap-vps.sh devbox --skip-embed --skip-lsp`: pulls, reruns setup, restarts the daemon, then restarts the claude sessions (busy ones once idle) so they load the new hooks, settings and env |
+| hooks, `settings.json`, env only | pull as for scripts, then `scripts/devbox-restart.sh [label\|all] [--dry-run] [--force]` from the laptop, or DM `restart all`. A restart drops `/loop` schedules; the transcript, flags and thread carry over |
 | giantmem | `make -C giantmem deploy-devbox` in giant-tooling |
 
 Daemon ops on the box: `systemctl --user status discord-daemon`, `journalctl --user -u discord-daemon -f`, `curl -H "x-daemon-token: $DISCORD_DAEMON_TOKEN" http://127.0.0.1:7777/sessions`. From the laptop, `ssh -L 7777:127.0.0.1:7777 devbox` and then `scripts/daemon-cli.sh` against the default URL. `scripts/backup-daemon-state.sh` pulls an age-encrypted copy of `.env`, `access.json`, and `sessions.json`.

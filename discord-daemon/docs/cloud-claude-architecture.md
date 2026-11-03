@@ -149,7 +149,7 @@ Three external systems: the GCP devbox (compute), Twingate (network access), Dis
 │ │                  state ∈ {active, dormant}; dormant retains     │    │
 │ │                  thread mapping for resume                      │    │
 │ │     discord.ts   discord.js client, gateway                     │    │
-│ │     control.ts   DM command parsing (list/status/kill)          │    │
+│ │     control.ts   DM command parsing (list/status/kill/restart)  │    │
 │ │     access.ts    access.json read/write (allowlist)             │    │
 │ │                                                                 │    │
 │ │   state:                                                        │    │

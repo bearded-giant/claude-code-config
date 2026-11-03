@@ -109,3 +109,6 @@ fi
 echo "==> running setup-vps.sh on ${VPS_HOST}"
 # shellcheck disable=SC2029
 ssh "$VPS_HOST" "$EXTRA_ENV bash -s" < "$CONFIG_DIR/scripts/setup-vps.sh"
+
+echo "==> restarting claude sessions on ${VPS_HOST} (busy ones wait for their turn to end)"
+"$CONFIG_DIR/scripts/devbox-restart.sh" all || echo "WARN: restart failed; rerun scripts/devbox-restart.sh"

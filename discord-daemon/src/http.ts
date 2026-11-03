@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { DAEMON_TOKEN, BIND_HOST, BIND_PORT, MOCK_DISCORD } from './config.ts'
 import { registry } from './registry.ts'
+import { restartSessions } from './restart.ts'
 import { metrics } from './metrics.ts'
 import type { DiscordBot } from './discord.ts'
 
@@ -9,6 +10,12 @@ const RegisterBody = z.object({
   label: z.string().min(1).max(120),
   cwd: z.string().min(1).max(1024),
   pid: z.number().int().nonnegative(),
+})
+
+const RestartBody = z.object({
+  target: z.string().regex(/^[A-Za-z0-9._-]+$/),
+  force: z.boolean().optional(),
+  dry_run: z.boolean().optional(),
 })
 
 const SendBody = z.object({
@@ -98,6 +105,15 @@ async function handle(req: Request, bot: DiscordBot): Promise<Response> {
 
   if (req.method === 'POST' && path === '/sessions') {
     return await registerSession(req, bot)
+  }
+
+  if (req.method === 'POST' && path === '/restart') {
+    try {
+      const body = RestartBody.parse(await req.json())
+      return json({ text: restartSessions(body.target, body.force ?? false, body.dry_run ?? false) })
+    } catch (err) {
+      return json({ error: `bad body: ${(err as Error).message}` }, 400)
+    }
   }
 
   const sessMatch = path.match(/^\/sessions\/([^/]+)(?:\/(.+))?$/)

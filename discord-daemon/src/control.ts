@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
 import { basename, dirname, join, resolve } from 'path'
 import { HOME_ROOT } from './config.ts'
 import { registry } from './registry.ts'
+import { RESTART_USAGE, restartSessions } from './restart.ts'
 import type { DiscordBot } from './discord.ts'
 import type { InboxEvent } from './types.ts'
 
@@ -76,6 +77,11 @@ export async function handleControlDM(input: string, _userId: string, bot: Disco
     case 'start':
     case 'spawn':
       return startSession(parts.slice(1))
+    case 'restart': {
+      const target = parts.slice(1).find(p => !p.startsWith('--'))
+      if (!target) return `usage: ${RESTART_USAGE}`
+      return restartSessions(target, parts.includes('--force'), parts.includes('--dry-run'))
+    }
     default:
       return `unknown command: \`${cmd}\`\n\n${helpText()}`
   }
@@ -95,6 +101,7 @@ function helpText(): string {
     '`kill <label>` — unregister + archive thread',
     `\`projects\` — repos and worktrees under \`${relFromRoot(PROJECTS_ROOT)}\``,
     `\`start [relpath] [--acct team|ent] [--effort ${START_FLAGS.effort!.join('|')}] [--model ${START_FLAGS.model!.join('|')}]\` — spawn a dclaude session in \`${HOME_ROOT}/<relpath>\` (mkdir -p if missing; no relpath: \`${relFromRoot(DEFAULT_SANDBOX)}\`)`,
+    RESTART_USAGE,
     '`help` — this',
     '',
     'For interactive chat with a session, post in its thread (not here).',

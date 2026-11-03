@@ -21,7 +21,8 @@ src/
   access.ts        # access.json reader/writer (mirrors /discord:access skill)
   registry.ts      # in-memory session map + SSE subscriber set
   discord.ts       # gateway client, thread lifecycle, send/edit/react
-  control.ts       # DM command handler (list/status/kill/help)
+  control.ts       # DM command handler (list/status/kill/restart/help)
+  restart.ts       # restart claude panes on the same transcript, flags and thread
   http.ts          # Bun.serve REST + SSE inbox
 systemd/discord-daemon.service   # user unit, installed by scripts/setup-vps.sh
 scripts/smoke-test.sh            # mock-mode end-to-end check
@@ -55,13 +56,14 @@ bun run src/server.ts
 | POST   | /sessions/:id/fetch           | `{ chat_id, limit? }` → `{ text }`             |
 | POST   | /sessions/:id/download        | `{ chat_id, message_id }` → file paths         |
 | GET    | /sessions/:id/inbox           | SSE — kind: hello \| message \| permission_reply |
+| POST   | /restart                      | `{ target, force?, dry_run? }` → `{ text }`; target = label, tmux session, or `all` |
 
 Each session may only act on its own `threadId`. Cross-session calls return 403.
 
 ## Discord behavior
 
 - **Thread channel** = `DISCORD_SESSIONS_CHANNEL_ID`. Bot creates one thread per registered session, named `{label}-{shortid}`.
-- **DMs** route to `control.ts`. Commands: `list`, `status <label>`, `kill <label>`, `help`. Never forwarded to a session.
+- **DMs** route to `control.ts`. Commands: `list`, `status <label>`, `kill <label>`, `restart <label>|all [--force] [--dry-run]`, `help`. Never forwarded to a session.
 - **Thread messages** route to the matching session's SSE inbox.
 - **Pairing flow** unchanged from the bundled plugin — `/discord:access` skill on the VPS approves codes.
 - **Heartbeat** 30s from sessions; daemon evicts after 90s and archives the thread.

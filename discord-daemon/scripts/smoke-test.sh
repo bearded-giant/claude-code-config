@@ -87,6 +87,15 @@ assert_eq "$COUNT" "1" "list count=1"
 echo "==> heartbeat"
 assert_eq "$(curl_json POST "/sessions/$SID/heartbeat" | jq -r .ok)" "true" "heartbeat"
 
+echo "==> restart dry run"
+RESTART=$(curl_json POST /restart '{"target":"smoke-none","dry_run":true}' | jq -r .text)
+case "$RESTART" in
+  "no claude pane matching \`smoke-none\`"|"restart reads /proc: Linux hosts only") pass "restart answers: $RESTART" ;;
+  *) fail "restart: unexpected $RESTART" ;;
+esac
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "x-daemon-token: $TOKEN" -H 'content-type: application/json' -d '{"target":"a b"}' "$URL/restart")
+assert_eq "$CODE" "400" "restart rejects an unsafe target"
+
 echo "==> SSE stream + injected message"
 # Spawn an SSE listener in background, capture events to a file
 ( curl -sN -H "x-daemon-token: $TOKEN" "$URL/sessions/$SID/inbox" > "$TMP/sse.log" 2>/dev/null ) &
