@@ -150,7 +150,7 @@ def in_vault(path):
         rel = Path(path).expanduser().resolve().relative_to(VAULT.resolve())
     except (OSError, ValueError):
         return None
-    if rel.suffix != ".md" or rel.parts[0] in SKIP_DIRS:
+    if rel.suffix not in (".md", ".html") or rel.parts[0] in SKIP_DIRS:
         return None
     return rel
 
@@ -181,7 +181,9 @@ def bash_vault_paths(data):
         return []
     resp = data.get("tool_response")
     out = resp.get("stdout", "") if isinstance(resp, dict) else str(resp or "")
-    return [ln.strip() for ln in out.splitlines() if ln.strip().endswith(".md")]
+    return [
+        ln.strip() for ln in out.splitlines() if ln.strip().endswith((".md", ".html"))
+    ]
 
 
 def links_for(data):
@@ -201,7 +203,8 @@ def links_for(data):
         if rel and "handoffs" in rel.parts:
             out.append(("handoff", f"[handoff]({p})", p))
         elif rel:
-            stem = Path(p).stem
+            # obsidian resolves an extensionless wikilink to .md only
+            stem = rel.name if rel.suffix == ".html" else rel.stem
             out.append(("vault", f"[[{stem}]]", f"[[{stem}]]"))
     return out
 

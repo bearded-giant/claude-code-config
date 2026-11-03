@@ -179,6 +179,14 @@ def main() -> None:
         run(bash)
         assert "vault [[k8s]]" in today_text()
 
+        # html notes link with the extension; obsidian resolves a bare stem to .md only
+        page = vault / "areas" / "infra" / "dns-plan.html"
+        run({**bash, "tool_response": {"stdout": f"{page}\n"}})
+        run({**write, "tool_input": {"file_path": str(vault / "areas" / "x.html")}})
+        assert "vault [[dns-plan.html]]" in today_text()
+        assert "vault [[x.html]]" in today_text()
+        assert "[[dns-plan]]" not in today_text()
+
         # handoff writes link the file, not a [[stem]] that every repo's main.md shares
         handoff = vault / "areas" / "proj" / "handoffs" / "main.md"
         run({**write, "tool_input": {"file_path": str(handoff)}})
