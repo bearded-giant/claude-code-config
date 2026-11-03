@@ -24,7 +24,7 @@ After it runs, only if warranted (the CLI leaves these to you):
 2. Mark `## Acceptance Criteria` items `[x]`; if some are unmet and there were no delta-specs, flag to the user.
 
 Always, the feature's doit list after the CLI:
-- Open items confirmed above → AskUserQuestion: delete the list / keep it open. Delete → `delete_todo` each open item carrying a `twin` (owed; takes its `daily` twin with it), then `delete_list`. No `complete_todo`, no DONE/WONTFIX notes. Keep → touch nothing.
+- Open items confirmed above → AskUserQuestion: delete the list / keep it open. Delete → `delete_list` alone: no `complete_todo`, no `delete_todo`, no DONE/WONTFIX notes. It archives the file to `deleted/` in the doit data dir and keeps each owed item's `daily` twin, unlinked, with the project-side notes; report the archive path and each kept twin from its reply. Keep → touch nothing.
 - 0 pending → AskUserQuestion: delete it (`clear_done` + `delete_list`) / keep it. Skip when `/wrap` already asked this session.
 
 Either ask names any tmux window `list_lists` shows linked to the list.
