@@ -51,4 +51,7 @@ if [ -n "${TMUX_PANE:-}" ]; then
   ) >/dev/null 2>&1 &
 fi
 
-exec claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions ${args[@]+"${args[@]}"}
+# the mcp server's own instructions say the same, but sessions still answered discord in the terminal
+channel_prompt='Messages wrapped in <channel source="discord" chat_id="..."> come from a Discord thread. The sender cannot see this terminal. Answer every such message with the discord reply tool, passing that chat_id, before anything else.'
+
+exec claude --dangerously-load-development-channels server:discord --dangerously-skip-permissions --append-system-prompt "$channel_prompt" ${args[@]+"${args[@]}"}
