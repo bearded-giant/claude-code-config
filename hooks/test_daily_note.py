@@ -100,6 +100,13 @@ def main() -> None:
             "transcript_path": "/x/projects/-slug-proj/abcdef1234567890.jsonl",
         }
 
+        # no template yet (vault mid-sync): no stub note, which would lock the day out of the template
+        tpl = vault / "templates" / "dailytemplate.md"
+        tpl.rename(tpl.with_suffix(".off"))
+        run({**base, "hook_event_name": "SessionStart", "source": "startup"})
+        assert not mod.note_path(mod.local_now().date()).exists()
+        tpl.with_suffix(".off").rename(tpl)
+
         # interactive session start writes one session line; headless does not
         run(
             {**base, "hook_event_name": "SessionStart", "source": "startup"},

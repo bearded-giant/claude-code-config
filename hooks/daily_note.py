@@ -45,7 +45,7 @@ def render_template(day):
     try:
         text = (VAULT / TEMPLATE).read_text(encoding="utf-8")
     except OSError:
-        text = "---\ntags: [daily]\n---\n"
+        return None
     values = {
         "yesterday": f"[[{(day - dt.timedelta(days=1)).isoformat()}]]",
         "tomorrow": f"[[{(day + dt.timedelta(days=1)).isoformat()}]]",
@@ -91,12 +91,16 @@ def insert_under(text, heading, line):
 def append(entries, day=None):
     day = day or local_now().date()
     path = note_path(day)
+    fresh = render_template(day)
+    # no template means this vault copy is not synced yet; a stub note would keep the template out all day
+    if fresh is None and not path.exists():
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     # 4-6 sessions append at once; the lock keeps read-modify-write whole
     with open(path, "a+", encoding="utf-8") as fh:
         fcntl.flock(fh, fcntl.LOCK_EX)
         fh.seek(0)
-        text = fh.read() or render_template(day)
+        text = fh.read() or fresh or ""
         changed = False
         for heading, key, line in entries:
             # scoped to the section so a link the user wrote in NOTES still gets logged
