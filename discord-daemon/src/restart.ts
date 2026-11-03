@@ -112,7 +112,8 @@ export function planRestart(filter: string): Target[] {
   return found
     .map(({ pane, claude }): Target => {
       const reg = active.find(s => proc(s.pid)?.ppid === claude.pid)
-      const label = reg?.label ?? claude.env.CLAUDE_SESSION_LABEL ?? pane.session
+      const ownLabel = reg?.label ?? claude.env.CLAUDE_SESSION_LABEL
+      const label = ownLabel ?? pane.session
       const base = { pane, label, cwd: claude.cwd, busy: busyReason(pane.state, children(claude.pid)) }
       if (claude.argv[1] === 'remote-control') return { ...base, skip: 'remote-control asks to enable and pick a spawn mode on start; restart it by hand' }
       if (!claude.argv.includes('server:discord')) return { ...base, skip: 'not started by dclaude' }
@@ -125,7 +126,7 @@ export function planRestart(filter: string): Target[] {
           flags: keptFlags(claude.argv),
           transcriptId,
           daemonId: reg?.sessionId,
-          label,
+          label: ownLabel,
         })
         return { ...base, cmd }
       } catch (err) {
