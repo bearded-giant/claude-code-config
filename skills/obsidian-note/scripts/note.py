@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -34,29 +35,25 @@ def slug(title):
     return re.sub(r"-+", "-", s).strip("-")
 
 
-def git_project(cwd):
-    # worktree layouts like ~/dev/python/cc-wt/stage resolve to "cc"; pass --project when that is too terse
-    try:
-        common = subprocess.run(
-            [
-                "git",
-                "-C",
-                cwd,
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-common-dir",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return ""
-    name = Path(common).parent.name
-    return re.sub(r"(-wt)?(--bare)?$", "", name)
+def default_project(cwd):
+    root = subprocess.run(
+        ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if not root:
+        sys.exit(f"{cwd} is not in a git repo: pass --project")
+    # same resolver as the handoff hooks, so a repo's notes and handoffs share one folder
+    hook = Path(__file__).resolve().parents[3] / "hooks" / "doit_session_prime.py"
+    spec = importlib.util.spec_from_file_location("doit_session_prime", hook)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.vault_project(root)
 
 
-DOMAIN_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+PROJECT_RE = re.compile(r"^[a-z0-9]+([.-][a-z0-9]+)*$")
 LINK_KEYS = ("artifact", "artifact_rev", "artifact_account")
 # keep in step with LABEL_OVERRIDES in hooks/usage-fetch.py so labels match the statusline
 ACCOUNT_LABELS = {"recharge, inc": "rc-inc", "recharge, team": "rc-team"}
@@ -64,9 +61,9 @@ SLOT_LABELS = {"team": "rc-team", "enterprise": "rc-inc"}
 STATUSES = ("new", "ready", "blocked", "in_progress", "in_review", "done", "wont_fix")
 
 
-def domain_arg(v):
-    if not DOMAIN_RE.match(v):
-        raise argparse.ArgumentTypeError(f"domain must be lowercase-hyphenated: {v!r}")
+def project_arg(v):
+    if not PROJECT_RE.match(v):
+        raise argparse.ArgumentTypeError(f"project must be lowercase-hyphenated: {v!r}")
     return v
 
 
@@ -101,7 +98,8 @@ def cmd_new(a):
     )
     body = body.strip()
     created = a.created or now_iso()
-    area_dir = vault() / "areas" / a.area / a.domain
+    project = a.project or default_project(os.getcwd())
+    area_dir = vault() / "areas" / project
     area_dir.mkdir(parents=True, exist_ok=True)
     key = getattr(a, "key", None)
     base = slug(a.title)
@@ -110,7 +108,6 @@ def cmd_new(a):
         base = f"{key}-{slug(rest)}"
     path = unique_path(area_dir, base, created)
     tags = ["claude"] + [t.strip() for t in (a.tags or "").split(",") if t.strip()]
-    project = a.project if a.project is not None else git_project(os.getcwd())
     heading = "" if body.startswith("# ") else f"# {a.title}\n\n"
     fm = "\n".join(
         [
@@ -119,7 +116,7 @@ def cmd_new(a):
             "aliases: []",
             f"tags: [{', '.join(tags)}]",
             f"area: {a.area}",
-            f"project: {project}" if project else 'project: ""',
+            f"project: {project}",
             f"created: {created}",
         ]
         + (
@@ -161,21 +158,24 @@ def parse_fm(path):
     return fm
 
 
-def domain_of(p):
+def project_of(p):
     parts = p.relative_to(vault() / "areas").parts
-    return parts[1] if len(parts) > 2 else ""
+    return parts[0] if len(parts) > 1 else ""
 
 
-def cmd_domains(a):
+def notes():
+    for p in sorted((vault() / "areas").rglob("*.md")):
+        if p.stem != "index" and "handoffs" not in p.relative_to(vault()).parts:
+            yield p
+
+
+def cmd_projects(_a):
     counts = {}
-    for p in (vault() / "areas").rglob("*.md"):
-        if p.stem == "index":
-            continue
-        key = (p.relative_to(vault() / "areas").parts[0], domain_of(p))
-        counts[key] = counts.get(key, 0) + 1
-    rows = sorted(k for k in counts if not a.area or k[0] == a.area)
-    for area, dom in rows:
-        print(f"{area}/{dom or '(none)'} | {counts[(area, dom)]}")
+    for p in notes():
+        counts[project_of(p)] = counts.get(project_of(p), 0) + 1
+    rows = sorted(counts.items())
+    for project, n in rows:
+        print(f"{project} | {n}")
     return rows
 
 
@@ -320,9 +320,7 @@ def cmd_list(a):
             - datetime.timedelta(days=a.since)
         ).isoformat()
     rows = []
-    for p in sorted((vault() / "areas").rglob("*.md")):
-        if p.stem == "index":
-            continue
+    for p in notes():
         fm = parse_fm(p)
         if not fm:
             continue
@@ -332,9 +330,7 @@ def cmd_list(a):
 
         if a.area and first("area") != a.area:
             continue
-        if a.domain and domain_of(p) != a.domain:
-            continue
-        if a.project and first("project") != a.project:
+        if a.project and project_of(p) != a.project:
             continue
         if a.tag and a.tag not in fm.get("tags", []):
             continue
@@ -351,8 +347,7 @@ def cmd_list(a):
             (
                 first("created"),
                 first("area"),
-                domain_of(p),
-                first("project"),
+                project_of(p),
                 str(p.relative_to(vault())),
                 first("title"),
             )
@@ -389,7 +384,6 @@ def self_test():
                     "created": None,
                     "tags": None,
                     "project": "proj",
-                    "domain": "sessions",
                     **kw,
                 }
             )
@@ -399,7 +393,6 @@ def self_test():
                 argparse.Namespace(
                     **{
                         "area": None,
-                        "domain": None,
                         "project": None,
                         "tag": None,
                         "since": None,
@@ -419,7 +412,7 @@ def self_test():
                 created="2026-09-01T10:00:00-07:00",
             )
         )
-        assert p1 == Path(d) / "areas/auth/sessions/redis-keys-ttls.md", p1
+        assert p1 == Path(d) / "areas/proj/redis-keys-ttls.md", p1
         text = p1.read_text()
         assert text.startswith(
             "---\nid: redis-keys-ttls\naliases: []\ntags: [claude, redis, ttl]\narea: auth\nproject: proj\ncreated: 2026-09-01T10:00:00-07:00\n---\n\n# Redis Keys & TTLs\n"
@@ -444,11 +437,25 @@ def self_test():
             ns(
                 title="Redis Keys & TTLs",
                 area="auth",
-                domain="tokens",
+                project="other",
                 created="2026-09-02T12:00:00-07:00",
             )
         )
-        assert other == Path(d) / "areas/auth/tokens/redis-keys-ttls.md", other
+        assert other == Path(d) / "areas/other/redis-keys-ttls.md", other
+        handoff = Path(d) / "areas/proj/handoffs/main.md"
+        handoff.parent.mkdir(parents=True)
+        handoff.write_text(
+            "---\ntype: handoff\nstatus: ready\ntags: [ttl]\n---\n", encoding="utf-8"
+        )
+        cwd = os.getcwd()
+        os.chdir(d)
+        try:
+            cmd_new(ns(title="Loose", area="auth", project=None))
+            raise AssertionError("no repo and no --project must exit")
+        except SystemExit as e:
+            assert "pass --project" in str(e), e
+        finally:
+            os.chdir(cwd)
         blk = Path(d) / "areas" / "infra" / "block.md"
         blk.parent.mkdir(parents=True)
         blk.write_text(
@@ -456,16 +463,16 @@ def self_test():
             data='---\nid: block\naliases: []\ntags:\n  - claude\n  - es\narea: infra\nproject: ""\ncreated: 2026-09-03T00:00:00-07:00\n---\n\n# Block Form\n',
         )
         rows = lst(tag="es")
-        assert [(r[2], r[5]) for r in rows] == [("", "Block Form")], rows
-        rows = lst(area="auth", domain="sessions")
+        assert [(r[2], r[4]) for r in rows] == [("infra", "Block Form")], rows
+        rows = lst(project="proj")
         assert (
             len(rows) == 3
-            and rows[0][4] == "areas/auth/sessions/redis-keys-ttls-2026-09-02-2.md"
+            and rows[0][3] == "areas/proj/redis-keys-ttls-2026-09-02-2.md"
         ), rows
         rows = lst(project="proj", tag="ttl")
-        assert [r[4] for r in rows] == ["areas/auth/sessions/redis-keys-ttls.md"], rows
-        doms = cmd_domains(argparse.Namespace(area=None))
-        assert doms == [("auth", "sessions"), ("auth", "tokens"), ("infra", "")], doms
+        assert [r[3] for r in rows] == ["areas/proj/redis-keys-ttls.md"], rows
+        projects = cmd_projects(argparse.Namespace())
+        assert projects == [("infra", 1), ("other", 1), ("proj", 3)], projects
 
         cmd_link(
             argparse.Namespace(
@@ -533,15 +540,14 @@ def self_test():
             ns(
                 title="PE-1526 review: mixed identity binding",
                 area="security",
-                domain="customcheckout",
+                project="customcheckout",
                 key="PE-1526",
                 created="2026-09-04T10:00:00-07:00",
             )
         )
         assert (
             t1
-            == Path(d)
-            / "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+            == Path(d) / "areas/customcheckout/PE-1526-review-mixed-identity-binding.md"
         ), t1
         text = t1.read_text()
         assert (
@@ -549,17 +555,17 @@ def self_test():
             in text
         ), text
         assert "# PE-1526 review: mixed identity binding\n" in text, text
-        legacy = Path(d) / "areas/auth/security/pe-1527-review-old.md"
+        legacy = Path(d) / "areas/recharge-auth/pe-1527-review-old.md"
         legacy.parent.mkdir(parents=True)
         legacy.write_text(
             "---\nid: pe-1527-review-old\narea: auth\ncreated: 2026-09-05T00:00:00-07:00\n---\n\n# old\n",
             encoding="utf-8",
         )
-        assert [r[4] for r in lst(ticket="pe-1526")] == [
-            "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+        assert [r[3] for r in lst(ticket="pe-1526")] == [
+            "areas/customcheckout/PE-1526-review-mixed-identity-binding.md"
         ]
-        assert [r[4] for r in lst(ticket="PE-1527")] == [
-            "areas/auth/security/pe-1527-review-old.md"
+        assert [r[3] for r in lst(ticket="PE-1527")] == [
+            "areas/recharge-auth/pe-1527-review-old.md"
         ]
         assert cmd_bump(argparse.Namespace(note=str(t1))) == 2
         assert cmd_bump(argparse.Namespace(note=str(t1))) == 3
@@ -568,16 +574,16 @@ def self_test():
             "rev: 3\nmodified: 2" in text and "modified: 2026-09-04" not in text
         ), text
         assert "## Revisions" not in text and "status: new" in text, text
-        assert lst(status="new")[0][6] == "new"
+        assert lst(status="new")[0][5] == "new"
         assert cmd_status(argparse.Namespace(note=str(t1), status="ready")) == "ready"
         text = t1.read_text()
         assert "status: ready\n---" in text and text.count("status:") == 1, text
         assert "rev: 3\n" in text, text
-        assert [r[4] for r in lst(status="ready")] == [
-            "areas/security/customcheckout/PE-1526-review-mixed-identity-binding.md"
+        assert [r[3] for r in lst(status="ready")] == [
+            "areas/customcheckout/PE-1526-review-mixed-identity-binding.md"
         ]
         assert lst(status="new") == []
-        assert len(lst(area="auth", domain="sessions")[0]) == 6
+        assert len(lst(project="proj")[0]) == 5
         try:
             cmd_status(argparse.Namespace(note=str(p1), status="ready"))
             raise AssertionError("status on non-ticket note must exit")
@@ -608,7 +614,7 @@ def self_test():
             ns(
                 title="Revs Me",
                 area="ai-tooling",
-                domain="revs",
+                project="revs",
                 created="2026-10-30T10:00:00-04:00",
             )
         )
@@ -675,8 +681,11 @@ def main(argv=None):
     n = sub.add_parser("new")
     n.add_argument("--title", required=True)
     n.add_argument("--area", required=True, choices=AREAS)
-    n.add_argument("--domain", required=True, type=domain_arg)
-    n.add_argument("--project")
+    n.add_argument(
+        "--project",
+        type=project_arg,
+        help="vault folder; default: cwd repo's origin name",
+    )
     n.add_argument("--tags", help="comma separated")
     n.add_argument("--created", help="ISO 8601, default now")
     n.add_argument("--body-file", help="default stdin")
@@ -687,7 +696,6 @@ def main(argv=None):
     )
     l = sub.add_parser("list")
     l.add_argument("--area", choices=AREAS)
-    l.add_argument("--domain")
     l.add_argument("--project")
     l.add_argument("--tag")
     l.add_argument("--since", type=int, help="days")
@@ -700,8 +708,7 @@ def main(argv=None):
     t = sub.add_parser("status")
     t.add_argument("note")
     t.add_argument("status", choices=STATUSES)
-    d = sub.add_parser("domains")
-    d.add_argument("--area", choices=AREAS)
+    sub.add_parser("projects")
     k = sub.add_parser("link")
     k.add_argument("note")
     k.add_argument("--url", required=True)
@@ -726,8 +733,8 @@ def main(argv=None):
         return cmd_new(a)
     if a.cmd == "list":
         return cmd_list(a)
-    if a.cmd == "domains":
-        return cmd_domains(a)
+    if a.cmd == "projects":
+        return cmd_projects(a)
     if a.cmd == "link":
         return cmd_link(a)
     if a.cmd == "account":

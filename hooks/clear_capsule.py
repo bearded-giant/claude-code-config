@@ -167,8 +167,8 @@ def prime():
 
 def handoff_path(cwd: str, sid: str, now: datetime) -> Path:
     p = prime()
-    project = p.project(p.git_root(cwd or os.getcwd()))
-    return Path(p.HANDOFFS) / project / "clear" / f"{now:%Y%m%d_%H%M%S}_{sid[:8]}.md"
+    base = p.handoffs_dir(p.git_root(cwd or os.getcwd()))
+    return Path(base) / "clear" / f"{now:%Y%m%d_%H%M%S}_{sid[:8]}.md"
 
 
 def summarize(prompt: str) -> str:
@@ -223,7 +223,7 @@ def write_handoff(sid: str, transcript_path: str, out: Path) -> None:
             "---",
             "type: handoff",
             "status: ready",
-            f"repo: {out.parent.parent.name}",
+            f"repo: {out.parents[2].name}",
             "lifecycle: candidate",
             f"session: {sid}",
             f"created: {datetime.now().astimezone().isoformat(timespec='seconds')}",

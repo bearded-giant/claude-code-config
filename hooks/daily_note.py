@@ -194,7 +194,7 @@ def links_for(data):
     out = []
     for p in paths:
         rel = in_vault(p)
-        if rel and rel.parts[0] == "handoffs":
+        if rel and "handoffs" in rel.parts:
             out.append(("handoff", f"[handoff]({p})", p))
         elif rel:
             stem = Path(p).stem

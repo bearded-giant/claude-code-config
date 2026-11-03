@@ -145,7 +145,7 @@ def main() -> None:
         assert "artifact/zz" not in today_text()
 
         # vault writes log a wiki link; daily notes and non-vault files do not
-        note = vault / "areas" / "auth" / "sessions" / "redis-keys.md"
+        note = vault / "areas" / "recharge-auth" / "redis-keys.md"
         note.parent.mkdir(parents=True)
         note.write_text("x")
         write = {**base, "hook_event_name": "PostToolUse", "tool_name": "Write"}
@@ -173,7 +173,7 @@ def main() -> None:
         assert "vault [[k8s]]" in today_text()
 
         # handoff writes link the file, not a [[stem]] that every repo's main.md shares
-        handoff = vault / "handoffs" / "proj" / "main.md"
+        handoff = vault / "areas" / "proj" / "handoffs" / "main.md"
         run({**write, "tool_input": {"file_path": str(handoff)}})
         assert f"handoff [handoff]({handoff})" in today_text()
         assert "[[main]]" not in today_text()

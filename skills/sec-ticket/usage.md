@@ -19,7 +19,7 @@ Plain phrases work too: "research PE-1526", "approve PE-1526", "implement PE-152
 
 ## Typical flow
 
-1. Review: `/sec-ticket PE-1526`. The note lands at `areas/security/<repo>/PE-1526-<slug>.md` with `status: new`, and the doit list `security-tickets` gets one item for the ticket. Chat shows the gates and a scores row.
+1. Review: `/sec-ticket PE-1526`. The note lands at `areas/<repo>/PE-1526-<slug>.md` with `status: new`, and the doit list `security-tickets` gets one item for the ticket. Chat shows the gates and a scores row.
 2. Read the note's Summary and Gates. Answer any `[BLOCKING]` question in it.
 3. Triage: `/sec-ticket PE-1526 --status ready` to approve, or `blocked` / `wont_fix`.
 4. Fix: `/sec-ticket PE-1526 --fix`. It branches `PE-1526-<slug>` off each repo's base, writes failing tests, applies the change, and commits with `[PE-1526]` at the start of the subject. It stops before push.

@@ -62,16 +62,16 @@ Write `context/patterns.md` for curated architectural patterns.
 
 ## Handoff
 
-The contract between a session that is ending and the next one. It lives in the vault, not `.giantmem/`, so removing a worktree never strands it. One file per scope, overwritten in place, never dated or numbered. `<project>` is the repo name (worktree container minus `-wt`, so every worktree of `cc-wt` shares `cc`):
+The contract between a session that is ending and the next one. It lives in the vault, not `.giantmem/`, so removing a worktree never strands it. One file per scope, overwritten in place, never dated or numbered. `<project>` is the repo name from the `origin` remote, lowercased, so every clone and worktree of a repo shares one folder (`cc-wt` gives `customcheckout`); `config/vault-names.csv` maps the exceptions, and a checkout with no remote uses its dir name minus `-wt`. The handoffs sit beside that project's vault notes:
 
-| Scope | Path under `~/Recharge-Notes/handoffs/<project>/` |
+| Scope | Path under `~/Recharge-Notes/areas/<project>/handoffs/` |
 |---|---|
 | feature `in_progress` | `features/{name}.md` |
 | no feature, or work unrelated to the `in_progress` feature | `<branch>.md` (`/` in the branch becomes `-`) |
 
 Never build the path by hand; print it: `python3 ~/.claude/hooks/doit_session_prime.py --handoff-path [--feature <name>] --cwd "$(pwd)"`.
 
-The SessionStart hook checks the feature path first, then the branch path, and lists every other `status: ready` handoff of the project, including branches whose worktree is gone. `/clear` handoffs land in `clear/` under the same project dir.
+The SessionStart hook checks the feature path first, then the branch path, and lists every other `status: ready` handoff of the project, including branches whose worktree is gone. `/clear` handoffs land in `clear/` under the same `handoffs/` dir.
 
 The vault syncs to GitHub: no secrets, tokens, or credentialed URLs in a handoff.
 
@@ -114,7 +114,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<area>/<domain>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact, or the artifacts hub when asked (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
+`.giantmem/` docs stay local. "Publish" = Obsidian vault note (`obsidian-note`, `areas/<project>/`), not a `.giantmem/` copy. Team sharing = claude.ai artifact, or the artifacts hub when asked (`claude-artifact` skill): rev + timestamp stamp, no changelog, no process detail. Feature state (tasks, plan, facts, specs, grill runs) never leaves `.giantmem/` unless the user names it; handoffs live in the vault (`## Handoff`).
 
 Preview: Obsidian (`obsidian-preview`) only when the user asks (preview / render / open). After writing a `.md`, return its path.
 

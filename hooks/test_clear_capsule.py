@@ -118,10 +118,12 @@ def check_paths(d):
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
     # the repo, not the subdir the session started in, names the project
     got = mod.handoff_path(str(repo / "sub"), "abcdef123456", now)
-    assert got == Path(d) / "vault/handoffs/repo/clear/20261024_093005_abcdef12.md"
+    assert (
+        got == Path(d) / "vault/areas/repo/handoffs/clear/20261024_093005_abcdef12.md"
+    )
     (Path(d) / "loose").mkdir()
     assert mod.handoff_path(str(Path(d) / "loose"), "abcdef123456", now) == (
-        Path(d) / "vault/handoffs/loose/clear/20261024_093005_abcdef12.md"
+        Path(d) / "vault/areas/loose/handoffs/clear/20261024_093005_abcdef12.md"
     )
 
 
@@ -132,7 +134,7 @@ def check_writer(d, tp):
         seen["prompt"] = prompt
         return "## Start here\nship it"
 
-    out = Path(d) / "vault/handoffs/repo/clear/h.md"
+    out = Path(d) / "vault/areas/repo/handoffs/clear/h.md"
     vars(mod).update(summarize=fake)
     mod.write_handoff("abcdef123456", str(tp), out)
     note = out.read_text()
@@ -174,7 +176,7 @@ def check_main(d, tp):
             }
         )
     )
-    path = str(Path(d) / "vault/handoffs/repo/clear")
+    path = str(Path(d) / "vault/areas/repo/handoffs/clear")
     assert out["systemMessage"].startswith(
         f"handoff for cleared session old-sid: {path}/"
     )

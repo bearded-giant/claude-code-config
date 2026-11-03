@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 import contextlib
+import csv
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -10,9 +12,14 @@ import time
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 SESSION_FILE = os.path.expanduser("~/.local/share/nvim/doit/session.json")
 # outside the repo so a worktree can be removed without stranding its handoff
-HANDOFFS = os.path.join(
+AREAS = os.path.join(
     os.path.expanduser(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")),
-    "handoffs",
+    "areas",
+)
+VAULT_NAMES = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+    "config",
+    "vault-names.csv",
 )
 # tmux format separator; window names can hold tabs and spaces
 TMUX_SEP = "\x1f"
@@ -344,8 +351,39 @@ def project(root: str) -> str:
     return name.removesuffix("--bare").removesuffix("-wt")
 
 
+def vault_names() -> dict:
+    with (
+        contextlib.suppress(OSError, KeyError),
+        open(VAULT_NAMES, encoding="utf-8") as fh,
+    ):
+        return {r["remote"]: r["folder"] for r in csv.DictReader(fh)}
+    return {}
+
+
+def vault_project(root: str) -> str:
+    url = ""
+    with contextlib.suppress(Exception):
+        out = subprocess.run(
+            ["git", "-C", root, "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if out.returncode == 0:
+            url = out.stdout.strip()
+    # the remote names a repo the same in every clone and worktree; checkout dirs drift (cc-wt, recharge-sidekick-wt)
+    name = url.rstrip("/").removesuffix(".git")
+    name = (re.split(r"[/:]", name)[-1] if name else project(root)).lower()
+    return vault_names().get(name, name)
+
+
+def handoffs_dir(root: str) -> str:
+    return os.path.join(AREAS, vault_project(root), "handoffs")
+
+
 def handoff_path(root: str, feat=None) -> str:
-    base = os.path.join(HANDOFFS, project(root))
+    base = handoffs_dir(root)
     if feat:
         return os.path.join(base, "features", f"{feat}.md")
     branch = current_branch(root) or os.path.basename(root)
@@ -353,7 +391,7 @@ def handoff_path(root: str, feat=None) -> str:
 
 
 def ready_handoffs(root: str, feat):
-    base = os.path.join(HANDOFFS, project(root))
+    base = handoffs_dir(root)
     # branch-level fallback: work unrelated to the in_progress feature still hands off
     own = [handoff_path(root, feat)] if feat else []
     own.append(handoff_path(root))

@@ -56,7 +56,7 @@ Fixed
 - tasks.md 3.2 checked
 - recharge-auth: deleted merged branches session-index-reads, sec-3897-logout-cutoff
 Handoff
-- ~/Recharge-Notes/handoffs/<project>/features/<name>.md
+- ~/Recharge-Notes/areas/<project>/handoffs/features/<name>.md
 safe to exit: no: push recharge-auth
 
 recharge-auth!47 https://gitlab.rechargeapps.net/<group>/recharge-auth/-/merge_requests/47

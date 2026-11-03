@@ -187,7 +187,7 @@ def write_handoff(path, status):
 
 def handoff_cases(tmp):
     # proj is no git repo: project and branch both fall back to its dir name
-    base = os.path.join(mod.HANDOFFS, "proj")
+    base = os.path.join(mod.AREAS, "proj", "handoffs")
     assert "handoff" not in run_main("")
     # a paused feature's handoff surfaces, but never as the one to act on first
     paused = os.path.join(base, "features", "paused.md")
@@ -209,9 +209,9 @@ def handoff_cases(tmp):
     assert lines[i + 1].startswith(f"  other ready handoff: {gone}"), lines[i + 1]
     assert lines[i + 2].startswith(f"  other ready handoff: {paused}"), lines[i + 2]
     # another repo's handoffs never show
-    write_handoff(os.path.join(mod.HANDOFFS, "other", "main.md"), "ready")
-    assert "other/main.md" not in run_main("")
-    shutil.rmtree(mod.HANDOFFS)
+    write_handoff(os.path.join(mod.AREAS, "other", "handoffs", "main.md"), "ready")
+    assert "other/handoffs/main.md" not in run_main("")
+    shutil.rmtree(mod.AREAS)
     path_cases(tmp)
 
 
@@ -230,9 +230,11 @@ def path_cases(tmp):
     git("-C", repo, "commit", "-q", "--allow-empty", "-m", "x")
     git("-C", repo, "checkout", "-q", "-b", "feat/x")
     assert mod.project(repo) == "cc"
-    assert mod.handoff_path(repo) == os.path.join(mod.HANDOFFS, "cc", "feat-x.md")
+    assert mod.handoff_path(repo) == os.path.join(
+        mod.AREAS, "cc", "handoffs", "feat-x.md"
+    )
     assert mod.handoff_path(repo, "auth") == os.path.join(
-        mod.HANDOFFS, "cc", "features", "auth.md"
+        mod.AREAS, "cc", "handoffs", "features", "auth.md"
     )
     out = subprocess.run(
         [
@@ -247,9 +249,25 @@ def path_cases(tmp):
         capture_output=True,
         text=True,
         check=True,
-        env={**os.environ, "OBSIDIAN_VAULT": os.path.dirname(mod.HANDOFFS)},
+        env={**os.environ, "OBSIDIAN_VAULT": os.path.dirname(mod.AREAS)},
     ).stdout.strip()
-    assert out == os.path.join(mod.HANDOFFS, "cc", "features", "auth.md"), out
+    assert out == os.path.join(mod.AREAS, "cc", "handoffs", "features", "auth.md"), out
+    # no origin: the checkout dir names the vault folder
+    assert mod.vault_project(repo) == "cc"
+    # origin names it, lowercased, whatever the checkout dir is called
+    git("-C", repo, "remote", "add", "origin", "git@host:grp/sub/Custom-Checkout.git")
+    assert mod.vault_project(repo) == "custom-checkout"
+    git("-C", repo, "remote", "set-url", "origin", "https://host/grp/mirror")
+    names = os.path.join(tmp, "vault-names.csv")
+    with open(names, "w", encoding="utf-8") as fh:
+        fh.write("remote,folder\nmirror,ai-mirror\n")
+    saved = mod.VAULT_NAMES
+    vars(mod).update(VAULT_NAMES=names)
+    try:
+        assert mod.vault_project(repo) == "ai-mirror"
+    finally:
+        vars(mod).update(VAULT_NAMES=saved)
+    assert mod.vault_project(repo) == "mirror"
     shutil.rmtree(repo)
 
 
@@ -260,10 +278,10 @@ def hook_cases() -> None:
         os.makedirs(os.path.join(tmp, "proj"))
         os.makedirs(os.path.join(tmp, "lists"))
         os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(tmp, "proj")
-        saved = {"LISTS_DIR": mod.LISTS_DIR, "HANDOFFS": mod.HANDOFFS}
+        saved = {"LISTS_DIR": mod.LISTS_DIR, "AREAS": mod.AREAS}
         vars(mod).update(
             LISTS_DIR=os.path.join(tmp, "lists"),
-            HANDOFFS=os.path.join(tmp, "vault", "handoffs"),
+            AREAS=os.path.join(tmp, "vault", "areas"),
         )
         try:
             session_cases(tmp)
@@ -300,7 +318,7 @@ def link_cases() -> None:
             os.environ["TMUX_PANE"] = T(
                 "display-message", "-p", "-t", "s:a b", "#{pane_id}"
             )
-            mod.SESSION_FILE = os.path.join(tmp, "session.json")
+            vars(mod).update(SESSION_FILE=os.path.join(tmp, "session.json"))
 
             # unlinked window follows the session list; key survives the space in the name
             assert mod.link_window("proj") == ("s:a b", "proj", True)
@@ -377,7 +395,7 @@ def link_cases() -> None:
             subprocess.run(
                 ["tmux", "-S", sock, "kill-server"], capture_output=True, check=False
             )
-            mod.SESSION_FILE = saved_file
+            vars(mod).update(SESSION_FILE=saved_file)
             for k, v in saved_env.items():
                 if v is None:
                     os.environ.pop(k, None)

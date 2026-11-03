@@ -1,6 +1,6 @@
 ---
 name: obsidian-note
-description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<area>/<domain>/) with the vault frontmatter contract plus a creation timestamp, list vault notes by area/domain/project/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `handoffs/`).
+description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo) with the vault frontmatter contract plus a creation timestamp, list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
 ---
 <!-- caveman:compressed -->
 
@@ -14,16 +14,15 @@ Body to a scratchpad file, then:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py new \
   --title "recharge-auth Redis keys and TTLs" \
   --area auth \
-  --domain sessions \
-  --tags redis,ttl \
+  --tags redis,ttl,sessions \
   --body-file "$SCRATCH/body.md"
 ```
 
 Prints abs path. Report that path to the user, nothing else.
 
-- `--area` required, closed list below. Pick one; tags carry overlap.
-- `--domain` required, lowercase-hyphenated subdir under the area: the system, product, or recurring topic a reader would search by (`ai-tooling/recharge-mcp`, `ai-tooling/churn-investigator`, `ai-tooling/mcp-general`). Run `note.py domains --area X` and reuse an existing domain when it fits. New domain only when no existing one does; `<topic>-general` is the catch-all name. Never a worktree, branch, or ticket.
-- `--project` defaults to git repo name of cwd (worktree parent minus `-wt`, so `cc-wt/stage` gives `cc`). Pass it when cwd is not the subject repo or the default is too terse.
+- `--project` = the folder under `areas/`, and the frontmatter `project:`. Default: the cwd repo's folder, the same one its handoffs use (`origin` remote repo name, lowercased; `cc-wt/stage` gives `customcheckout`). Outside a repo the script exits; pass `--project`. Pass it when the subject is another repo than cwd (a note about `recharge-auth` written from `claude-code-config`). A subject with no repo gets a topic folder at the same level (`skio-migration`, `sdlc`, `infra`); run `note.py projects` and reuse one that fits. Lowercase, hyphens and dots only. Never a worktree, branch, or ticket.
+- `--area` required, closed list below: a frontmatter category for cross-project views, not a folder. Pick one; tags carry overlap.
+- Topic within a project goes in `--tags` (`sessions`, `tokens`, `mcp-oauth`), not a subfolder. A project folder holds notes flat, plus `diagrams/` and `handoffs/`.
 - `--tags` comma list, lowercase, hyphenated. `claude` prepended always.
 - `--created` ISO 8601, only for imports (birthtime). Default now with tz.
 - `--key PE-1234` for ticket notes (`sec-ticket` skill): filename becomes `PE-1234-<slug>.md` (key kept uppercase, stripped from the slug when the title starts with it), frontmatter gains `ticket`, `rev: 1`, `modified`, `status: new`.
@@ -44,7 +43,7 @@ Prints abs path. Report that path to the user, nothing else.
 | personal | bearded giant, non-work |
 | security | ticket reviews (HackerOne, internal, client), vuln research, fix proposals; domain = repo alias |
 
-New area = edit `AREAS` in `scripts/note.py` and this table, same commit. Domains are open; the vault tree is the registry.
+New area = edit `AREAS` in `scripts/note.py` and this table, same commit. Project folders are open; the vault tree is the registry.
 
 ## Frontmatter emitted
 
@@ -59,7 +58,7 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Domain is the folder, not a key. Do not hand-write frontmatter; the script owns it.
+`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. `project` always equals the folder. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Do not hand-write frontmatter; the script owns it.
 
 ## Bump or set status on a ticket note
 
@@ -88,20 +87,20 @@ Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claud
 
 ```bash
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --area auth --since 90
-python3 ~/.claude/skills/obsidian-note/scripts/note.py list --area auth --domain sessions
+python3 ~/.claude/skills/obsidian-note/scripts/note.py list --project recharge-auth --tag sessions
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --tag redis
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --ticket PE-1526   # ticket: key or a key-prefixed filename, any area
 python3 ~/.claude/skills/obsidian-note/scripts/note.py list --status ready      # ticket notes in one status; rows gain a status column
-python3 ~/.claude/skills/obsidian-note/scripts/note.py domains
+python3 ~/.claude/skills/obsidian-note/scripts/note.py projects
 ```
 
-One line per note: `created | area | domain | project | path | title`. Read the hits that match the subject before writing a new note. Extend an existing note (Edit) when the subject is the same; new note when the subject is new.
+One line per note: `created | area | project | path | title`. Handoffs are left out. Read the hits that match the subject before writing a new note. Extend an existing note (Edit) when the subject is the same; new note when the subject is new.
 
 ## Rules
 
 - Vault pushes to GitHub every 5 min. No secrets, tokens, connection strings with passwords, query dumps, or customer PII. Redact `<REDACTED:token>`. Raw dumps stay in the scratchpad.
 - Notes are for the user: paths, dates, changelogs allowed. Anything for others goes out as a `claude-artifact`, not a note.
 - The `daily_note` hook logs every vault note write (Write/Edit or `note.py new`) and every artifact publish under `## CLAUDE LINKS` in `daily/<YYYY-MM-DD>.md`, creating the day's note from `templates/dailytemplate.md` when missing. Never hand-edit those sections or log twice.
-- Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, reviews, research tied to an in_progress feature. Handoffs go to `handoffs/<project>/` per workspace-rules `## Handoff`, never through `note.py`. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
+- Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, reviews, research tied to an in_progress feature. Handoffs go to `areas/<project>/handoffs/` per workspace-rules `## Handoff`, never through `note.py`. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
 - Do not write `areas/index.md`; it is a Dataview page.
 - Wiki links `[[note]]` resolve vault-wide; link existing notes by stem when relevant.
