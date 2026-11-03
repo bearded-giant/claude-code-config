@@ -16,19 +16,21 @@ Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to
 
 `--body-file` extension picks it: `.html`/`.htm` writes `<slug>.html`, anything else or stdin writes `<slug>.md`.
 
-## Convert md to html
+## Convert md and html
 
 ```bash
 python3 ~/.claude/skills/obsidian-note/scripts/note.py convert <file.md|dir>... [--out-dir DIR] [--force]
+python3 ~/.claude/skills/obsidian-note/scripts/note.py convert --to md <file.html|dir>... [--out-dir DIR] [--force]
 ```
 
-User's shell alias: `md2html` (dotfiles `shell/.bash_aliases`). Dirs recurse over `*.md`, skipping `.git`, `.obsidian`, `.trash`, `node_modules`, `handoffs`. Writes `<stem>.html` beside each source (`--out-dir` mirrors each dir's tree). Existing `.html` is skipped unless `--force`. Sources are never deleted. Needs `pandoc`; prints `src -> dst` per file, then `N converted, M failed`, exit 1 on any failure.
+User's shell aliases: `md2html`, `html2md` (dotfiles `shell/.bash_aliases`). Dirs recurse over `*.md` (`*.html` with `--to md`), skipping `.git`, `.obsidian`, `.trash`, `node_modules`, `handoffs`. Writes `<stem>.html` (or `.md`) beside each source (`--out-dir` mirrors each dir's tree). An existing target is skipped unless `--force`, so `--to md` beside an html note converted from md never clobbers the original. Sources are never deleted. Needs `pandoc`; prints `src -> dst` per file, then `N converted, M failed`, exit 1 on any failure.
 
 - Frontmatter and `## Artifact revisions` move into the leading metadata comment, so `list`, `link`, `bump`, `status` keep working; any later `##` section stays in the page. No frontmatter: plain page, no comment, no eyebrow or date.
 - First H1 becomes the template title (inline code kept); none = filename.
-- Tables get `.table-wrap`; local images inline as data URIs (missing file: warning, link kept); mermaid blocks render via a pinned CDN loader; `[[wiki links]]` in vault files become `obsidian://open` links.
+- Tables get `.table-wrap`; local images inline as data URIs (a relative path that misses falls back to a vault-wide path-suffix match, as Obsidian does; still missing: warning, link kept); mermaid blocks render via a pinned CDN loader; `[[wiki links]]` in vault files become `obsidian://open` links.
 - Mechanical: single column, no TL;DR, no layout. Claude converting on request: run it, then Edit the result where the doc earns more (`.tldr`, `.grid` for compared options, SVG where a mermaid diagram matters) per `## HTML notes`.
-- Deleting the `.md` afterwards is a deletion: confirm first. Inbound `[[stem]]` links from other md notes resolve to `.md` only and break once it goes.
+- `--to md` reverses it: frontmatter back on top, artifact log back as the last `## Artifact revisions`, masthead H1 (else `<title>`, else filename) as `# title`, mermaid back to fenced blocks, `obsidian://open` links back to `[[wiki links]]`, scripts and styles dropped. Layout is lossy: cards, callouts, tags flatten to text; tab labels become plain lines; inline SVG and images stay as data-URI images. Use it when md is required (a tool, a repo doc, a diff to review); HTML stays the vault default.
+- Deleting the source afterwards is a deletion: confirm first. Inbound `[[stem]]` links from other md notes resolve to `.md` only and break once the `.md` goes.
 
 ## Write
 

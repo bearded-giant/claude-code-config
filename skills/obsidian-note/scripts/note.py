@@ -270,32 +270,93 @@ def md_to_html(src, force=False, dst=None):
     return dst
 
 
+def html_to_md(src, force=False, dst=None):
+    dst = dst or src.with_suffix(".md")
+    if dst.exists() and not force:
+        print(f"skip {dst} (exists)")
+        return None
+    text = src.read_text(encoding="utf-8")
+    fm, revs, page = "", "", text
+    span = fm_span(text) if text.startswith(HTML_FM) else None
+    if span:
+        fm = text[span[0] : span[1]]
+        revs, _, page = text[span[1] + 4 :].partition("\n-->")
+    inner = re.search(r"<main\b[^>]*>(.*)</main>", page, re.DOTALL | re.IGNORECASE)
+    body = inner.group(1) if inner else page
+    head = re.search(r'<header class="masthead">.*?</header>', body, re.DOTALL)
+    if head:
+        body = body.replace(head.group(0), "", 1)
+    body = re.sub(
+        r"<(script|style)\b.*?</\1>", "", body, flags=re.DOTALL | re.IGNORECASE
+    )
+    if not re.search(r"<h1\b", body, re.IGNORECASE):
+        h1 = re.search(r"<h1[^>]*>(.*?)</h1>", head.group(0) if head else "", re.DOTALL)
+        doc = re.search(r"<title>(.*?)</title>", page, re.DOTALL | re.IGNORECASE)
+        title = h1 or doc
+        body = f"<h1>{title.group(1) if title else html.escape(src.stem)}</h1>\n{body}"
+    # pandoc's gfm writer drops fence languages it cannot highlight, mermaid included
+    diagrams = []
+
+    def stash(m):
+        diagrams.append(html.unescape(m.group(1)).strip())
+        return f"<p>MERMAIDSLOT{len(diagrams) - 1}</p>"
+
+    body = re.sub(r'<pre class="mermaid">(.*?)</pre>', stash, body, flags=re.DOTALL)
+    body = re.sub(r"<summary>(.*?)</summary>", r"<p><strong>\1</strong></p>", body)
+    body = body.replace(' class="wikilink"', "")
+    md = subprocess.run(
+        ["pandoc", "-f", "html-native_divs-native_spans", "-t", "gfm", "--wrap=none"],
+        input=body,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    for i, src_text in enumerate(diagrams):
+        md = md.replace(f"MERMAIDSLOT{i}", f"```mermaid\n{src_text}\n```", 1)
+
+    def wikilink(m):
+        target = urllib.parse.unquote(m.group(2))
+        return f"[[{target}]]" if m.group(1) == target else f"[[{target}|{m.group(1)}]]"
+
+    md = re.sub(
+        r"\[([^\]]*)\]\(obsidian://open\?vault=[^&)]*&file=([^)\s]+)\)", wikilink, md
+    )
+    out = (f"---\n{fm}\n---\n\n" if fm else "") + md.strip() + "\n"
+    if revs.strip():
+        out += f"\n{revs.strip()}\n"
+    dst.write_text(out, encoding="utf-8")
+    print(f"{src} -> {dst}")
+    return dst
+
+
 def cmd_convert(a):
     if not shutil.which("pandoc"):
         sys.exit("pandoc not found: brew install pandoc")
+    to_md = a.to == "md"
+    exts = (".html", ".htm") if to_md else (".md", ".markdown")
     done, failed = [], 0
     for arg in a.paths:
         root = Path(arg).expanduser()
         if root.is_dir():
             files = sorted(
                 p
-                for p in root.rglob("*.md")
+                for p in root.rglob(f"*{exts[0]}")
                 if not CONVERT_SKIP & set(p.relative_to(root).parts[:-1])
             )
-        elif root.suffix.lower() in (".md", ".markdown") and root.is_file():
+        elif root.suffix.lower() in exts and root.is_file():
             files = [root]
         else:
-            print(f"fail {root}: not a markdown file or directory", file=sys.stderr)
+            print(f"fail {root}: not a {exts[0]} file or directory", file=sys.stderr)
             failed += 1
             continue
         for f in files:
             dst = None
             if a.out_dir:
                 rel = f.relative_to(root) if root.is_dir() else Path(f.name)
-                dst = Path(a.out_dir).expanduser() / rel.with_suffix(".html")
+                dst = Path(a.out_dir).expanduser() / rel.with_suffix(f".{a.to}")
                 dst.parent.mkdir(parents=True, exist_ok=True)
             try:
-                out = md_to_html(f, a.force, dst)
+                out = (html_to_md if to_md else md_to_html)(f, a.force, dst)
             except (subprocess.CalledProcessError, OSError, UnicodeDecodeError) as e:
                 print(f"fail {f}: {getattr(e, 'stderr', '') or e}", file=sys.stderr)
                 failed += 1
@@ -950,10 +1011,10 @@ def self_test():
         )
         assert [r[3] for r in lst(ticket="PE-9")] == ["areas/hp/PE-9-html-ticket.html"]
 
-        def convert(*paths, out_dir=None, force=False):
+        def convert(*paths, out_dir=None, force=False, to="html"):
             return cmd_convert(
                 argparse.Namespace(
-                    paths=[str(p) for p in paths], out_dir=out_dir, force=force
+                    paths=[str(p) for p in paths], out_dir=out_dir, force=force, to=to
                 )
             )
 
@@ -1035,6 +1096,37 @@ def self_test():
             raise AssertionError("non-markdown arg must fail")
         except SystemExit as e:
             assert e.code == 1, e
+
+        assert convert(cv / "a.html", to="md") == [], "existing .md must be kept"
+        back = Path(d) / "back"
+        assert convert(cv, to="md", out_dir=str(back)) == [
+            back / "a.md",
+            back / "sub" / "b.md",
+        ]
+        md = (back / "a.md").read_text()
+        assert md.startswith(
+            "---\nid: a\naliases: []\ntags: [claude, x]\narea: auth\nproject: cv\n"
+            "created: 2026-10-01T09:00:00-04:00\nartifact: https://claude.ai/artifact/C\n"
+            "artifact_rev: 2\nartifact_account: rc-team\n---\n\n# Tokens and `ttl`\n\n"
+            "See [[redis-keys|the keys]].\n"
+        ), md
+        assert "| k   | v   |" in md and "```mermaid\ngraph LR\n  A-->B\n```" in md, md
+        assert "![flow](data:image/png;base64," in md, md
+        assert "## Working notes\n\nscratch\n" in md, md
+        assert md.rstrip().endswith("· html rev") and "\n## Artifact revisions\n" in md
+        assert md.index("## Working notes") < md.index("## Artifact revisions"), md
+        assert "<" not in md.split("![flow]")[0].split("---\n\n", 1)[1], md
+        assert (parse_fm(back / "a.md") or {})["artifact_rev"] == ["2"]
+        assert (back / "sub" / "b.md").read_text() == "# b\n\nplain body\n"
+        assert convert(h, to="md") == [h.with_suffix(".md")]
+        md = h.with_suffix(".md").read_text()
+        assert (
+            "---\n\n# Cache \\<Plan\\> & TTLs\n\nshort\n\n{{TITLE}} stays\n" in md
+        ), md
+        assert "<script" not in md and "2026-11-03\n\n" not in md, md
+        assert md.rstrip().endswith("· second") and md.count("## Artifact") == 1, md
+        assert convert(f2, to="md") == [f2.with_suffix(".md")]
+        assert f2.with_suffix(".md").read_text().endswith("---\n\n# Q4 Deck\n\nx\n")
         slot("")
     print("ok")
 
@@ -1087,9 +1179,15 @@ def main(argv=None):
     )
     v = sub.add_parser(
         "convert",
-        help="markdown to html note template; dirs recurse, sources are kept",
+        help="markdown to html note template (or back with --to md); dirs recurse, sources are kept",
     )
-    v.add_argument("paths", nargs="+", help=".md files and/or directories")
+    v.add_argument("paths", nargs="+", help="source files and/or directories")
+    v.add_argument(
+        "--to",
+        choices=("html", "md"),
+        default="html",
+        help="target format; md reads .html sources",
+    )
     v.add_argument("--out-dir", help="write here, mirroring each dir's tree")
     v.add_argument("--force", action="store_true", help="overwrite existing .html")
     c = sub.add_parser("account", help="print the logged-in claude.ai org label")
