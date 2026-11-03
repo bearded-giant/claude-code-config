@@ -8,7 +8,7 @@ One loop for the lone engineer: run, pull, grade, diff, report. The repo side is
 
 ## Inputs
 
-- `<questions.csv>`: `question, store_id, question_id` (the 31-row analyst set lives at `eval/golden.yaml` cases `R3_*`; `scripts/golden_batch.py questions` is not a thing: keep a CSV beside the feature in `filebox/`).
+- `<questions.csv>`: `question, store_id, question_id` (the sets ship in the repo's `eval/golden_sets/`: `goldens_dated.csv`, `goldens_ask.csv` (run with `--ask-period`), `r3_31.csv`; the store mirrors them in `golden-runs/_questions/`).
 - or `<batch_id>`: skip the run, pull and grade an existing batch (`--no-run` is the same thing with a CSV present).
 - `--against <batch_id>`: the earlier batch to diff against (pull it too when its directory is missing).
 - `--base-url`: default production `https://investigator-v2.vercel.app`; preview needs `VERCEL_AUTOMATION_BYPASS_SECRET` in `.env.resolved`.
