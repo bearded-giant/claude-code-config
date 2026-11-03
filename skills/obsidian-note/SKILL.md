@@ -1,6 +1,6 @@
 ---
 name: obsidian-note
-description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo), HTML by default and markdown on ask, with the vault frontmatter contract plus a creation timestamp; list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "create vault doc", "vault doc", "create html doc", "create vault md", "vault md", "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any doc deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
+description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo), HTML by default and markdown on ask, with the vault frontmatter contract plus a creation timestamp; list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "create vault doc", "vault doc", "create html doc", "create vault md", "vault md", "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any doc deliverable that is not feature state (.giantmem/). Also fires on "convert to html", "md to html", "md2html", "convert these notes". Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
 ---
 <!-- caveman:compressed -->
 
@@ -15,6 +15,20 @@ Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to
 | ticket notes (`sec-ticket`), handoffs | markdown, always |
 
 `--body-file` extension picks it: `.html`/`.htm` writes `<slug>.html`, anything else or stdin writes `<slug>.md`.
+
+## Convert md to html
+
+```bash
+python3 ~/.claude/skills/obsidian-note/scripts/note.py convert <file.md|dir>... [--out-dir DIR] [--force]
+```
+
+User's shell alias: `md2html` (dotfiles `shell/.bash_aliases`). Dirs recurse over `*.md`, skipping `.git`, `.obsidian`, `.trash`, `node_modules`, `handoffs`. Writes `<stem>.html` beside each source (`--out-dir` mirrors each dir's tree). Existing `.html` is skipped unless `--force`. Sources are never deleted. Needs `pandoc`; prints `src -> dst` per file, then `N converted, M failed`, exit 1 on any failure.
+
+- Frontmatter and `## Artifact revisions` move into the leading metadata comment, so `list`, `link`, `bump`, `status` keep working; any later `##` section stays in the page. No frontmatter: plain page, no comment, no eyebrow or date.
+- First H1 becomes the template title (inline code kept); none = filename.
+- Tables get `.table-wrap`; local images inline as data URIs (missing file: warning, link kept); mermaid blocks render via a pinned CDN loader; `[[wiki links]]` in vault files become `obsidian://open` links.
+- Mechanical: single column, no TL;DR, no layout. Claude converting on request: run it, then Edit the result where the doc earns more (`.tldr`, `.grid` for compared options, SVG where a mermaid diagram matters) per `## HTML notes`.
+- Deleting the `.md` afterwards is a deletion: confirm first. Inbound `[[stem]]` links from other md notes resolve to `.md` only and break once it goes.
 
 ## Write
 

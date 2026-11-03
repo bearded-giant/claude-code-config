@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import datetime
 import hashlib
 import html
 import importlib.util
 import io
 import json
+import mimetypes
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import unicodedata
+import urllib.parse
 from pathlib import Path
 
 AREAS = [
@@ -64,6 +68,15 @@ HTML_TEMPLATE = Path(__file__).resolve().parents[1] / "html-template" / "note.ht
 # html notes carry the same yaml frontmatter inside a leading comment, so one parser serves both formats
 HTML_FM = "<!--\n---\n"
 FULL_PAGE_RE = re.compile(r"\s*<(!doctype|html)\b", re.IGNORECASE)
+CONVERT_SKIP = {".git", ".obsidian", ".trash", "node_modules", "handoffs"}
+MERMAID = (
+    '<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>\n'
+    "<script>\n"
+    "const cs = getComputedStyle(document.documentElement).colorScheme;\n"
+    'const dark = cs === "dark" || (cs !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);\n'
+    'mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });\n'
+    "</script>"
+)
 
 
 def fm_span(text):
@@ -144,14 +157,9 @@ def cmd_new(a):
     if is_html:
         page = body
         if not FULL_PAGE_RE.match(body):
-            page = HTML_TEMPLATE.read_text(encoding="utf-8")
-            for k, v in (
-                ("{{TITLE}}", html.escape(a.title)),
-                ("{{EYEBROW}}", f"{project} · {a.area}"),
-                ("{{CREATED}}", created[:10]),
-                ("{{BODY}}", body),
-            ):
-                page = page.replace(k, v)
+            page = render_page(
+                html.escape(a.title), f"{project} · {a.area}", created[:10], body
+            )
         text = f"<!--\n{fm}\n-->\n{page.strip()}\n"
     else:
         heading = "" if body.startswith("# ") else f"# {a.title}\n\n"
@@ -159,6 +167,138 @@ def cmd_new(a):
     path.write_text(text, encoding="utf-8")
     print(path)
     return path
+
+
+def render_page(title_html, eyebrow, created, body):
+    doc_title = html.escape(html.unescape(re.sub(r"<[^>]+>", "", title_html)).strip())
+    page = HTML_TEMPLATE.read_text(encoding="utf-8")
+    for k, v in (
+        ("{{DOCTITLE}}", doc_title),
+        ("{{TITLE}}", title_html),
+        ("{{EYEBROW}}", eyebrow),
+        ("{{CREATED}}", created),
+    ):
+        page = page.replace(k, v)
+    page = re.sub(r'\n\s*<p class="(eyebrow|meta)"></p>', "", page)
+    return page.replace("{{BODY}}", body)
+
+
+def data_uri(img, ref):
+    path = img.parent / urllib.parse.unquote(html.unescape(ref))
+    if not path.is_file():
+        print(f"warn {img}: image {ref} not found, left as a link", file=sys.stderr)
+        return ref
+    mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
+
+
+def md_to_html(src, force=False, dst=None):
+    dst = dst or src.with_suffix(".html")
+    if dst.exists() and not force:
+        print(f"skip {dst} (exists)")
+        return None
+    text = src.read_text(encoding="utf-8")
+    span = fm_span(text) if text.startswith("---\n") else None
+    fm, body = (text[span[0] : span[1]], text[span[1] + 4 :]) if span else ("", text)
+    body, sep, tail = body.partition("\n## Artifact revisions")
+    cut = tail.find("\n## ")
+    revs = sep + (tail if cut < 0 else tail[:cut])
+    body += "" if cut < 0 else tail[cut:]
+    frag = subprocess.run(
+        [
+            "pandoc",
+            "-f",
+            "gfm+wikilinks_title_after_pipe",
+            "-t",
+            "html5",
+            "--wrap=none",
+            "--syntax-highlighting=none",
+        ],
+        input=body,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    h1 = re.search(r"<h1[^>]*>(.*?)</h1>\n?", frag, re.DOTALL)
+    title = h1.group(1) if h1 else html.escape(src.stem)
+    if h1:
+        frag = frag.replace(h1.group(0), "", 1)
+    frag = frag.replace("<table>", '<div class="table-wrap"><table>')
+    frag = frag.replace("</table>", "</table></div>")
+    # mermaid parses innerHTML, so the <code> pandoc wraps around the source breaks it
+    frag, diagrams = re.subn(
+        r'<pre class="mermaid"><code>(.*?)</code></pre>',
+        r'<pre class="mermaid">\1</pre>',
+        frag,
+        flags=re.DOTALL,
+    )
+    # obsidian renders the page from a blob url, so relative image paths never load
+    frag = re.sub(
+        r'(<img [^>]*src=")([^":]+)"',
+        lambda m: f'{m.group(1)}{data_uri(src, m.group(2))}"',
+        frag,
+    )
+    if src.resolve().is_relative_to(vault().resolve()):
+        name = urllib.parse.quote(vault().name)
+        frag = re.sub(
+            r'<a href="([^"]*)" class="wikilink">',
+            lambda m: f'<a href="obsidian://open?vault={name}&amp;file='
+            f'{urllib.parse.quote(html.unescape(m.group(1)))}" class="wikilink">',
+            frag,
+        )
+    if diagrams:
+        frag += "\n" + MERMAID
+    meta = {
+        k.strip(): v.strip().strip('"')
+        for k, _, v in (ln.partition(":") for ln in fm.splitlines())
+        if v and not k.startswith((" ", "-"))
+    }
+    eyebrow = " · ".join(x for x in (meta.get("project"), meta.get("area")) if x)
+    page = render_page(title, eyebrow, meta.get("created", "")[:10], frag.strip())
+    if fm:
+        head = f"{fm}\n---" + (f"\n{revs.rstrip()}" if revs else "")
+        page = f"<!--\n---\n{head.replace('-->', '->')}\n-->\n{page}"
+    dst.write_text(page.rstrip() + "\n", encoding="utf-8")
+    print(f"{src} -> {dst}")
+    return dst
+
+
+def cmd_convert(a):
+    if not shutil.which("pandoc"):
+        sys.exit("pandoc not found: brew install pandoc")
+    done, failed = [], 0
+    for arg in a.paths:
+        root = Path(arg).expanduser()
+        if root.is_dir():
+            files = sorted(
+                p
+                for p in root.rglob("*.md")
+                if not CONVERT_SKIP & set(p.relative_to(root).parts[:-1])
+            )
+        elif root.suffix.lower() in (".md", ".markdown") and root.is_file():
+            files = [root]
+        else:
+            print(f"fail {root}: not a markdown file or directory", file=sys.stderr)
+            failed += 1
+            continue
+        for f in files:
+            dst = None
+            if a.out_dir:
+                rel = f.relative_to(root) if root.is_dir() else Path(f.name)
+                dst = Path(a.out_dir).expanduser() / rel.with_suffix(".html")
+                dst.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                out = md_to_html(f, a.force, dst)
+            except (subprocess.CalledProcessError, OSError, UnicodeDecodeError) as e:
+                print(f"fail {f}: {getattr(e, 'stderr', '') or e}", file=sys.stderr)
+                failed += 1
+                continue
+            if out:
+                done.append(out)
+    print(f"{len(done)} converted, {failed} failed")
+    if failed:
+        sys.exit(1)
+    return done
 
 
 def parse_fm(path):
@@ -802,6 +942,87 @@ def self_test():
             "rev: 2\n" in text and "status: ready\n---\n-->\n<!doctype html>\n" in text
         )
         assert [r[3] for r in lst(ticket="PE-9")] == ["areas/hp/PE-9-html-ticket.html"]
+
+        def convert(*paths, out_dir=None, force=False):
+            return cmd_convert(
+                argparse.Namespace(
+                    paths=[str(p) for p in paths], out_dir=out_dir, force=force
+                )
+            )
+
+        cv = Path(d) / "areas" / "cv"
+        (cv / "diagrams").mkdir(parents=True)
+        (cv / "diagrams" / "flow.png").write_bytes(b"\x89PNG-fake")
+        (cv / "a.md").write_text(
+            "---\nid: a\naliases: []\ntags: [claude, x]\narea: auth\nproject: cv\n"
+            "created: 2026-10-01T09:00:00-04:00\nartifact: https://claude.ai/artifact/C\n"
+            "artifact_rev: 1\n---\n\n# Tokens and `ttl`\n\nSee [[redis-keys|the keys]].\n\n"
+            "| k | v |\n|---|---|\n| a | 1 |\n\n```mermaid\ngraph LR\n  A-->B\n```\n\n"
+            "![flow](diagrams/flow.png)\n\n![gone](diagrams/missing.png)\n\n"
+            "## Artifact revisions\n\n- rev 1 · 2026-10-01T10:00:00-04:00 · first --> pass\n\n"
+            "## Working notes\n\nscratch\n",
+            encoding="utf-8",
+        )
+        (cv / "sub").mkdir()
+        (cv / "sub" / "b.md").write_text("plain body\n", encoding="utf-8")
+        for skipped in ("handoffs", ".git"):
+            (cv / skipped).mkdir()
+            (cv / skipped / "h.md").write_text("# h\n", encoding="utf-8")
+        assert convert(cv) == [cv / "a.html", cv / "sub" / "b.html"]
+        assert not (cv / "handoffs" / "h.html").exists()
+        assert (cv / "a.md").exists() and (cv / "sub" / "b.md").exists()
+        text = (cv / "a.html").read_text()
+        assert text.startswith(
+            "<!--\n---\nid: a\naliases: []\ntags: [claude, x]\narea: auth\nproject: cv\n"
+            "created: 2026-10-01T09:00:00-04:00\nartifact: https://claude.ai/artifact/C\n"
+            "artifact_rev: 1\n---\n\n## Artifact revisions\n\n- rev 1 · 2026-10-01T10:00:00-04:00 · first -> pass\n-->\n<!doctype html>\n"
+        ), text
+        assert text.count("-->") == 1, text
+        assert "<title>Tokens and ttl</title>" in text, text
+        assert "<h1>Tokens and <code>ttl</code></h1>" in text, text
+        assert '<p class="eyebrow">cv · auth</p>' in text
+        assert '<p class="meta">2026-10-01</p>' in text
+        assert (
+            'href="obsidian://open?vault=' + Path(d).name + '&amp;file=redis-keys"'
+            in text
+        ), text
+        assert '<div class="table-wrap"><table>' in text, text
+        assert '<pre class="mermaid">graph LR' in text and "mermaid@11.4.1" in text
+        assert 'src="data:image/png;base64,' in text, text
+        assert 'src="diagrams/missing.png"' in text, text
+        assert '<h2 id="working-notes">Working notes</h2>' in text, text
+        assert "<h1" not in text.split("</header>")[1], text
+        fm = parse_fm(cv / "a.html") or {}
+        assert fm["title"] == ["Tokens and ttl"] and fm["artifact_rev"] == ["1"], fm
+        assert "areas/cv/a.html" in [r[3] for r in lst(project="cv")]
+        cmd_link(
+            argparse.Namespace(
+                note=str(cv / "a.html"),
+                url="https://claude.ai/artifact/C",
+                rev=2,
+                log="html rev",
+                account="rc-team",
+            )
+        )
+        text = (cv / "a.html").read_text()
+        assert "· first -> pass\n- rev 2 · " in text and "· html rev\n-->\n" in text
+        plain = (cv / "sub" / "b.html").read_text()
+        assert plain.startswith("<!doctype html>\n"), plain
+        assert "<title>b</title>" in plain and "<h1>b</h1>" in plain, plain
+        assert 'class="eyebrow"' not in plain and 'class="meta"' not in plain, plain
+        assert "<p>plain body</p>" in plain and "mermaid@" not in plain, plain
+        assert convert(cv / "sub" / "b.md") == []
+        assert convert(cv / "sub" / "b.md", force=True) == [cv / "sub" / "b.html"]
+        out = Path(d) / "out"
+        assert convert(cv, out_dir=str(out)) == [out / "a.html", out / "sub" / "b.html"]
+        assert convert(cv / "a.md", out_dir=str(out / "flat")) == [
+            out / "flat" / "a.html"
+        ]
+        try:
+            convert(cv / "nope.txt")
+            raise AssertionError("non-markdown arg must fail")
+        except SystemExit as e:
+            assert e.code == 1, e
         slot("")
     print("ok")
 
@@ -852,6 +1073,13 @@ def main(argv=None):
         action="store_true",
         help="record the artifacts hub page as artifact_hub; claude.ai keys untouched",
     )
+    v = sub.add_parser(
+        "convert",
+        help="markdown to html note template; dirs recurse, sources are kept",
+    )
+    v.add_argument("paths", nargs="+", help=".md files and/or directories")
+    v.add_argument("--out-dir", help="write here, mirroring each dir's tree")
+    v.add_argument("--force", action="store_true", help="overwrite existing .html")
     c = sub.add_parser("account", help="print the logged-in claude.ai org label")
     c.add_argument(
         "note",
@@ -871,6 +1099,8 @@ def main(argv=None):
         return cmd_link(a)
     if a.cmd == "account":
         return cmd_account(a)
+    if a.cmd == "convert":
+        return cmd_convert(a)
     if a.cmd == "bump":
         return cmd_bump(a)
     if a.cmd == "status":
