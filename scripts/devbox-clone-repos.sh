@@ -6,8 +6,8 @@
 # existing targets are skipped.
 #
 # GitLab clones go over https through a credential helper that reads
-# $GITLAB_TOKEN (from ~/dotfiles/.creds.secret on the box), so they work in
-# daemon-started sessions with no agent. GitHub clones go over ssh, which needs
+# $GITLAB_TOKEN, sourcing ~/dotfiles/.creds.secret when the shell did not, so they
+# work in daemon-started sessions and non-interactive ssh with no agent. GitHub clones go over ssh, which needs
 # the laptop agent forwarded (Host devbox: ForwardAgent yes) until the devbox
 # key is registered on GitHub.
 #
@@ -81,7 +81,7 @@ set -o pipefail
 . "$HOME/.claude-devbox.sh" 2>/dev/null || true
 echo "==> cloning on $(hostname) as $(id -un)"
 # https auth for GitLab from the token already on this box
-git config --global credential."https://gitlab.rechargeapps.net".helper '!f() { echo username=oauth2; echo "password=$GITLAB_TOKEN"; }; f'
+git config --global credential."https://gitlab.rechargeapps.net".helper '!f() { [ -n "$GITLAB_TOKEN" ] || . "$HOME/dotfiles/.creds.secret"; echo username=oauth2; echo "password=$GITLAB_TOKEN"; }; f'
 fail=0
 while IFS=$'\t' read -r alias path layout origin extras; do
   if [ "$layout" = wt ]; then
