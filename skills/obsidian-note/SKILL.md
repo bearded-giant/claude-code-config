@@ -1,10 +1,20 @@
 ---
 name: obsidian-note
-description: Write Claude-authored markdown into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo) with the vault frontmatter contract plus a creation timestamp, list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any markdown deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
+description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo), HTML by default and markdown on ask, with the vault frontmatter contract plus a creation timestamp; list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "create vault doc", "vault doc", "create html doc", "create vault md", "vault md", "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any doc deliverable that is not feature state (.giantmem/). Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
 ---
 <!-- caveman:compressed -->
 
 Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. `~/giantmem-vault` is a read-only Obsidian view of repo `.giantmem` dirs, never a target. Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
+
+## Format
+
+| Ask | Format |
+|---|---|
+| "create vault doc", "vault doc", "create html doc", "publish", "write this up", any doc ask naming no format | HTML |
+| "create vault md", "vault md", "as markdown", "md note" | markdown |
+| ticket notes (`sec-ticket`), handoffs | markdown, always |
+
+`--body-file` extension picks it: `.html`/`.htm` writes `<slug>.html`, anything else or stdin writes `<slug>.md`.
 
 ## Write
 
@@ -15,7 +25,7 @@ python3 ~/.claude/skills/obsidian-note/scripts/note.py new \
   --title "recharge-auth Redis keys and TTLs" \
   --area auth \
   --tags redis,ttl,sessions \
-  --body-file "$SCRATCH/body.md"
+  --body-file "$SCRATCH/body.html"
 ```
 
 Prints abs path. Report that path to the user, nothing else.
@@ -26,8 +36,42 @@ Prints abs path. Report that path to the user, nothing else.
 - `--tags` comma list, lowercase, hyphenated. `claude` prepended always.
 - `--created` ISO 8601, only for imports (birthtime). Default now with tz.
 - `--key PE-1234` for ticket notes (`sec-ticket` skill): filename becomes `PE-1234-<slug>.md` (key kept uppercase, stripped from the slug when the title starts with it), frontmatter gains `ticket`, `rev: 1`, `modified`, `status: new`.
-- Body starting with `# ` keeps its own H1; otherwise `# <title>` is inserted.
+- md body starting with `# ` keeps its own H1; otherwise `# <title>` is inserted.
 - Filename = slug of title. Collision appends `-YYYY-MM-DD`, then `-N`. Never overwrite.
+
+## HTML notes
+
+HTML reads denser than markdown (real tables, SVG diagrams, tabs, side-by-side layouts), so the user reads instead of skims. Basis: Thariq (Claude Code team), "The Unreasonable Effectiveness of HTML"; examples at https://thariqs.github.io/html-effectiveness/.
+
+- Body = fragment for inside `<main>`, under the template header (eyebrow `project · area`, `<h1>` title, created date). No `<h1>`, `<html>`, or `<head>`. `note.py` wraps it in `html-template/note.html`.
+- Body starting `<!doctype` or `<html>` = full page, written as-is: decks, editors, dashboards, anything the column fights. Copy the template's `<style>` so it matches; keep a `<title>` (`list` reads it).
+- Template = design system, not layout. No TOC sidebar. Pick layout per doc from:
+
+| class / element | use |
+|---|---|
+| `.tldr` | answer first, 2-4 lines, top of page |
+| `.callout`, `.callout.warn`, `.callout.bad` | note, risk, blocker |
+| `.grid` > `.card` | options or parts side by side |
+| `.tag`, `.tag.ok` / `.warn` / `.bad` | status, severity |
+| `.table-wrap` > `table` | every table (scrolls on phones) |
+| `details` > `summary` | depth a reader may skip |
+| `div[data-tabs]` > `[role=tablist]` > `button[role=tab]`, then `section[role=tabpanel]` per tab | parallel views of one thing; template script wires them |
+| `figure` > inline `svg` + `figcaption`; `.d-box` `.d-key` `.d-line` `.d-arrow` `.d-text` `.d-label` | diagrams, theme-aware |
+| `pre > code`, `code`, `.muted` | code, ids, asides |
+
+Doc-specific layout: a `<style>` block in the body on template tokens (`--blue`, `--teal`, `--surface`, `--rule-strong`, `--ok`/`--warn`/`--bad`).
+
+Authoring:
+1. Optimize for someone reading it once. Answer first (`.tldr`), detail after, depth in `details`.
+2. Tables as `<table>`; diagrams as inline SVG with `width` = viewBox width so it never upscales. Never ASCII art, unicode color blocks, or mermaid source in a `<pre>`.
+3. Long reference doc needing navigation: inline jump list under the TL;DR. Sticky sidebar only when asked.
+4. Interactive piece (slider, toggle, mini editor) ends with an export: a button copying the state as a prompt, markdown, or JSON.
+5. Self-contained: inline CSS/JS; CDN scripts only at pinned versions (cdnjs, jsdelivr, unpkg). No `localStorage`, no fetch: the viewer is a sandboxed iframe.
+6. Every color from a token. Tokens use `light-dark()`; Obsidian's `html-docs` plugin sets `color-scheme` from the app theme, so both themes come free if no literal colors sneak in.
+
+Cost: HTML takes longer to write and diffs noisily in the vault's git; md stays right for notes that churn line by line.
+
+Edit later with Edit on the `.html` file. View: Obsidian renders `.html` through the `html-docs` plugin; `open <path>` for a browser. Dataview, obsidian.nvim, and `[[wiki links]]` inside the page do not see html notes; `note.py list` does, and other notes link one as `[[<stem>.html]]`.
 
 ## Areas
 
@@ -58,7 +102,7 @@ created: 2026-09-28T14:38:12-04:00
 ---
 ```
 
-`id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. `project` always equals the folder. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Do not hand-write frontmatter; the script owns it.
+HTML notes carry the same block inside a leading comment (`<!--`, the block, `-->`) before `<!doctype html>`. `id, aliases, tags, area, project` = obsidian.nvim contract, do not add or rename keys. `project` always equals the folder. Script-owned additions: `created`, `artifact` + `artifact_rev` + `artifact_account` once linked, `artifact_hub` + `artifact_hub_rev` once published to the artifacts hub, and `ticket` + `rev` + `modified` + `status` on `--key` notes. Do not hand-write frontmatter; the script owns it.
 
 ## Bump or set status on a ticket note
 
@@ -79,7 +123,7 @@ After a `claude-artifact` publish of this note's content:
 python3 ~/.claude/skills/obsidian-note/scripts/note.py link <note.md> --url <artifact url> --rev N --log "one line on what changed"
 ```
 
-Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions`. `--hub` upserts `artifact_hub:` / `artifact_hub_rev:` instead and logs `hub <url>`, claude.ai keys untouched. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
+Upserts `artifact:` / `artifact_rev:` / `artifact_account:` (the session's claude.ai label, `--account` overrides) and appends `- rev N · <ts> · <log>` under `## Artifact revisions` (HTML notes: inside the metadata comment, off the rendered page). `--hub` upserts `artifact_hub:` / `artifact_hub_rev:` instead and logs `hub <url>`, claude.ai keys untouched. Temporal detail and change history belong in the note, never in the artifact. Note already has `artifact:` → re-share updates that URL.
 
 `note.py account [<note.md>]` prints the session's label (keychain slot `subscriptionType`: `team` rc-team, `enterprise` rc-inc; else `~/.claude.json`) and exits non-zero when the note's artifact lives in another account. Building the artifact → `claude-artifact` `## From a note`.
 
@@ -94,7 +138,7 @@ python3 ~/.claude/skills/obsidian-note/scripts/note.py list --status ready      
 python3 ~/.claude/skills/obsidian-note/scripts/note.py projects
 ```
 
-One line per note: `created | area | project | path | title`. Handoffs are left out. Read the hits that match the subject before writing a new note. Extend an existing note (Edit) when the subject is the same; new note when the subject is new.
+One line per note (`.md` and `.html`): `created | area | project | path | title`. Handoffs are left out. Read the hits that match the subject before writing a new note. Extend an existing note (Edit) when the subject is the same; new note when the subject is new.
 
 ## Rules
 
@@ -103,4 +147,4 @@ One line per note: `created | area | project | path | title`. Handoffs are left 
 - The `daily_note` hook logs every vault note write (Write/Edit or `note.py new`) and every artifact publish under `## CLAUDE LINKS` in `daily/<YYYY-MM-DD>.md`, creating the day's note from `templates/dailytemplate.md` when missing. Never hand-edit those sections or log twice.
 - Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, reviews, research tied to an in_progress feature. Handoffs go to `areas/<project>/handoffs/` per workspace-rules `## Handoff`, never through `note.py`. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
 - Do not write `areas/areas-index.md`; it is a Dataview page.
-- Wiki links `[[note]]` resolve vault-wide; link existing notes by stem when relevant.
+- Wiki links `[[note]]` resolve vault-wide in md notes; link existing notes by stem when relevant (`[[stem.html]]` for an html note).

@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import hashlib
+import html
 import importlib.util
 import io
 import json
@@ -59,6 +60,20 @@ LINK_KEYS = ("artifact", "artifact_rev", "artifact_account")
 ACCOUNT_LABELS = {"recharge, inc": "rc-inc", "recharge, team": "rc-team"}
 SLOT_LABELS = {"team": "rc-team", "enterprise": "rc-inc"}
 STATUSES = ("new", "ready", "blocked", "in_progress", "in_review", "done", "wont_fix")
+HTML_TEMPLATE = Path(__file__).resolve().parents[1] / "html-template" / "note.html"
+# html notes carry the same yaml frontmatter inside a leading comment, so one parser serves both formats
+HTML_FM = "<!--\n---\n"
+FULL_PAGE_RE = re.compile(r"\s*<(!doctype|html)\b", re.IGNORECASE)
+
+
+def fm_span(text):
+    start = (
+        len(HTML_FM)
+        if text.startswith(HTML_FM)
+        else 4 if text.startswith("---\n") else -1
+    )
+    end = text.find("\n---", start) if start >= 0 else -1
+    return (start, end) if end >= 0 else None
 
 
 def project_arg(v):
@@ -78,14 +93,14 @@ def key_arg(v):
     return v
 
 
-def unique_path(area_dir, base, created):
-    path = area_dir / f"{base}.md"
+def unique_path(area_dir, base, created, ext=".md"):
+    path = area_dir / f"{base}{ext}"
     if not path.exists():
         return path
-    path = area_dir / f"{base}-{created[:10]}.md"
+    path = area_dir / f"{base}-{created[:10]}{ext}"
     n = 2
     while path.exists():
-        path = area_dir / f"{base}-{created[:10]}-{n}.md"
+        path = area_dir / f"{base}-{created[:10]}-{n}{ext}"
         n += 1
     return path
 
@@ -106,9 +121,9 @@ def cmd_new(a):
     if key:
         rest = re.sub(rf"^{re.escape(key)}\b[:\s-]*", "", a.title, flags=re.IGNORECASE)
         base = f"{key}-{slug(rest)}"
-    path = unique_path(area_dir, base, created)
+    is_html = (a.body_file or "").lower().endswith((".html", ".htm"))
+    path = unique_path(area_dir, base, created, ".html" if is_html else ".md")
     tags = ["claude"] + [t.strip() for t in (a.tags or "").split(",") if t.strip()]
-    heading = "" if body.startswith("# ") else f"# {a.title}\n\n"
     fm = "\n".join(
         [
             "---",
@@ -126,20 +141,34 @@ def cmd_new(a):
         )
         + ["---"]
     )
-    path.write_text(f"{fm}\n\n{heading}{body}\n", encoding="utf-8")
+    if is_html:
+        page = body
+        if not FULL_PAGE_RE.match(body):
+            page = HTML_TEMPLATE.read_text(encoding="utf-8")
+            for k, v in (
+                ("{{TITLE}}", html.escape(a.title)),
+                ("{{EYEBROW}}", f"{project} · {a.area}"),
+                ("{{CREATED}}", created[:10]),
+                ("{{BODY}}", body),
+            ):
+                page = page.replace(k, v)
+        text = f"<!--\n{fm}\n-->\n{page.strip()}\n"
+    else:
+        heading = "" if body.startswith("# ") else f"# {a.title}\n\n"
+        text = f"{fm}\n\n{heading}{body}\n"
+    path.write_text(text, encoding="utf-8")
     print(path)
     return path
 
 
 def parse_fm(path):
     text = path.read_text(encoding="utf-8", errors="replace")
-    if not text.startswith("---\n"):
+    span = fm_span(text)
+    if not span:
         return None
-    end = text.find("\n---", 4)
-    if end < 0:
-        return None
+    start, end = span
     fm, cur = {}, None
-    for line in text[4:end].splitlines():
+    for line in text[start:end].splitlines():
         if line.startswith(("-", "  -")):
             if cur:
                 fm[cur].append(line.split("-", 1)[1].strip().strip('"'))
@@ -153,8 +182,11 @@ def parse_fm(path):
             if v.startswith("[")
             else ([v.strip('"')] if v else [])
         )
-    m = re.search(r"^# (.+)$", text[end:], re.MULTILINE)
-    fm["title"] = [m.group(1) if m else path.stem]
+    m = re.search(
+        r"^# ([^\n]+)|<title>(.*?)</title>", text[end:], re.MULTILINE | re.DOTALL
+    )
+    title = m and (m.group(1) or html.unescape(" ".join(m.group(2).split())))
+    fm["title"] = [title or path.stem]
     return fm
 
 
@@ -164,7 +196,8 @@ def project_of(p):
 
 
 def notes():
-    for p in sorted((vault() / "areas").rglob("*.md")):
+    areas = vault() / "areas"
+    for p in sorted([*areas.rglob("*.md"), *areas.rglob("*.html")]):
         if p.stem != "areas-index" and "handoffs" not in p.relative_to(vault()).parts:
             yield p
 
@@ -236,20 +269,29 @@ def cmd_account(a):
 def cmd_link(a):
     path = Path(a.note).expanduser()
     text = path.read_text(encoding="utf-8")
-    if not text.startswith("---\n") or text.find("\n---", 4) < 0:
+    span = fm_span(text)
+    if not span:
         sys.exit(f"no frontmatter: {path}")
-    end = text.find("\n---", 4)
+    start, end = span
     account = a.account or claude_account()
     if getattr(a, "hub", False):
         keys = ("artifact_hub", "artifact_hub_rev")
         log = f"hub {a.url}" + (f" · {a.log}" if a.log else "")
     else:
         keys, log = LINK_KEYS, a.log
-    fm = [l for l in text[4:end].splitlines() if l.split(":", 1)[0].strip() not in keys]
+    fm = [
+        l
+        for l in text[start:end].splitlines()
+        if l.split(":", 1)[0].strip() not in keys
+    ]
     fm += [f"{keys[0]}: {a.url}", f"{keys[1]}: {a.rev}"]
     if account and keys == LINK_KEYS:
         fm.append(f"artifact_account: {account}")
-    body = text[end + 4 :].rstrip("\n")
+    body, close, page = text[end + 4 :].rstrip("\n"), "", ""
+    if start == len(HTML_FM):
+        # html notes keep the revision log inside the metadata comment, out of the rendered page
+        body, close, page = body.partition("\n-->")
+        log = log and log.replace("-->", "->")
     if log:
         head, sep, tail = body.partition("\n## Artifact revisions")
         cut = tail.find("\n## ")
@@ -263,22 +305,26 @@ def cmd_link(a):
             + f"\n- rev {a.rev} · {now_iso()} · {log}"
             + rest
         )
-    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    path.write_text(
+        text[:start] + "\n".join(fm) + "\n---" + body + close + page + "\n",
+        encoding="utf-8",
+    )
     print(path)
     return path
 
 
 def split_fm(path):
     text = path.read_text(encoding="utf-8")
-    end = text.find("\n---", 4) if text.startswith("---\n") else -1
-    if end < 0:
+    span = fm_span(text)
+    if not span:
         sys.exit(f"no frontmatter: {path}")
-    return text[4:end].splitlines(), text[end + 4 :].rstrip("\n")
+    start, end = span
+    return text[:start], text[start:end].splitlines(), text[end + 4 :].rstrip("\n")
 
 
 def cmd_bump(a):
     path = Path(a.note).expanduser()
-    fm, body = split_fm(path)
+    head, fm, body = split_fm(path)
     keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
     if "rev" not in keys:
         m = re.match(r"^([A-Za-z][A-Za-z0-9]+-\d+)-", path.stem)
@@ -291,14 +337,14 @@ def cmd_bump(a):
     rev = int(fm[keys["rev"]].split(":", 1)[1]) + 1
     fm[keys["rev"]] = f"rev: {rev}"
     fm[keys["modified"]] = f"modified: {now_iso()}"
-    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    path.write_text(head + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
     print(f"{path} rev {rev}")
     return rev
 
 
 def cmd_status(a):
     path = Path(a.note).expanduser()
-    fm, body = split_fm(path)
+    head, fm, body = split_fm(path)
     keys = {l.split(":", 1)[0].strip(): i for i, l in enumerate(fm)}
     if "rev" not in keys:
         sys.exit(f"not a ticket note (no rev:): {path}")
@@ -307,7 +353,7 @@ def cmd_status(a):
     else:
         fm.append(f"status: {a.status}")
     fm[keys["modified"]] = f"modified: {now_iso()}"
-    path.write_text("---\n" + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
+    path.write_text(head + "\n".join(fm) + "\n---" + body + "\n", encoding="utf-8")
     print(f"{path} {a.status}")
     return a.status
 
@@ -673,6 +719,89 @@ def self_test():
             "· hub https://hub.test/r/ · first hub\n- rev 2 · " in text
             and text.count("· hub https://hub.test/r/") == 2
         ), text
+
+        frag = Path(d, "frag.html")
+        frag.write_text(
+            '<div class="tldr"><p>short</p></div>\n<p>{{TITLE}} stays</p>\n',
+            encoding="utf-8",
+        )
+        h = cmd_new(
+            ns(
+                title="Cache <Plan> & TTLs",
+                area="ai-tooling",
+                project="hp",
+                tags="cache",
+                body_file=str(frag),
+                created="2026-11-03T10:00:00-05:00",
+            )
+        )
+        assert h == Path(d) / "areas/hp/cache-plan-ttls.html", h
+        text = h.read_text()
+        assert text.startswith(
+            "<!--\n---\nid: cache-plan-ttls\naliases: []\ntags: [claude, cache]\narea: ai-tooling\nproject: hp\ncreated: 2026-11-03T10:00:00-05:00\n---\n-->\n<!doctype html>\n"
+        ), text
+        assert "<title>Cache &lt;Plan&gt; &amp; TTLs</title>" in text, text
+        assert "<h1>Cache &lt;Plan&gt; &amp; TTLs</h1>" in text, text
+        assert '<p class="eyebrow">hp · ai-tooling</p>' in text, text
+        assert '<p class="meta">2026-11-03</p>' in text, text
+        assert "<p>{{TITLE}} stays</p>" in text and "{{BODY}}" not in text, text
+        assert text.endswith("</html>\n") and "toc" not in text.lower(), text
+        full = Path(d, "deck.htm")
+        page = "<!DOCTYPE html>\n<html><head><title>Q4\n  Deck</title></head><body>x</body></html>"
+        full.write_text(page + "\n", encoding="utf-8")
+        f2 = cmd_new(
+            ns(
+                title="Deck",
+                area="ai-tooling",
+                project="hp",
+                body_file=str(full),
+                created="2026-11-03T11:00:00-05:00",
+            )
+        )
+        assert f2.name == "deck.html", f2
+        assert f2.read_text().endswith("---\n-->\n" + page + "\n"), f2.read_text()
+        assert [(r[3], r[4]) for r in lst(project="hp")] == [
+            ("areas/hp/deck.html", "Q4 Deck"),
+            ("areas/hp/cache-plan-ttls.html", "Cache <Plan> & TTLs"),
+        ]
+        for rev, log in ((1, "a --> b"), (2, "second")):
+            cmd_link(
+                argparse.Namespace(
+                    note=str(h),
+                    url="https://claude.ai/artifact/H",
+                    rev=rev,
+                    log=log,
+                    account="rc-team",
+                )
+            )
+        text = h.read_text()
+        assert (
+            "artifact: https://claude.ai/artifact/H\nartifact_rev: 2\nartifact_account: rc-team\n---\n\n## Artifact revisions\n\n- rev 1 · "
+            in text
+        ), text
+        assert "· a -> b\n- rev 2 · " in text and text.count("-->") == 1, text
+        assert "· second\n-->\n<!doctype html>\n" in text, text
+        assert text.endswith("</html>\n") and text.count("artifact:") == 1, text
+        assert (parse_fm(h) or {})["artifact_rev"] == ["2"]
+        k = cmd_new(
+            ns(
+                title="PE-9 html ticket",
+                area="security",
+                project="hp",
+                key="PE-9",
+                body_file=str(frag),
+                created="2026-11-03T12:00:00-05:00",
+            )
+        )
+        assert k.name == "PE-9-html-ticket.html", k
+        assert cmd_bump(argparse.Namespace(note=str(k))) == 2
+        assert cmd_status(argparse.Namespace(note=str(k), status="ready")) == "ready"
+        text = k.read_text()
+        assert text.startswith("<!--\n---\nid: PE-9-html-ticket\n"), text
+        assert (
+            "rev: 2\n" in text and "status: ready\n---\n-->\n<!doctype html>\n" in text
+        )
+        assert [r[3] for r in lst(ticket="PE-9")] == ["areas/hp/PE-9-html-ticket.html"]
         slot("")
     print("ok")
 

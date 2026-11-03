@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inconsolata:wght@500;600&display=swap">
+<style>
+/* obsidian's html-docs plugin injects color-scheme from the app theme, so light-dark() follows it with no script */
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#f8f4f1, #1a1a1a);
+  --surface: light-dark(#ffffff, #242424);
+  --surface-alt: light-dark(#fcfaf9, #2b2b2b);
+  --ink: light-dark(#000000, #ffffff);
+  --text: light-dark(#262626, #e2deda);
+  --muted: light-dark(#666666, #b0aca9);
+  --rule: light-dark(#ede9e6, #333333);
+  --rule-strong: light-dark(#d8d4d1, #4d4d4d);
+  --blue: light-dark(#0129f1, #8fa6f5);
+  --blue-deep: light-dark(#0000bb, #b9c8ff);
+  --blue-wash: light-dark(#cfdcf9, #2a3557);
+  --blue-tint: light-dark(#e7edfc, rgba(143, 166, 245, 0.14));
+  --teal: light-dark(#006d58, #5fcdb8);
+  --teal-wash: light-dark(rgba(9, 134, 113, 0.10), rgba(34, 160, 139, 0.18));
+  --ok: light-dark(#1d7a4c, #6fd39b);
+  --ok-wash: light-dark(#e0f2e8, rgba(111, 211, 155, 0.15));
+  --warn: light-dark(#8a5200, #f0b45a);
+  --warn-wash: light-dark(#fdf0da, rgba(240, 180, 90, 0.15));
+  --bad: light-dark(#b3261e, #ff8a80);
+  --bad-wash: light-dark(#fbe7e5, rgba(255, 138, 128, 0.15));
+  --link-line: light-dark(rgba(1, 41, 241, 0.35), rgba(143, 166, 245, 0.5));
+  --f-display: "Mackinac Pro", Georgia, "Times New Roman", serif;
+  --f-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: Inconsolata, ui-monospace, Menlo, monospace;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--f-body); -webkit-font-smoothing: antialiased; }
+main { max-width: 1040px; margin: 0 auto; padding: 40px 16px 96px; }
+.masthead { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--rule-strong); }
+.eyebrow { margin: 0 0 8px; font: 600 12px/1.4 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue); }
+h1 { margin: 0; max-width: 24ch; font: 400 clamp(32px, 5vw, 48px)/1.08 var(--f-display); letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.meta { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+h2 { margin: 48px 0 14px; font: 400 28px/1.2 var(--f-display); letter-spacing: -0.01em; color: var(--blue); text-wrap: balance; scroll-margin-top: 16px; }
+h3 { margin: 32px 0 8px; font-size: 18px; font-weight: 600; line-height: 1.35; color: var(--teal); text-wrap: balance; }
+h4 { margin: 24px 0 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
+p, ul, ol { margin: 0 0 16px; max-width: 72ch; }
+ul, ol { padding-left: 1.4em; }
+li + li { margin-top: 6px; }
+li::marker { color: var(--blue); }
+strong { color: var(--ink); font-weight: 600; }
+a { color: var(--blue); text-decoration-color: var(--link-line); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+code { font-family: var(--f-mono); font-weight: 600; font-size: 0.92em; color: var(--teal); background: var(--teal-wash); padding: 0.08em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: 0 0 20px; padding: 14px 16px; overflow-x: auto; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 8px; font: 500 14px/1.5 var(--f-mono); }
+pre code { color: var(--text); background: none; padding: 0; font: inherit; overflow-wrap: normal; }
+.table-wrap { margin: 0 0 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 11px/1.4 var(--f-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--blue-deep); background: var(--blue-wash); }
+th, td { padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--surface-alt); }
+.tldr { margin: 0 0 32px; padding: 16px 20px; background: var(--blue-tint); border-left: 4px solid var(--blue); border-radius: 0 8px 8px 0; }
+.callout { margin: 0 0 20px; padding: 12px 16px; background: var(--teal-wash); border-left: 3px solid var(--teal); border-radius: 0 6px 6px 0; }
+.callout.warn { background: var(--warn-wash); border-color: var(--warn); }
+.callout.bad { background: var(--bad-wash); border-color: var(--bad); }
+.tldr > :last-child, .callout > :last-child, .card > :last-child { margin-bottom: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; margin: 0 0 24px; }
+.card { padding: 16px 18px; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 10px; }
+.card > h3:first-child, .card > h4:first-child { margin-top: 0; }
+.tag { display: inline-block; padding: 0 8px; border-radius: 999px; font: 600 12px/1.7 var(--f-mono); white-space: nowrap; color: var(--blue-deep); background: var(--blue-tint); }
+.tag.ok { color: var(--ok); background: var(--ok-wash); }
+.tag.warn { color: var(--warn); background: var(--warn-wash); }
+.tag.bad { color: var(--bad); background: var(--bad-wash); }
+.muted { color: var(--muted); }
+details { margin: 0 0 12px; background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 8px; }
+summary { padding: 10px 14px; font-weight: 600; color: var(--ink); cursor: pointer; }
+details[open] > summary { margin-bottom: 12px; border-bottom: 1px solid var(--rule); }
+details > :not(summary) { margin-inline: 14px; }
+details > :last-child { margin-bottom: 14px; }
+[role="tablist"] { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; border-bottom: 1px solid var(--rule-strong); }
+[role="tab"] { appearance: none; margin-bottom: -1px; padding: 8px 14px; border: 0; border-bottom: 2px solid transparent; background: none; font: 500 14px var(--f-body); color: var(--muted); cursor: pointer; }
+[role="tab"][aria-selected="true"] { color: var(--blue); border-bottom-color: var(--blue); }
+figure { margin: 0 0 28px; }
+figure svg { display: block; max-width: 100%; height: auto; }
+figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.d-box { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1.5; }
+.d-key { fill: var(--blue-tint); stroke: var(--blue); stroke-width: 1.5; }
+.d-line { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.d-arrow { fill: var(--muted); }
+.d-text { fill: var(--text); font: 13px var(--f-body); }
+.d-label { fill: var(--muted); font: 11px var(--f-mono); }
+@media (max-width: 640px) {
+  main { padding-top: 24px; }
+  h2 { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<main>
+<header class="masthead">
+  <p class="eyebrow">{{EYEBROW}}</p>
+  <h1>{{TITLE}}</h1>
+  <p class="meta">{{CREATED}}</p>
+</header>
+{{BODY}}
+</main>
+<script>
+for (const t of document.querySelectorAll("[data-tabs]")) {
+  const tabs = [...t.querySelectorAll(":scope > [role=tablist] > [role=tab]")];
+  const panels = [...t.querySelectorAll(":scope > [role=tabpanel]")];
+  const show = (i) => tabs.forEach((b, j) => {
+    b.setAttribute("aria-selected", String(i === j));
+    if (panels[j]) panels[j].hidden = i !== j;
+  });
+  tabs.forEach((b, i) => b.addEventListener("click", () => show(i)));
+  show(Math.max(0, tabs.findIndex((b) => b.getAttribute("aria-selected") === "true")));
+}
+</script>
+</body>
+</html>
