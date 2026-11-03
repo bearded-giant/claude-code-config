@@ -67,7 +67,7 @@ DM the bot. Sessions never read DMs; DMs are control only.
 | `send <label> <text>` | post into that session's thread without opening it |
 | `tail <label> [n]` | last n inbox events |
 | `kill <label>` | hard-remove the registry entry and archive the thread |
-| `restart <label>\|all [--force] [--dry-run]` | relaunch claude in its tmux pane on the same transcript, `--acct`/`--effort`/`--model` and Discord thread; a pane mid-turn, waiting on a question, or running a background shell restarts once idle unless `--force`; `remote-control` panes rerun their start command |
+| `restart <label>\|all [--force] [--dry-run]` | relaunch claude in its tmux pane on the same transcript, `--acct`/`--effort`/`--model` and Discord thread; a pane mid-turn, waiting on a question, or running a background shell restarts once idle unless `--force`. `remote-control` is skipped: it asks to enable and pick a spawn mode on every start, so restart it by hand; a relaunch that fails leaves a shell with the error in the pane |
 
 The relpath is relative to the bridged home, so `start dev/python/cc-wt/master --acct ent` starts the monolith session. The tmux session and the Discord thread take the directory's name (worktree dirs: `<base>-wt-<branch>`), the same name `cvps` uses, so `cvps` from that directory on the laptop attaches to the session the phone started. `start` into a directory whose tmux session already exists reports the clash and creates nothing. `start` has no resume; a phone-started session is always fresh.
 

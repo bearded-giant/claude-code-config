@@ -5,7 +5,7 @@ import { join } from 'path'
 
 const stateDir = mkdtempSync(join(tmpdir(), 'restart-test-state-'))
 process.env.DISCORD_STATE_DIR = stateDir
-const { acctOf, busyReason, keptFlags, projectSlug, relaunchCommand, restartSessions } = await import('./restart.ts')
+const { acctOf, busyReason, keptFlags, relaunchCommand, restartSessions } = await import('./restart.ts')
 afterAll(() => rmSync(stateDir, { recursive: true, force: true }))
 
 describe('keptFlags', () => {
@@ -29,22 +29,15 @@ describe('acctOf', () => {
   })
 })
 
-describe('projectSlug', () => {
-  test('matches claude project dir names', () => {
-    expect(projectSlug('/Users/bryan/dev/python/cc-wt/master')).toBe('-Users-bryan-dev-python-cc-wt-master')
-    expect(projectSlug('/Users/bryan/dev/ai/investigator-v2-wt/.bare')).toBe('-Users-bryan-dev-ai-investigator-v2-wt--bare')
-  })
-})
-
 describe('relaunchCommand', () => {
   test('resumes the transcript, keeps the daemon id so the thread reattaches', () => {
     expect(
       relaunchCommand({ acct: 'ent', flags: ['--effort', 'xhigh'], transcriptId: 'abc-123', daemonId: 'cwd-aba64f66-1f2e', label: 'cc-wt-master' }),
-    ).toBe('bash -lc "CLAUDE_SESSION_ID=cwd-aba64f66-1f2e CLAUDE_SESSION_LABEL=cc-wt-master dclaude --acct ent --effort xhigh --resume abc-123"')
+    ).toBe('bash -lc "CLAUDE_SESSION_ID=cwd-aba64f66-1f2e CLAUDE_SESSION_LABEL=cc-wt-master dclaude --acct ent --effort xhigh --resume abc-123 || exec bash -l"')
   })
   test('no daemon id: plain resume; unsafe label dropped', () => {
     expect(relaunchCommand({ acct: 'team', flags: [], transcriptId: 'abc', label: 'my label' })).toBe(
-      'bash -lc "dclaude --acct team --resume abc"',
+      'bash -lc "dclaude --acct team --resume abc || exec bash -l"',
     )
   })
   test('refuses an unsafe transcript id', () => {

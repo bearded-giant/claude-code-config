@@ -1,7 +1,5 @@
 import { spawnSync } from 'child_process'
-import { existsSync, readFileSync, readdirSync, readlinkSync, statSync } from 'fs'
-import { homedir } from 'os'
-import { join } from 'path'
+import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs'
 import { registry } from './registry.ts'
 
 const SAFE = /^[A-Za-z0-9._:=/-]+$/
@@ -32,10 +30,6 @@ export function acctOf(configDir: string | undefined): 'team' | 'ent' {
   return configDir?.endsWith('-ent') ? 'ent' : 'team'
 }
 
-export function projectSlug(cwd: string): string {
-  return cwd.replace(/[^A-Za-z0-9]/g, '-')
-}
-
 export function relaunchCommand(o: { acct: string; flags: string[]; transcriptId: string; daemonId?: string; label?: string }): string {
   const env: string[] = []
   // the same CLAUDE_SESSION_ID makes session-mcp re-register into the session's existing Discord thread
@@ -44,7 +38,8 @@ export function relaunchCommand(o: { acct: string; flags: string[]; transcriptId
   const words = [...env, 'dclaude', '--acct', o.acct, ...o.flags, '--resume', o.transcriptId]
   const bad = words.find(w => !SAFE.test(w))
   if (bad) throw new Error(`unsafe token \`${bad}\``)
-  return `bash -lc "${words.join(' ')}"`
+  // a relaunch that dies leaves a shell with its error in the pane, not a vanished tmux session
+  return `bash -lc "${words.join(' ')} || exec bash -l"`
 }
 
 export function busyReason(state: string, children: { comm: string; state: string; pid: number }[]): string | null {
@@ -109,38 +104,21 @@ function listPanes(): Pane[] {
   })
 }
 
-function newestTranscript(cwd: string): string {
-  const dir = join(homedir(), '.claude', 'projects', projectSlug(cwd))
-  let best = ''
-  let bestMtime = 0
-  try {
-    for (const f of readdirSync(dir)) {
-      if (!f.endsWith('.jsonl')) continue
-      const m = statSync(join(dir, f)).mtimeMs
-      if (m > bestMtime) { bestMtime = m; best = f.slice(0, -'.jsonl'.length) }
-    }
-  } catch {}
-  return best
-}
-
 export function planRestart(filter: string): Target[] {
   const found = listPanes()
     .map(pane => ({ pane, claude: claudeIn(pane.pid) }))
     .filter((x): x is { pane: Pane; claude: Proc } => x.claude !== null)
-  const perCwd = new Map<string, number>()
-  for (const { claude } of found) perCwd.set(claude.cwd, (perCwd.get(claude.cwd) ?? 0) + 1)
   const active = registry.list().filter(s => s.state === 'active')
   return found
     .map(({ pane, claude }): Target => {
       const reg = active.find(s => proc(s.pid)?.ppid === claude.pid)
       const label = reg?.label ?? claude.env.CLAUDE_SESSION_LABEL ?? pane.session
       const base = { pane, label, cwd: claude.cwd, busy: busyReason(pane.state, children(claude.pid)) }
-      // remote-control holds no transcript of its own: rerun the pane's start command as is
-      if (claude.argv[1] === 'remote-control') return base
+      if (claude.argv[1] === 'remote-control') return { ...base, skip: 'remote-control asks to enable and pick a spawn mode on start; restart it by hand' }
       if (!claude.argv.includes('server:discord')) return { ...base, skip: 'not started by dclaude' }
-      // sessions older than the SessionStart pane stamp: newest transcript in the cwd, only when no other claude shares it
-      const transcriptId = pane.transcriptId || (perCwd.get(claude.cwd) === 1 ? newestTranscript(claude.cwd) : '')
-      if (!transcriptId) return { ...base, skip: 'no transcript id on the pane and another claude shares its cwd' }
+      // mutagen syncs transcripts both ways, so the newest one in a cwd can be the laptop's: only the pane stamp is trusted
+      const transcriptId = pane.transcriptId
+      if (!transcriptId) return { ...base, skip: 'pane has no @claude_session_id (session predates the stamp); /exit it and run `dclaude --resume <id>`' }
       try {
         const cmd = relaunchCommand({
           acct: acctOf(claude.env.CLAUDE_SECURESTORAGE_CONFIG_DIR),
@@ -158,8 +136,7 @@ export function planRestart(filter: string): Target[] {
 }
 
 function respawn(t: Target): string {
-  const args = ['respawn-pane', '-k', '-t', t.pane.id]
-  if (t.cmd) args.push('-c', t.cwd, t.cmd)
+  const args = ['respawn-pane', '-k', '-t', t.pane.id, '-c', t.cwd, t.cmd!]
   const r = spawnSync('tmux', args, { encoding: 'utf8', timeout: 10_000 })
   if (r.status === 0) return `\`${t.label}\` restarted`
   return `\`${t.label}\`: respawn failed: ${r.error?.message ?? (r.stderr.trim() || `exit ${r.status}`)}`
@@ -196,7 +173,7 @@ export function restartSessions(target: string, force = false, dryRun = false): 
   if (targets.length === 0) return `no claude pane matching \`${target}\``
   const lines = targets.map(t => {
     if (t.skip) return `• \`${t.label}\`: skipped, ${t.skip}`
-    if (dryRun) return `• \`${t.label}\`: ${t.busy && !force ? `${t.busy}, would wait` : 'would restart'} → ${t.cmd ?? 'its start command'}`
+    if (dryRun) return `• \`${t.label}\`: ${t.busy && !force ? `${t.busy}, would wait` : 'would restart'} → ${t.cmd}`
     if (t.busy && !force) {
       enqueue(t)
       return `• \`${t.label}\`: ${t.busy}, restarts once idle`
