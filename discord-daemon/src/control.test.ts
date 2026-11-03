@@ -45,7 +45,7 @@ describe('sessionNameFor', () => {
   test('worktree dirs carry the layout name', () => {
     expect(sessionNameFor('/Users/bryan/dev/python/cc-wt/master')).toBe('cc-wt-master')
     expect(sessionNameFor('/Users/bryan/dev/ai/kai')).toBe('kai')
-    expect(sessionNameFor('/Users/bryan/scratch')).toBe('scratch')
+    expect(sessionNameFor('/Users/bryan/sandbox')).toBe('sandbox')
   })
 })
 

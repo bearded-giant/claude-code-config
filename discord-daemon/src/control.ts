@@ -7,7 +7,7 @@ import type { DiscordBot } from './discord.ts'
 import type { InboxEvent } from './types.ts'
 
 const PROJECTS_ROOT = join(HOME_ROOT, 'dev')
-const DEFAULT_SCRATCH = join(HOME_ROOT, 'scratch')
+const DEFAULT_SANDBOX = join(HOME_ROOT, 'sandbox')
 const PATH_OK = /^[A-Za-z0-9._/-]+$/
 const PROJECTS_DEPTH = 3
 const START_FLAGS: Record<string, readonly string[]> = {
@@ -94,7 +94,7 @@ function helpText(): string {
     '`tail <label> [n]` — last N inbox events',
     '`kill <label>` — unregister + archive thread',
     `\`projects\` — repos and worktrees under \`${relFromRoot(PROJECTS_ROOT)}\``,
-    `\`start [relpath] [--acct team|ent] [--effort ${START_FLAGS.effort!.join('|')}] [--model ${START_FLAGS.model!.join('|')}]\` — spawn a dclaude session in \`${HOME_ROOT}/<relpath>\` (mkdir -p if missing; no relpath: \`${relFromRoot(DEFAULT_SCRATCH)}\`)`,
+    `\`start [relpath] [--acct team|ent] [--effort ${START_FLAGS.effort!.join('|')}] [--model ${START_FLAGS.model!.join('|')}]\` — spawn a dclaude session in \`${HOME_ROOT}/<relpath>\` (mkdir -p if missing; no relpath: \`${relFromRoot(DEFAULT_SANDBOX)}\`)`,
     '`help` — this',
     '',
     'For interactive chat with a session, post in its thread (not here).',
@@ -156,7 +156,7 @@ function startSession(tokens: string[]): string {
   const { relpath, dclaudeArgs } = parsed
   let target: string
   if (!relpath) {
-    target = DEFAULT_SCRATCH
+    target = DEFAULT_SANDBOX
   } else {
     if (relpath.startsWith('/') || relpath.includes('..') || !PATH_OK.test(relpath)) {
       return `invalid path: \`${relpath}\` — must be relative to \`${HOME_ROOT}\`, no \`..\`, chars [A-Za-z0-9._/-]`

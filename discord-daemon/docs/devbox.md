@@ -53,7 +53,7 @@ DM the bot from anywhere for control; sessions only read their own thread.
 | `tail <label> [n]` | last n inbox events |
 | `kill <label>` | unregister and archive the thread |
 | `projects` | repos and worktrees under `dev/` on the box, to depth 3 |
-| `start [relpath] [--acct team\|ent] [--effort low..max] [--model opus\|sonnet\|fable]` | spawn `dclaude` in a tmux session at that path (no path: `scratch/`) |
+| `start [relpath] [--acct team\|ent] [--effort low..max] [--model opus\|sonnet\|fable]` | spawn `dclaude` in a tmux session at that path (no path: `sandbox/`, a throwaway dir outside any repo) |
 
 Transcripts flow both ways through the `claude-projects` mutagen session, so `claude --resume <id>` works on either machine once the file has landed. `lift` (`scripts/lift-to-vps.sh`) copies one transcript by hand when sync is off. `scripts/restore-vps-tmux.sh` recreates sessions from `~/.claude/vps-sessions.yml` after a reboot. `scripts/pull-from-vps.sh <repo>` commits and pushes devbox edits and pulls them on the laptop, although git-native clones mean you can also just push from the box.
 
