@@ -54,7 +54,7 @@ The compose prompt (`scripts/prompt.md`) holds the template and grounding rules,
 
 ## Schedule
 
-Weekdays 6pm via launchd (system time), optional. The draft covers the day; I edit it and send it the next morning, so `opener` in `config.json` should read as yesterday's update. Install:
+Weekdays 7:30pm via launchd (system time), optional. The draft covers the day; I edit it and send it the next morning, so `opener` in `config.json` should read as yesterday's update. Install:
 
 ```
 sed "s|__HOME__|$HOME|g" ~/.claude/skills/eod-status/scripts/eod-status.plist > ~/Library/LaunchAgents/local.eod-status.plist
