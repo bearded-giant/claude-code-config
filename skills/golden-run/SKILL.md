@@ -12,12 +12,13 @@ One loop for the lone engineer: run, pull, grade, diff, report. The repo side is
 - or `<batch_id>`: skip the run, pull and grade an existing batch (`--no-run` is the same thing with a CSV present).
 - `--against <batch_id>`: the earlier batch to diff against (pull it too when its directory is missing).
 - `--base-url`: default production `https://investigator-v2.vercel.app`; preview needs `VERCEL_AUTOMATION_BYPASS_SECRET` in `.env.resolved`.
-- Reference answers: the golden case's `expected_answer` and `notes` in `eval/golden.yaml` when the question matches a case; else none (grade on the run alone).
+- Reference answers: `R3_NNN` rows use that case in `eval/golden.yaml`; `GoldenNNN` rows use `eval/golden_expected_answers.csv` (by `question_id`) plus the notes of the mapped yaml case (Golden001-005 = Q001-Q005, Golden006 = Q008, Golden007 = Q006, Golden008 = Q007, Golden009 = Q010, Golden010 = Q009); anything else matches a case by question text, else none (grade on the run alone).
+- A plan instead of a CSV: in an investigator-v2 worktree `make golden-plan [PLAN=<yaml>] [SETS=goldens|r3] [TARGET=local|preview|stage|prod|<url>]` (default plan `eval/golden_plan.yaml`) runs, pulls, diffs and repeats every arm against its control and writes `golden-runs/_plans/<plan>/report.md` ending in one `/golden-run <batch> --against <control>` line per arm; run this skill with `--no-run` semantics on each line (grade, diff, report).
 
 ## Steps
 
 1. Env: `make env` in the worktree (needs `vault login`); `INVESTIGATOR_SERVICE_TOKEN` must resolve. Never export values into the shell; the script reads `.env.resolved`.
-2. Run (skip with a batch id): `make golden-run QUESTIONS=<csv> BATCH=<id>`; batch id `g_<yyyymmdd>_<short tag>`. Exit 1 means a row failed: rerun only the failed question ids with the same batch id (the script tags runs, the runs list groups them).
+2. Run (skip with a batch id or after a plan): `make golden-run QUESTIONS=<csv> BATCH=<id>`; batch id `g_<yyyymmdd>_<short tag>`. Exit 1 means a row failed: rerun only the failed question ids with the same batch id (the script tags runs, the runs list groups them).
 3. Pull: `make golden-pull BATCH=<id>` into `golden-runs/<id>/` (`index.csv` + `<run_id>.full.json`). Pull `--against` the same way.
 4. Grade: write the grader brief from `grader_brief.md` (this dir) with the batch directory and the golden file filled in, then one `general-purpose` subagent on `opus` per 4 rows, each writing `golden-runs/<id>/grades/<question_id>.json` and returning one line per row. Never grade in the lead; never read a `full.json` whole in the lead (100-400 KB each).
 5. Diff: `make golden-diff A=golden-runs/<against> B=golden-runs/<id>` and, when both batches have `grades/`, a grade diff per question id (his or prior total out of 6 against the new total).
