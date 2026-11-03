@@ -148,6 +148,7 @@ export PATH="$BIN:$PATH"
 bash "$HOME/dev/claude-code-config/install.sh" --tooling-dir "$HOME/dev/giant-tooling"
 cat > "$HOME/.claude/settings.local.json" <<'JSON'
 {
+  "effortLevel": "xhigh",
   "enabledPlugins": {
     "discord@claude-plugins-official": false
   },
