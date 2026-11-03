@@ -184,7 +184,14 @@ def render_page(title_html, eyebrow, created, body):
 
 
 def data_uri(img, ref):
-    path = img.parent / urllib.parse.unquote(html.unescape(ref))
+    rel = urllib.parse.unquote(html.unescape(ref))
+    path = img.parent / rel
+    if not path.is_file() and img.resolve().is_relative_to(vault().resolve()):
+        # obsidian resolves a link that misses relatively by path suffix anywhere in the vault
+        path = next(
+            (p for p in vault().rglob(Path(rel).name) if p.as_posix().endswith(rel)),
+            path,
+        )
     if not path.is_file():
         print(f"warn {img}: image {ref} not found, left as a link", file=sys.stderr)
         return ref
@@ -953,12 +960,16 @@ def self_test():
         cv = Path(d) / "areas" / "cv"
         (cv / "diagrams").mkdir(parents=True)
         (cv / "diagrams" / "flow.png").write_bytes(b"\x89PNG-fake")
+        moved = Path(d) / "areas" / "elsewhere-proj" / "diagrams"
+        moved.mkdir(parents=True)
+        (moved / "elsewhere.svg").write_text("<svg/>", encoding="utf-8")
         (cv / "a.md").write_text(
             "---\nid: a\naliases: []\ntags: [claude, x]\narea: auth\nproject: cv\n"
             "created: 2026-10-01T09:00:00-04:00\nartifact: https://claude.ai/artifact/C\n"
             "artifact_rev: 1\n---\n\n# Tokens and `ttl`\n\nSee [[redis-keys|the keys]].\n\n"
             "| k | v |\n|---|---|\n| a | 1 |\n\n```mermaid\ngraph LR\n  A-->B\n```\n\n"
             "![flow](diagrams/flow.png)\n\n![gone](diagrams/missing.png)\n\n"
+            "![moved](diagrams/elsewhere.svg)\n\n"
             "## Artifact revisions\n\n- rev 1 · 2026-10-01T10:00:00-04:00 · first --> pass\n\n"
             "## Working notes\n\nscratch\n",
             encoding="utf-8",
@@ -990,6 +1001,7 @@ def self_test():
         assert '<pre class="mermaid">graph LR' in text and "mermaid@11.4.1" in text
         assert 'src="data:image/png;base64,' in text, text
         assert 'src="diagrams/missing.png"' in text, text
+        assert 'src="data:image/svg+xml;base64,PHN2Zy8+"' in text, text
         assert '<h2 id="working-notes">Working notes</h2>' in text, text
         assert "<h1" not in text.split("</header>")[1], text
         fm = parse_fm(cv / "a.html") or {}
