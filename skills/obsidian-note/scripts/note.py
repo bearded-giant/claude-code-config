@@ -165,7 +165,7 @@ def project_of(p):
 
 def notes():
     for p in sorted((vault() / "areas").rglob("*.md")):
-        if p.stem != "index" and "handoffs" not in p.relative_to(vault()).parts:
+        if p.stem != "areas-index" and "handoffs" not in p.relative_to(vault()).parts:
             yield p
 
 
@@ -447,6 +447,9 @@ def self_test():
         handoff.write_text(
             "---\ntype: handoff\nstatus: ready\ntags: [ttl]\n---\n", encoding="utf-8"
         )
+        (Path(d) / "areas/areas-index.md").write_text(
+            "---\nid: areas-index\ntags: [es]\n---\n\n# Areas\n", encoding="utf-8"
+        )
         cwd = os.getcwd()
         os.chdir(d)
         try:
@@ -631,7 +634,7 @@ def self_test():
         assert text.endswith("\n\n## Working notes\n\nscratch\n"), text
         assert "· first\n- rev 4 · " in text, text
         assert "· after a trailing section\n\n## Working notes" in text, text
-        before = parse_fm(r)
+        before = parse_fm(r) or {}
         cmd_link(
             argparse.Namespace(
                 note=str(r),
@@ -652,7 +655,7 @@ def self_test():
                 hub=True,
             )
         )
-        after = parse_fm(r)
+        after = parse_fm(r) or {}
         assert after["artifact_hub"] == ["https://hub.test/r/"] and after[
             "artifact_hub_rev"
         ] == ["2"], after

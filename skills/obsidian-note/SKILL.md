@@ -102,5 +102,5 @@ One line per note: `created | area | project | path | title`. Handoffs are left 
 - Notes are for the user: paths, dates, changelogs allowed. Anything for others goes out as a `claude-artifact`, not a note.
 - The `daily_note` hook logs every vault note write (Write/Edit or `note.py new`) and every artifact publish under `## CLAUDE LINKS` in `daily/<YYYY-MM-DD>.md`, creating the day's note from `templates/dailytemplate.md` when missing. Never hand-edit those sections or log twice.
 - Feature state stays in `.giantmem/`: proposal, plan, tasks, specs, facts, reviews, research tied to an in_progress feature. Handoffs go to `areas/<project>/handoffs/` per workspace-rules `## Handoff`, never through `note.py`. Cross-repo durable knowledge (runbook, incident writeup, design note, reference, decision record, how-to) goes to the vault.
-- Do not write `areas/index.md`; it is a Dataview page.
+- Do not write `areas/areas-index.md`; it is a Dataview page.
 - Wiki links `[[note]]` resolve vault-wide; link existing notes by stem when relevant.
