@@ -6,7 +6,7 @@ framework = "hono"
 node = "24.x"
 root_directory = "apps/agent-api"
 function_timeout = 800
-domains = ["rc-ai-agent-api.vercel.app"]
+domains = ["rc-ai-agent-api.vercel.app", "agents.recharge-ai.app", "agents-preview.recharge-ai.app"]
 
 [vault]
 path = "secret/ai-tools/prod/ai-agent-api"
