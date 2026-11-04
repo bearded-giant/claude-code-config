@@ -1,6 +1,6 @@
 ---
 name: obsidian-note
-description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo), HTML by default and markdown on ask, with the vault frontmatter contract plus a creation timestamp; list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "create vault doc", "vault doc", "create html doc", "create vault md", "vault md", "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any doc deliverable that is not feature state (.giantmem/). Also fires on "convert to html", "md to html", "md2html", "convert these notes". Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
+description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Notes/areas/<project>/, one folder per repo), HTML when the user asks for a doc, markdown for notes Claude starts on its own or on ask, with the vault frontmatter contract plus a creation timestamp; list vault notes by project/area/tag to pull prior context, and link a note to its claude.ai artifact. Default target of "publish". Auto-fires when the user says "create vault doc", "vault doc", "create html doc", "create vault md", "vault md", "publish", "publish this", "note this", "write this up", "save to obsidian", "runbook for", "write me a doc/reference/summary", or asks for any doc deliverable that is not feature state (.giantmem/). Also fires on "convert to html", "md to html", "md2html", "convert these notes". Never writes to ~/Desktop. Skip for feature artifacts (proposal, plan, tasks, specs, reviews) which stay under .giantmem/, and for handoffs (workspace-rules `## Handoff` owns `areas/<project>/handoffs/`).
 ---
 <!-- caveman:compressed -->
 
@@ -10,8 +10,9 @@ Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to
 
 | Ask | Format |
 |---|---|
-| "create vault doc", "vault doc", "create html doc", "publish", "write this up", any doc ask naming no format | HTML |
+| User asks for a doc: "create vault doc", "vault doc", "create html doc", "publish", "write this up", any doc ask naming no format | HTML |
 | "create vault md", "vault md", "as markdown", "md note" | markdown |
+| No doc ask: Claude starts the note on its own mid-task (design note, working notes, findings, research) | markdown |
 | ticket notes (`sec-ticket`), handoffs | markdown, always |
 
 `--body-file` extension picks it: `.html`/`.htm` writes `<slug>.html`, anything else or stdin writes `<slug>.md`.
@@ -29,7 +30,7 @@ User's shell aliases: `md2html`, `html2md` (dotfiles `shell/.bash_aliases`). Dir
 - First H1 becomes the template title (inline code kept); none = filename.
 - Tables get `.table-wrap`; local images inline as data URIs (a relative path that misses falls back to a vault-wide path-suffix match, as Obsidian does; still missing: warning, link kept); mermaid blocks render via a pinned CDN loader; `[[wiki links]]` in vault files become `obsidian://open` links.
 - Mechanical: single column, no TL;DR, no layout. Claude converting on request: run it, then Edit the result where the doc earns more (`.tldr`, `.grid` for compared options, SVG where a mermaid diagram matters) per `## HTML notes`.
-- `--to md` reverses it: frontmatter back on top, artifact log back as the last `## Artifact revisions`, masthead H1 (else `<title>`, else filename) as `# title`, mermaid back to fenced blocks, `obsidian://open` links back to `[[wiki links]]`, scripts and styles dropped. Layout is lossy: cards, callouts, tags flatten to text; tab labels become plain lines; inline SVG and images stay as data-URI images. Use it when md is required (a tool, a repo doc, a diff to review); HTML stays the vault default.
+- `--to md` reverses it: frontmatter back on top, artifact log back as the last `## Artifact revisions`, masthead H1 (else `<title>`, else filename) as `# title`, mermaid back to fenced blocks, `obsidian://open` links back to `[[wiki links]]`, scripts and styles dropped. Layout is lossy: cards, callouts, tags flatten to text; tab labels become plain lines; inline SVG and images stay as data-URI images. Use it when md is required (a tool, a repo doc, a diff to review); HTML stays the format for docs the user asks for.
 - Deleting the source afterwards is a deletion: confirm first. Inbound `[[stem]]` links from other md notes resolve to `.md` only and break once the `.md` goes.
 
 ## Write
