@@ -192,22 +192,22 @@ Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user
 
 ## Feature todos → doit sync
 
-Hard link between multi-step feature work and the doit MCP. Code work blocked on the user (operator detail, or approval of a dangerous change), and decisions mirrored from doc Open Questions, get parked on the repo's doit list with `feature=<name>`. Everything else found during the work gets done this session (CLAUDE.md `### Proactive execution`). Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
+Hard link between multi-step feature work and the doit MCP. Code work blocked on the user (operator detail, or approval of a dangerous change), and decisions the user deferred (`Decide later`), get parked on the repo's doit list with `feature=<name>`. Everything else found during the work gets done this session (CLAUDE.md `### Proactive execution`). Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
 
 ### Trigger — when a code item is written
 
 Default is proactive (CLAUDE.md `### Proactive execution`). Code follow-ups found during the work, feature OR bare repo (bug found in passing, parity gap, stale doc or comment, test gap, split-out fix), get done this session. They never become doit items and never get an ask.
 
 A code item is written only when the work waits on the user, or on explicit request:
-- needs detail only the user has (product or design choice, credentials, access): the question goes in the doc's Open Questions (decision mirror) or an owed item, and the code item deps on it.
-- dangerous (one-way door, data corruption or loss, security, outward-facing): an owed item to approve or decide, and the code item deps on it.
+- needs detail only the user has: product or design choice → AskUserQuestion this turn (CLAUDE.md `### Strategy visibility`, ask never park); answered → do the work, no item; `Decide later` → doc Open Question + decision mirror, and the code item deps on it. Credentials or access → owed item, and the code item deps on it.
+- dangerous (one-way door, data corruption or loss, security, outward-facing): ask for the go-ahead via AskUserQuestion; an action only the user can run → owed item; `Decide later` → decision mirror. The code item deps on the owed or decision item.
 
-No ask; the owed or decision item is the gate. Name each in the open edges.
+Owed items need no ask; the owed item is the gate. Decisions always get asked first. Name each owed or deferred item in the open edges.
 - Three item kinds only:
   - code work: a repo, a file or symbol, a change. Text names the change (`### Title`); repo and file/symbol go in the description. `claude:` when the model can do it; no prefix when the user keeps it.
   - `decision`: mirror of one doc Open Question, per `### Decision mirror`. Never a free-standing decision item.
   - owed: an action only the user can do, per `### Owed items → daily twin`.
-- Mixed item → only the code half becomes the code item. A decision half goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item when it passes the bar in `### Owed items → daily twin`.
+- Mixed item → only the code half becomes the code item. A decision half gets asked; deferred, it goes into the doc's Open Questions and mirrors from there; a user-action half becomes an owed item when it passes the bar in `### Owed items → daily twin`.
 - Model-only next-steps (things the model does this turn) are NOT todos — skip them.
 - No active feature → same `{repo}` list, `feature` omitted. User works outside features often — do NOT skip. `daily` is written only through `owe=true` twins or on explicit user request.
 - Also fires on explicit phrasing: "feature todos", "add to the feature list", "sync feature todos".
@@ -216,7 +216,8 @@ No ask; the owed or decision item is the gate. Name each in the open edges.
 
 The doc is the source of truth; the item is the reminder. Every `## Open Questions for User` entry in a `.giantmem/` doc has exactly one `decision` item, and every `decision` item points at exactly one entry.
 
-- Write in the same turn the doc gains or rewords an entry. No ask. Say `mirrored N decisions to <list>` in chat.
+- Entries come from deferral only. A question gets asked first (AskUserQuestion, recommended option first, `Decide later` last). Answered → the answer goes in the doc body (decisions table), no entry, no item. `Decide later`, or nobody to ask (`/auto` run, subagent, workflow, babysit loop) → entry + item.
+- Write the item in the same turn the doc gains or rewords an entry. Say `deferred N decisions to <list>` in chat.
 - List: the repo list (`### List resolution` below). Doc in a feature dir → `feature=<that feature>`, primed or not; repo-level doc → no `feature`. `worktree` as usual.
 - Item: `add_todo type=decision` on that list, no `owe`. A design decision is feature work, not an inbox action, so it never twins into `daily`. Text = its topic as a short question (≤ 40 chars, `### Title`); description opens `ref: <doc abs path>`, then `question:` (the entry verbatim), `why` (what it blocks), and `links`. `[BLOCKING]` → priority `urgent`, `[non-blocking]` → none. No `claude:`.
 - Resolve doc first: the answer lands in the doc and the entry leaves Open Questions, then `complete_todo` + `add_note` append `DONE {ts} resolved in <doc path>: <one-line answer>`. Same order when the user answers in chat or in the doit note.

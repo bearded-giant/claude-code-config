@@ -25,7 +25,7 @@ Format: numbered list, mark blocking vs non-blocking.
 
 Remove the section once answered.
 
-Each entry mirrors 1:1 to a doit `decision` item, written with the doc and closed once the doc resolves it → `feature-management` → `### Decision mirror`.
+Ask before writing an entry: a question for the user is an AskUserQuestion call in the turn the doc is written, and the answer goes in the doc body. Only a `Decide later` answer, or no user to ask (`/auto`, subagent, workflow), makes an entry. Each entry mirrors 1:1 to a doit `decision` item, written with the doc and closed once the doc resolves it → `feature-management` → `### Decision mirror`.
 
 ## Global directories — always at `.giantmem/` level
 

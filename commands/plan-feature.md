@@ -74,7 +74,7 @@ planned: {today's date}
 
 ## Open Questions
 
-- {anything unresolved}
+- {only questions the user deferred; ask the rest before writing the plan}
 ```
 
 The plan must be concrete -- actual file paths, function names, specific changes. Not vague phases.
