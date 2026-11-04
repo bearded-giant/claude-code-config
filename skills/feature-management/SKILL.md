@@ -229,7 +229,7 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
 `daily` is the user's one dashboard across 4-6 parallel projects: core, actionable signal, not a log of every user-shaped step. The project list keeps the work record; `daily` holds only the owed twins that pass the bar.
 
 - Bar: owe only when all four hold.
-  1. Only the user can do it: credentials or access, a console (vault, DNS, cert, IdP, GCP, beta admin), outward comms (ping, share, file a ticket), or a human call the code can't settle.
+  1. Only the user can do it: credentials or access, a console (vault, DNS, cert, IdP, GCP, beta admin), or outward comms (ping, share, file a ticket). A decision or question is never owed: ask it (CLAUDE.md `### Strategy visibility`).
   2. Actionable now: not waiting on another reviewer's approval, a release, a cutover window, a conflict fix, or another item.
   3. Something waits on it: blocked work, or a security or prod risk.
   4. Not routine flow (the never-owe list below).
