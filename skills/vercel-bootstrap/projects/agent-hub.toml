@@ -1,14 +1,11 @@
+# ai-platform hub (apps/hub in RechargePayments/ai-platform); GitHub Actions deploys, so no gitlab key:
+# the deploy tokens are minted with `vbs.py token agent-hub --vault secret/ai-tools/prod/agent-hub:vercel_token`
+# (and :vercel_preview_token) and copied into the GitHub environment secrets by hand from vault
 project = "agent-hub"
-gitlab = "ai-tooling/agent-hub"
 framework = "nextjs"
-root_directory = "apps/hub"
 node = "24.x"
+root_directory = "apps/hub"
 domains = ["rc-agent-hub.vercel.app"]
-env_sync_job = "vercel-env-sync"
-
-[tokens]
-deploy = "vercel_token"
-preview = "vercel_preview_token"
 
 [vault]
 path = "secret/ai-tools/prod/agent-hub"
