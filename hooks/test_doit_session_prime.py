@@ -17,48 +17,27 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 CASES = [
-    # worktree == feature collapses to one segment
-    ("/dev/cc-wt/sec-auth0-fix", "sec-auth0-fix", "cc-sec-auth0-fix"),
-    # org prefix and -wt container suffix dropped
-    (
-        "/dev/recharge-auth-wt/better-redis-search",
-        "session-index",
-        "auth-session-index",
-    ),
-    (
-        "/dev/recharge-auth-wt/better-redis-search",
-        "better-redis-search",
-        "auth-better-redis-search",
-    ),
+    # one list per repo: worktree and feature never add a segment
+    ("/dev/cc-wt/sec-auth0-fix", "cc"),
+    ("/dev/recharge-auth-wt/better-redis-search", "auth"),
+    ("/dev/recharge-merchant-mcp-wt/legacy-oauth-connectors", "merchant-mcp"),
+    ("/dev/investigator-v2-wt/golden-runs-tooling", "investigator-v2"),
+    ("/dev/remi-wt/main", "remi"),
+    # plain repos keep their whole name up to the cap
+    ("/dev/claude-code-config", "claude-code-config"),
+    ("/dev/dapr/auth-session-sync", "auth-session-sync"),
+    ("/dev/giant-tooling", "giant-tooling"),
+    ("/dev/do-it.nvim", "do-it.nvim"),
     # over the cap: trailing words shed, never cut mid-word
-    (
-        "/dev/recharge-auth-wt/better-redis-search",
-        "service-auth-decouple",
-        "auth-service-auth",
-    ),
-    (
-        "/dev/recharge-merchant-mcp-wt/legacy-oauth-connectors",
-        "legacy-oauth-connectors",
-        "merchant-mcp-legacy",
-    ),
-    # long repo names keep their first word
-    ("/dev/investigator-agent-wt/admin-qol", "admin-qol", "investigator-admin-qol"),
-    ("/dev/claude-code-config", "assigned-reviews", "claude-assigned-reviews"),
+    ("/dev/recharge-really-long-repository-name-here-wt/x", "really-long-repository"),
     # a bare "claude" list makes its daily twins read as `claude:` burn items
-    ("/dev/claude-code-config", None, "claude-code"),
-    # feat- prefix dropped
-    (
-        "/dev/frontend-wt/feat-redact-api-tokens",
-        "feat-redact-api-tokens",
-        "frontend-redact-api",
-    ),
-    # no feature: non-default worktree names the list, default worktree does not
-    ("/dev/cc-wt/stage", None, "cc-stage"),
-    ("/dev/remi-wt/main", None, "remi"),
-    ("/dev/remi-wt/main", "monorepo", "remi-monorepo"),
-    # plain repo, short enough to keep whole
-    ("/dev/giant-tooling", None, "giant-tooling"),
-    ("/dev/do-it.nvim", None, "do-it.nvim"),
+    ("/dev/claude", "claude-repo"),
+]
+
+WORKTREES = [
+    ("/dev/cc-wt/sec-auth0-fix", "sec-auth0-fix"),
+    ("/dev/remi-wt/main", "main"),
+    ("/dev/do-it.nvim", None),
 ]
 
 
@@ -101,6 +80,54 @@ def session_cases(tmp):
         out = run_main(stdin_text)
         assert "  session: ?  tmux: none" in out, out
         assert f"cd {root} && claude --continue" in out
+
+
+def scope_cases(tmp):
+    wt = os.path.join(tmp, "inv-wt", "golden")
+    os.makedirs(wt)
+    os.environ["CLAUDE_PROJECT_DIR"] = wt
+    try:
+        out = run_main("{}")
+        assert (
+            '  add_todo params on every new item: list="inv" worktree="golden"' in out
+        ), out
+        assert "  list: inv   worktree: golden   feature: -" in out, out
+        write_list(
+            "inv",
+            [
+                {**todo("a", "claude: [bug] 1. mine"), "worktree": "golden"},
+                {**todo("b", "claude: [bug] 2. theirs"), "worktree": "close"},
+                {**todo("c", "claude: [bug] 3. theirs too"), "worktree": "close"},
+                todo("d", "[decision] 4. unassigned"),
+                {**todo("e", "claude: [bug] 5. other wt"), "worktree": "admin"},
+                {
+                    **todo("f", "claude: [bug] 6. done mine", done=True),
+                    "worktree": "golden",
+                },
+            ],
+        )
+        out = run_main("{}")
+        lines = out.splitlines()
+        mine = lines.index(
+            "PENDING TODOS, this worktree/feature (priority bucket, then do-order):"
+        )
+        assert lines[mine + 1] == "  [-] claude: [bug] 1. mine [wt:golden]", lines[
+            mine + 1
+        ]
+        loose = lines.index("UNASSIGNED (no worktree):")
+        assert loose > mine and lines[loose + 1] == "  [-] [decision] 4. unassigned"
+        assert (
+            "OTHER WORKTREES (list_todos worktree=<name> to see them): admin 1, close 2"
+            in out
+        ), out
+        assert "2. theirs" not in out and "6. done mine" not in out
+        assert (
+            "4 pending of 6" not in out
+            and "5 pending of 6" in out
+            and "1 for this worktree/feature" in out
+        )
+    finally:
+        os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(tmp, "proj")
 
 
 def drift_cases():
@@ -230,6 +257,26 @@ def path_cases(tmp):
     git("-C", repo, "commit", "-q", "--allow-empty", "-m", "x")
     git("-C", repo, "checkout", "-q", "-b", "feat/x")
     assert mod.project(repo) == "cc"
+    # the main checkout is no worktree; a linked one is named by its dir, same repo list
+    assert mod.worktree_name(repo) is None
+    linked = os.path.join(tmp, "elsewhere", "golden-runs")
+    git("-C", repo, "worktree", "add", "-q", "-b", "golden", linked)
+    assert mod.worktree_name(linked) == "golden-runs"
+    assert mod.list_name(linked) == "cc"
+    meta = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("doit_session_prime.py")),
+            "--meta",
+            "--cwd",
+            linked,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert meta == "list: cc\nworktree: golden-runs\nfeature: -\n", meta
+    git("-C", repo, "worktree", "remove", "--force", linked)
     assert mod.handoff_path(repo) == os.path.join(
         mod.AREAS, "cc", "handoffs", "feat-x.md"
     )
@@ -285,6 +332,7 @@ def hook_cases() -> None:
         )
         try:
             session_cases(tmp)
+            scope_cases(tmp)
             handoff_cases(tmp)
             drift_cases()
         finally:
@@ -404,14 +452,16 @@ def link_cases() -> None:
 
 
 def main() -> None:
-    for root, feat, expected in CASES:
-        got = mod.list_name(root, feat)
-        assert got == expected, f"{root} {feat}: {got!r} != {expected!r}"
+    for root, expected in CASES:
+        got = mod.list_name(root)
+        assert got == expected, f"{root}: {got!r} != {expected!r}"
         assert len(got) <= mod.MAX_LIST_NAME
+    for root, expected in WORKTREES:
+        assert mod.worktree_name(root) == expected, root
 
     # one word longer than the cap is hard cut
-    long = mod.list_name("/dev/cc-wt/x", "a" * 40)
-    assert len(long) == mod.MAX_LIST_NAME and long.startswith("cc-a")
+    long = mod.list_name("/dev/" + "a" * 40)
+    assert long == "a" * mod.MAX_LIST_NAME
     hook_cases()
     link_cases()
     print("ok")

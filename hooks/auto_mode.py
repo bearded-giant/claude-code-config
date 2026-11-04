@@ -169,7 +169,7 @@ def has_mr(repo, branch):
         return None
 
 
-def ready_items(todos):
+def ready_items(todos, mine=None):
     open_ranks = {
         m.group(1)
         for t in todos
@@ -178,7 +178,7 @@ def ready_items(todos):
         and (m := RANK.match(t.get("text", "")))
     }
     ready = []
-    for t in todos:
+    for t in todos if mine is None else mine:
         if (
             not isinstance(t, dict)
             or t.get("done")
@@ -196,8 +196,15 @@ def ready_items(todos):
 def session_todos(cwd):
     p = load("doit_session_prime")
     root = p.git_root(cwd)
-    name = p.list_name(root, p.active_feature(root))
-    return name, p.load_todos(os.path.join(p.LISTS_DIR, f"{name}.json")) or []
+    name = p.list_name(root)
+    todos = [
+        t
+        for t in p.load_todos(os.path.join(p.LISTS_DIR, f"{name}.json")) or []
+        if isinstance(t, dict)
+    ]
+    # the repo list is shared by parallel sessions; only this worktree's queue blocks this stop
+    mine, _, _ = p.split_scope(todos, p.worktree_name(root), p.active_feature(root))
+    return name, todos, mine
 
 
 def on_stop(data):
@@ -210,8 +217,8 @@ def on_stop(data):
     if not state or not load("doit_session_prime").interactive():
         return
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
-    name, todos = session_todos(cwd)
-    ready = ready_items(todos)
+    name, todos, mine = session_todos(cwd)
+    ready = ready_items(todos, mine)
     shipped = {tuple(s) for s in state.get("shipped", [])}
     unshipped = []
     for repo, branch in pushes_since(

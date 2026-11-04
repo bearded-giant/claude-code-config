@@ -111,6 +111,72 @@ def gate_cases(tmp):
     out = run_hook({})
     assert out and "(1 pending)" in out["reason"], out
 
+    # a worktree session on the shared repo list answers only for its own items
+    wt = os.path.join(tmp, "gate-wt", "golden")
+    os.makedirs(wt)
+    os.environ["CLAUDE_PROJECT_DIR"] = wt
+    write_list(
+        "gate",
+        [
+            {
+                "id": "a",
+                "text": "claude: [bug] 1. other",
+                "done": False,
+                "worktree": "close",
+            },
+            {
+                "id": "b",
+                "text": "[gate] 2. theirs",
+                "done": False,
+                "worktree": "close",
+                "in_progress": True,
+            },
+            {
+                "id": "c",
+                "text": "claude: [bug] 3. mine",
+                "done": False,
+                "worktree": "golden",
+            },
+        ],
+    )
+    out = run_hook({})
+    assert (
+        out and 'worktree "golden"' in out["reason"] and "(1 pending)" in out["reason"]
+    ), out
+    write_list(
+        "gate",
+        [
+            {
+                "id": "a",
+                "text": "claude: [bug] 1. other",
+                "done": False,
+                "worktree": "close",
+            },
+            {
+                "id": "c",
+                "text": "claude: [bug] 3. mine",
+                "done": False,
+                "worktree": "golden",
+                "in_progress": True,
+            },
+        ],
+    )
+    assert run_hook({}) is None
+    # nothing stamped for this worktree: other worktrees' idle items never block it
+    write_list(
+        "gate",
+        [
+            {
+                "id": "a",
+                "text": "claude: [bug] 1. other",
+                "done": False,
+                "worktree": "close",
+            }
+        ],
+    )
+    assert run_hook({}) is None
+    os.environ["CLAUDE_PROJECT_DIR"] = proj
+
 
 def dispatch_cases(tmp):
     dispatch = load("dispatch")

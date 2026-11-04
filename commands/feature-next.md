@@ -3,7 +3,7 @@ description: "Feature or repo status: next ready artifact (artifacts.json + arti
 argument-hint: "[feature-name]"
 ---
 
-Read-only, informational. Never writes docs, todos, or MRs, and never enforces the DAG. One exception: when no doit item is `in_progress`, `start_todo` the item Next leads with, so the user's chip shows it (`doit_active_gate` blocks the stop otherwise). The user can skip any artifact; never push back.
+Read-only, informational. Never writes docs, todos, or MRs, and never enforces the DAG. One exception: when no doit item in this worktree is `in_progress`, `start_todo` the item Next leads with, so the user's chip shows it (`doit_active_gate` blocks the stop otherwise). The user can skip any artifact; never push back.
 
 ## Gather (independent, run in parallel)
 
@@ -13,13 +13,13 @@ Read-only, informational. Never writes docs, todos, or MRs, and never enforces t
 
    Feature is inferred from the in_progress one when omitted. An error with `no active feature` means bare-repo mode: skip this step and the `tasks.md` part of step 4, and keep the rest.
 
-2. doit list: use the name from the SessionStart `doit session list` line. Re-derive only if cwd or feature changed:
+2. doit list: use the `list:` / `worktree:` / `feature:` lines from the SessionStart `doit session list` block. Re-derive only if cwd, worktree, or feature changed:
 
    ```bash
-   python3 ~/.claude/hooks/doit_session_prime.py --name-only [--feature <name>] --cwd "$(pwd)"
+   python3 ~/.claude/hooks/doit_session_prime.py --meta --cwd "$(pwd)"
    ```
 
-   Then `list_todos` with `list=<name>` (doit MCP only, never the JSON). A `claude:` prefix marks claude's items; everything else is the user's.
+   Then `list_todos` with `list=<name>` (doit MCP only, never the JSON): feature report → `feature=<feature>`; bare-repo report → `worktree=<worktree>` when one printed. The repo list holds every worktree's and feature's items, so an unfiltered call over-reports. A `claude:` prefix marks claude's items; everything else is the user's.
 
 3. MRs / PRs: the current branch, every MR/PR URL in the feature dir, and every MR/PR this repo's Claude sessions opened or touched on any repo, since features span repos (a terraform MR opened from an auth worktree only shows up in the third source).
 

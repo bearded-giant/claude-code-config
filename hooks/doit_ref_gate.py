@@ -120,7 +120,7 @@ def main():
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
     root = p.git_root(cwd)
     text = load("open_edges_gate").last_assistant_text(path)
-    found = findings(text, p, auto, p.list_name(root, p.active_feature(root)))
+    found = findings(text, p, auto, p.list_name(root))
     if found:
         print(json.dumps({"decision": "block", "reason": reason(found)}))
 

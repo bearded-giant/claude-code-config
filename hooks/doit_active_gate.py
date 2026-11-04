@@ -20,7 +20,8 @@ def prime():
 
 def check(p, cwd):
     root = p.git_root(cwd)
-    name = p.list_name(root, p.active_feature(root))
+    name = p.list_name(root)
+    wt = p.worktree_name(root)
     p.stamp_pane(name)
     path = os.path.join(p.LISTS_DIR, f"{name}.json")
     if not os.path.isfile(path):
@@ -28,19 +29,26 @@ def check(p, cwd):
     # a list created mid-session missed the SessionStart link; daily stays, the user may have switched to it
     p.link_window(name, follow=("",))
     todos = p.load_todos(path) or []
-    pending = [t for t in todos if isinstance(t, dict) and not t.get("done")]
+    # in_progress is one per worktree on a shared repo list, so only this worktree's items count
+    pending = [
+        t
+        for t in todos
+        if isinstance(t, dict) and not t.get("done") and t.get("worktree") == wt
+    ]
     if not pending or any(t.get("in_progress") for t in pending):
         return None
-    return name, len(pending)
+    return name, len(pending), wt
 
 
-def reason(name, count):
+def reason(name, count, wt=None):
+    scope = f'worktree "{wt}"' if wt else "items with no worktree"
     return (
-        f'doit_active_gate: nothing is in_progress on "{name}" ({count} pending), '
-        "so the user's tmux chip cannot show what is next. Call start_todo "
-        f'list="{name}" on the item that is next: the one you are working, else '
-        "the one waiting on the user (owed, gate, decision), else the top pending "
-        "item. Then end with one line naming it; do not repeat the report."
+        f'doit_active_gate: nothing is in_progress for {scope} on "{name}" '
+        f"({count} pending), so the user's tmux chip cannot show what is next. "
+        f'Call start_todo list="{name}" on the item that is next: the one you are '
+        "working, else the one waiting on the user (owed, gate, decision), else "
+        "the top pending item. Then end with one line naming it; do not repeat "
+        "the report."
     )
 
 

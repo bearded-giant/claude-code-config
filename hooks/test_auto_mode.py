@@ -36,7 +36,7 @@ class Prime:
 real_load = mod.load
 mod.load = lambda name: Prime if name == "doit_session_prime" else real_load(name)
 todos: list = []
-mod.session_todos = lambda _cwd: ("proj", todos)
+mod.session_todos = lambda _cwd: ("proj", todos, todos)
 mr_answers: dict = {}
 lookups: list = []
 

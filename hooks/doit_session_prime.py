@@ -29,10 +29,7 @@ MAX_DRIFT = 10
 MAX_HANDOFFS = 6
 # do-it.nvim's create_list / rename_list reject longer names
 MAX_LIST_NAME = 24
-REPO_MAX = 14
 ORG_PREFIX = "recharge-"
-DEFAULT_LEAVES = {"main", "master", "develop"}
-SEG_PREFIXES = ("feat-", "fix-", "chore-")
 
 
 def git_root(cwd: str) -> str:
@@ -290,19 +287,39 @@ def note_line(todo: dict) -> str:
     return first[:160]
 
 
-def render_items(pending) -> list:
+def scope_label(todo: dict) -> str:
+    wt, feat = todo.get("worktree"), todo.get("feature")
+    return (f" [wt:{wt}]" if wt else "") + (f" [feat:{feat}]" if feat else "")
+
+
+def render_items(pending, limit=MAX_ITEMS) -> list:
     lines = []
-    for todo in pending[:MAX_ITEMS]:
+    for todo in pending[:limit]:
         prio = todo.get("priorities") or "-"
         mark = " <in_progress: active>" if todo.get("in_progress") else ""
-        lines.append(f"  [{prio}] {todo.get('text', '').strip()}{mark}")
+        lines.append(
+            f"  [{prio}] {todo.get('text', '').strip()}{scope_label(todo)}{mark}"
+        )
         note = note_line(todo)
         if note:
             lines.append(f"      note: {note}")
-    extra = len(pending) - MAX_ITEMS
+    extra = len(pending) - limit
     if extra > 0:
         lines.append(f"  ... {extra} more pending — list_todos for full set")
     return lines
+
+
+def split_scope(pending, wt, feat):
+    mine, loose, others = [], [], {}
+    for todo in pending:
+        own = todo.get("worktree")
+        if own == wt or (feat and todo.get("feature") == feat):
+            mine.append(todo)
+        elif not own:
+            loose.append(todo)
+        else:
+            others[own] = others.get(own, 0) + 1
+    return mine, loose, others
 
 
 def read_ready(path: str):
@@ -324,7 +341,7 @@ def read_ready(path: str):
     return path, meta.get("updated") or "?"
 
 
-def project(root: str) -> str:
+def common_dir(root: str) -> str:
     common = ""
     with contextlib.suppress(Exception):
         out = subprocess.run(
@@ -343,11 +360,27 @@ def project(root: str) -> str:
         )
         if out.returncode == 0:
             common = out.stdout.strip()
+    return common
+
+
+def project(root: str) -> str:
+    common = common_dir(root)
     # every worktree of cc-wt/.bare shares one common dir, so they share one project
-    name = (
-        os.path.basename(os.path.dirname(common)) if common else os.path.basename(root)
-    )
+    if common:
+        name = os.path.basename(os.path.dirname(common))
+    else:
+        parent = os.path.basename(os.path.dirname(root))
+        name = parent if parent.endswith("-wt") else os.path.basename(root)
     return name.removesuffix("--bare").removesuffix("-wt")
+
+
+def worktree_name(root: str):
+    common = common_dir(root)
+    if common:
+        main = os.path.realpath(os.path.dirname(common))
+        return None if main == os.path.realpath(root) else os.path.basename(root)
+    parent = os.path.basename(os.path.dirname(root))
+    return os.path.basename(root) if parent.endswith("-wt") else None
 
 
 def vault_names() -> dict:
@@ -409,28 +442,23 @@ def ready_handoffs(root: str, feat):
     return primary, rest
 
 
-def list_name(root: str, feat) -> str:
-    leaf = os.path.basename(root)
-    parent = os.path.basename(os.path.dirname(root))
-    # parent ending -wt is the worktree container: it names the repo, the leaf names the worktree
-    in_wt = parent.endswith("-wt")
-    repo = (parent[:-3] if in_wt else leaf).removeprefix(ORG_PREFIX)
-    if len(repo) > REPO_MAX:
-        repo = repo.split("-")[0]
-    seg = feat or (leaf if in_wt and leaf not in DEFAULT_LEAVES else "")
-    for prefix in SEG_PREFIXES:
-        seg = seg.removeprefix(prefix)
-    words = seg.split("-") if seg else []
+def list_name(root: str) -> str:
+    words = project(root).removeprefix(ORG_PREFIX).split("-")
     # the tmux chip shows the whole name, so shed trailing words rather than cut mid-word
-    while len(words) > 1 and len(repo) + 1 + len("-".join(words)) > MAX_LIST_NAME:
+    while len(words) > 1 and len("-".join(words)) > MAX_LIST_NAME:
         words.pop()
-    name = f"{repo}-{'-'.join(words)}" if words else repo
+    name = "-".join(words)[:MAX_LIST_NAME].rstrip("-")
     # daily twins are labeled "<list>: ...", so a list named claude reads as a `claude:` burn item
-    if name == "claude":
-        name = "-".join(
-            (parent[:-3] if in_wt else leaf).removeprefix(ORG_PREFIX).split("-")[:2]
-        )
-    return name[:MAX_LIST_NAME].rstrip("-")
+    return "claude-repo" if name == "claude" else name
+
+
+def add_params(name: str, wt, feat) -> str:
+    parts = [f'list="{name}"']
+    if wt:
+        parts.append(f'worktree="{wt}"')
+    if feat:
+        parts.append(f'feature="{feat}"')
+    return " ".join(parts)
 
 
 def main() -> None:
@@ -439,12 +467,12 @@ def main() -> None:
     cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     root = git_root(cwd)
     feat = active_feature(root)
-    name = list_name(root, feat)
+    wt = worktree_name(root)
+    name = list_name(root)
 
     path = os.path.join(LISTS_DIR, f"{name}.json")
     exists = os.path.isfile(path)
 
-    feat_note = f"feature: {feat}" if feat else "(no active feature)"
     resume = f"claude --resume {session_id}" if session_id else "claude --continue"
     window = tmux_window() or "none"
     if interactive():
@@ -463,8 +491,8 @@ def main() -> None:
         )
     lines = [
         "<system-reminder>",
-        "doit session list (repo-qualified, worktree-aware):",
-        f"  list: {name}   {feat_note}",
+        "doit session list (one list per repo, items carry worktree + feature):",
+        f"  list: {name}   worktree: {wt or '-'}   feature: {feat or '-'}",
         f"  session: {session_id or '?'}  tmux: {window}",
         f"  resume line for owed items: cd {root} && {resume}",
         (
@@ -474,6 +502,7 @@ def main() -> None:
         ),
         f'  pass list="{name}" on EVERY doit call — the MCP default (active '
         "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
+        f"  add_todo params on every new item: {add_params(name, wt, feat)}",
     ]
     primary, rest = ready_handoffs(root, feat)
     if primary:
@@ -488,8 +517,7 @@ def main() -> None:
 
     if not exists:
         lines += [
-            f'  exists: no — create_list name="{name}" on first todo for this '
-            "repo/feature",
+            f'  exists: no — create_list name="{name}" on first todo for this repo',
             "Assign model work: prefix a doit todo `claude:`. Drain it: /burn.",
             (
                 "Owe the user an action only when it passes the daily bar (only "
@@ -505,9 +533,11 @@ def main() -> None:
     total, pending = load_pending(path)
     claude_n = sum(1 for t in pending if t.get("text", "").startswith("claude:"))
     owed_n = sum(1 for t in pending if (twin_of(t) or {}).get("list") == "daily")
+    mine, loose, others = split_scope(pending, wt, feat)
     lines.append(
         f"  exists: yes — {len(pending)} pending of {total} "
-        f"({claude_n} claude:, {owed_n} owed in daily)"
+        f"({claude_n} claude:, {owed_n} owed in daily); {len(mine)} for this "
+        "worktree/feature"
     )
     drift = twin_drift(name) if name != "daily" else []
     if drift:
@@ -515,20 +545,31 @@ def main() -> None:
         lines += [f"  {d}" for d in drift[:MAX_DRIFT]]
         if len(drift) > MAX_DRIFT:
             lines.append(f"  ... {len(drift) - MAX_DRIFT} more")
-    if pending:
-        lines.append("PENDING TODOS (priority bucket, then do-order):")
-        lines += render_items(pending)
-    else:
+    if mine:
+        lines.append(
+            "PENDING TODOS, this worktree/feature (priority bucket, then do-order):"
+        )
+        lines += render_items(mine)
+    if loose:
+        lines.append("UNASSIGNED (no worktree):")
+        lines += render_items(loose, max(MAX_ITEMS - len(mine), 3))
+    if others:
+        counts = ", ".join(f"{k} {v}" for k, v in sorted(others.items()))
+        lines.append(
+            f"OTHER WORKTREES (list_todos worktree=<name> to see them): {counts}"
+        )
+    if not pending:
         lines.append("  nothing pending")
 
     lines += [
-        "This list is the running todo for this repo/feature — treat it as "
-        "first-class session state, not a sidecar. Rules:",
+        "This list is the running todo for this repo (every worktree and "
+        "feature) — treat it as first-class session state, not a sidecar. Rules:",
         "  - factor these items into any work you plan or resume this session; "
         "if the user's ask matches one, say so and work it as that item",
         (
-            "  - one item here is always in_progress: it is what the user's tmux "
-            "chip shows. start_todo an item FIRST, as its own call, before you "
+            "  - one item for this worktree is always in_progress (start_todo stops "
+            "only the same worktree's active item, so parallel sessions keep "
+            "theirs). start_todo an item FIRST, as its own call, before you "
             "read or edit for it, whether or not it lands this session; "
             "complete_todo + DONE note when it lands. Ending a turn (done, "
             "blocked, or waiting on the user) -> leave the next item "
@@ -536,13 +577,16 @@ def main() -> None:
             "else the top pending one. Waiting on the user for an ask no item "
             "covers (review, ship it, a console step) -> add_todo type=gate (no "
             "owe, no claude:, `ref:` first description line) naming the ask, "
-            "start_todo it, complete it once they act. doit_active_gate (Stop) blocks once while items are "
-            "pending and none is in_progress"
+            "start_todo it, complete it once they act. doit_active_gate (Stop) "
+            "blocks once while this worktree has pending items and none is "
+            "in_progress"
         ),
         (
             "  - owed: only past the CLAUDE.md `### What I owe` bar; "
             "search_todos first, then add_todo owe=true on this list"
         ),
+        "  - every new item gets the add_todo params above; work for another "
+        "feature passes that feature's name, same list",
         "  - stale or non-code items here -> /doit-prune",
         "  - `claude:` items are model-assigned; /burn drains them. Do not "
         "auto-burn and do not quiz the user about the list at startup",
@@ -554,18 +598,24 @@ def main() -> None:
 def cli() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--name-only", action="store_true")
+    parser.add_argument("--meta", action="store_true")
     parser.add_argument("--handoff-path", action="store_true")
     parser.add_argument("--feature")
     parser.add_argument("--cwd")
     args = parser.parse_args()
-    if not (args.name_only or args.handoff_path):
+    if not (args.name_only or args.meta or args.handoff_path):
         main()
         return
     root = git_root(args.cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
     if args.handoff_path:
         print(handoff_path(root, args.feature))
         return
-    print(list_name(root, args.feature or active_feature(root)))
+    if args.meta:
+        print(f"list: {list_name(root)}")
+        print(f"worktree: {worktree_name(root) or '-'}")
+        print(f"feature: {active_feature(root) or '-'}")
+        return
+    print(list_name(root))
 
 
 if __name__ == "__main__":
