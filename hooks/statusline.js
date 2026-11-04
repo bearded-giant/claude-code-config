@@ -456,12 +456,19 @@ function getGitInfo(dir) {
 
 // --- context gauge ---
 
-function contextGauge(data) {
+const COMPACT_AT = 15;
+
+function contextRemaining(data) {
   let remaining = data.context_window?.remaining_percentage;
   if (remaining == null && data.context_window?.used_percentage != null) {
     remaining = 100 - data.context_window.used_percentage;
   }
-  if (remaining == null) return '';
+  return remaining == null ? null : Math.round(remaining);
+}
+
+function contextGauge(data) {
+  const pct = contextRemaining(data);
+  if (pct == null) return '';
 
   // per-session marker (PreCompact hook in settings.json writes it); another
   // session's compact must not flash this session's badge
@@ -474,15 +481,13 @@ function contextGauge(data) {
     } catch (e) {}
   }
 
-  const compactAt = 15;
-  const pct = Math.round(remaining);
-  const untilCompact = Math.max(0, pct - compactAt);
+  const untilCompact = Math.max(0, pct - COMPACT_AT);
 
   if (recentCompact && untilCompact < 25) {
     return ` ${GREEN}${pie(0)} compacted${RST}`;
   }
 
-  const usedPct = Math.round(((100 - pct) / (100 - compactAt)) * 100);
+  const usedPct = Math.round(((100 - pct) / (100 - COMPACT_AT)) * 100);
 
   let color;
   if (untilCompact > 50) color = GREEN;
@@ -619,11 +624,8 @@ function saveState(sessionId, state) {
 function syncPaneState(data, state) {
   const pane = process.env.TMUX_PANE;
   if (!pane || !data.session_id) return;
-  let remaining = data.context_window?.remaining_percentage;
-  if (remaining == null && data.context_window?.used_percentage != null) {
-    remaining = 100 - data.context_window.used_percentage;
-  }
-  const pct = remaining == null ? null : Math.round(remaining);
+  const remaining = contextRemaining(data);
+  const pct = remaining == null ? null : Math.max(0, remaining - COMPACT_AT);
   const err = state.apiError || null;
   const model = modelLetter(data);
   const prevCtx = state.paneCtx ?? null;
