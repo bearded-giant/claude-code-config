@@ -20,7 +20,7 @@ bypass = "vercel_bypass"
 
 [[stores]]
 kind = "neon"
-name = "neon-investigator"
+name = "neon-agent-hub"
 
 # one flags store per environment, so a preview flip never touches production
 [[stores]]
