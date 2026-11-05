@@ -350,7 +350,7 @@
     "kai-review@kai": false,
     "kai@kai": false,
     "kai@kai-local": true,
-    "slack@claude-plugins-official": false,
+    "slack@claude-plugins-official": true,
     "pdf-viewer@synced": false,
     "bigquery@skio": true,
     "debug-features@skio": false,
