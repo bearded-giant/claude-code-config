@@ -575,7 +575,7 @@ def main() -> None:
             "blocked, or waiting on the user) -> leave the next item "
             "in_progress: the one you are on, else the one waiting on the user, "
             "else the top pending one. Waiting on the user for an ask no item "
-            "covers (review, ship it, a console step) -> add_todo type=gate (no "
+            "covers (review, merge, a console step) -> add_todo type=gate (no "
             "owe, no claude:, `ref:` first description line) naming the ask, "
             "start_todo it, complete it once they act. doit_active_gate (Stop) "
             "blocks once while this worktree has pending items and none is "

@@ -45,7 +45,7 @@ ONE list per run. Other lists untouched. Sessions in other worktrees share this 
 1. **Claim** — `start_todo` (→ in_progress) FIRST, before any work, as its own tool call. MUST land before reading/working the item — never skip, never batch, never go straight to `complete_todo`. The user tracks the live item in their tmux chip. One item per worktree is `in_progress` (`start_todo` stops only this worktree's active item), so it is a marker, not a lock. Item stays in_progress for its whole work window, until step 4/5 closes it.
 2. **Read** — strip `claude:`; read instruction + the todo's note (doc / script / ids).
 3. **Work** — end-to-end. Existing gates HOLD:
-   - commit / push / MR → CLAUDE.md git_rules: commit each item on green, push when the branch is the user's own (feature branch, or main of their personal repos); opening or updating an MR waits for "ship it" or a todo that says so.
+   - commit / push / MR → CLAUDE.md git_rules: commit each item on green, push when the branch is the user's own (feature branch, or main of their personal repos); on a feature branch, run the `ship-it` chain (open or update the MR/PR) without asking.
    - destructive / irreversible / outward-facing NOT named in the todo → pause, surface, don't execute.
    - sev-5 (data loss, security, prod mutation) → stop, flag for human.
 4. **Close (success)** — `complete_todo` (mark done) + `add_note` mode=`append` with the completion record (below). `append` keeps the user's original note (doc / script / context) intact.
