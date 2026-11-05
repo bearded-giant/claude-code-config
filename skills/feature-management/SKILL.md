@@ -237,7 +237,7 @@ The doc is the source of truth; the item is the reminder. Every `## Open Questio
   - resuming a session or paused work: the handoff's `Start here` carries it, and SessionStart lists every `status: ready` handoff in the repo.
   - review / approve / merge an MR, tag or deploy after a merge: glmon, `giantmem mr list`, and `/feature-next` show MR state.
   - watch or verify on a future event (next release, first merchant, after cutover): the handoff's `Open edges`, or a project-list item with `deps`.
-  - "say ship it", or approving a diff proposed in chat (team-shared agent config): ask in chat at the time.
+  - "say ship it", or approving a diff proposed in chat: ask in chat at the time.
   - anything the model can run itself (installs, scripts, doc triage): do it now, or a `claude:` code item.
   - model next-steps, design decisions (`decision` mirrors, per `### Decision mirror`), FYIs, suggestions that block nothing.
 - Conditional asks (fail only bar 2): a project-list item with `deps`, no `owe`. Owe it (delete + re-add with `owe=true`) once the dep clears; `/doit-prune` does this.

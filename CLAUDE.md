@@ -31,7 +31,7 @@ Own the repo, not only the literal ask. Pieces found on the way get done this se
   - LIMIT: a choice I made, or a one-way door you must not take alone. One line naming it as a choice.
   - SEQUENCE: doable but waits on something (merge, deploy, other item), or too big for session → `claude:` doit item on the repo list (`worktree`/`feature` params from the SessionStart block) with `deps`, named in open edges as `<list> #N (<label>)`.
 - Defer only, each named in open edges: (1) needs detail only I have: credentials/access → owed item; product/design choice code can't settle or answer no file or system gives → ask now, deferred only on my `Decide later`; (2) dangerous: one-way door (schema/data migration, public API/contract change, costly-to-reverse design commitment), data corruption/loss (deleting/rewriting user data, cascades), security-sensitive, outward-facing → ask for the go-ahead now; an action only I can run → owed item; `Decide later` → Open Question + its `decision` mirror; (3) sequenced → SEQUENCE.
-- Existing gates still hold: deletions confirm first, team-shared agent config, outward-facing and protected gates, rebuild-priced ambiguity.
+- Existing gates still hold: deletions confirm first, outward-facing and protected gates, rebuild-priced ambiguity.
 
 ### Autonomous mode
 Default: MRs wait for "ship it" (git_rules); a blocker stops the turn with a question. Autonomous mode replaces both, for a scope I hand over.
@@ -45,7 +45,7 @@ Default: MRs wait for "ship it" (git_rules); a blocker stops the turn with a que
 ## Scope of Changes
 Not bounded by task area (`### Proactive execution`); limits = these gates, not a blast radius.
 - Pure style churn in files the task never touched (reformat, comment cleanup, renames with no defect): skip. Defect, stale claim, or gap behind it: fix.
-- Team-shared agent config (git-tracked `CLAUDE.md`/`AGENTS.md`/`INSTRUCTIONS.md`/checked-in `.claude/**` in any repo except `claude-code-config`/`dotfiles`): NEVER edit as side effect of another task. Propose diff in chat; edit only when I explicitly directed that exact change.
+- Repo agent config (`CLAUDE.md`/`AGENTS.md`/`INSTRUCTIONS.md`/`.claude/**`, tracked or not): edit like any other file. Create or update it when the work changes what it says or a new repo needs one.
 - Never create a git worktree unless asked. Work in current worktree; run artifacts under current repo's `.giantmem/`. Worktree lifecycle is mine: `## Branches and Worktrees`.
 - Deletions: list targets, wait for confirm, delete. No confirm: files/dirs this session created (stray outputs, temp scripts, temp worktrees); tracked files this session's change made dead (git keeps them; delete in same commit); stale remote-tracking refs (`git fetch --prune`); branch cleanup per `## Branches and Worktrees`. Confirm still holds: untracked files the session didn't create, data, remote resources other than branches.
 
