@@ -69,6 +69,12 @@ GATE_MARKER = re.compile(
     r"|\bdep on\b|\bblocked (?:by|on)\b|\bwaits? (?:on|for)\b",
     re.IGNORECASE,
 )
+# shipping never waits on the user, so this beats GATE_MARKER's "waits for"
+UNSHIPPED = re.compile(
+    r"\b(?:until|unless|once|when|after) you say [\"“']?ship\b"
+    r"|\bwaits? (?:on|for) (?:your |a )?[\"“']?ship it\b",
+    re.IGNORECASE,
+)
 
 SHAPES = [
     (
@@ -223,6 +229,9 @@ def findings(text, ask=True):
         if ask and _unasked(kind, item):
             found.append(("UNASKED", _quote(item)))
             continue
+        if UNSHIPPED.search(item):
+            found.append(("SHIP", _quote(item)))
+            continue
         if GATE_MARKER.search(item):
             continue
         for tag, rx in COMPILED:
@@ -242,7 +251,7 @@ def reason(found):
     if tags - {"UNASKED"}:
         lines.append(
             "CLOSE/VERIFY shapes are not gates (CLAUDE.md ### Proactive execution). For each: "
-            "do it now (fix / run the check / commit+push / remove the hazard), or rewrite it as a "
+            "do it now (fix / run the check / commit+push / run ship-it / remove the hazard), or rewrite it as a "
             "GATE (only the user can: do / expect / on failure) or a LIMIT (a choice, named as one)."
         )
     if "UNASKED" in tags:

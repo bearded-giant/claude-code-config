@@ -126,8 +126,12 @@ CODE_QUESTION = """Open edges
 - LIMIT: `a ? b : c` stays in `fmt.py` by your choice; see https://example.com/x?y=1 for the spec.
 """
 
-NOT_QUESTIONS = """Open edges
+UNSHIPPED = """Open edges
 - **Deploy:** production keeps the 60 s loop until you say "ship it", the PR merges, and production redeploys. Expect the new loop after deploy.
+- **MR:** branch pushed; the MR waits for "ship it".
+"""
+
+NOT_QUESTIONS = """Open edges
 - Message 3 answers JL's "merged table?" question and is drafted for JL, not you; on failure JL replies in the thread.
 
 Done
@@ -194,6 +198,8 @@ def main():
     assert tags(DEFERRED_HEADER) == [], tags(DEFERRED_HEADER)
     assert tags(CODE_QUESTION) == [], tags(CODE_QUESTION)
     assert tags(NOT_QUESTIONS) == [], tags(NOT_QUESTIONS)
+    assert tags(UNSHIPPED) == ["SHIP", "SHIP"], tags(UNSHIPPED)
+    assert [t for t, _ in mod.findings(UNSHIPPED, ask=False)] == ["SHIP", "SHIP"]
     assert tags(LIMIT_PARKED) == ["UNASKED"] * 3, tags(LIMIT_PARKED)
     # auto mode asks nothing mid-run, so only CLOSE/VERIFY shapes count
     assert mod.findings(PARKED_REPORT, ask=False) == []
