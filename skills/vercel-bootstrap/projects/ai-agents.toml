@@ -1,0 +1,41 @@
+# ai-platform agents app (apps/agents in RechargePayments/ai-platform); GitHub Actions deploys, so no gitlab key:
+# the deploy tokens are minted with `vbs.py token ai-agents --vault secret/ai-tools/prod/ai-agents:vercel_token`
+# (and :vercel_preview_token) and copied into the GitHub secrets VERCEL_TOKEN_AGENTS / VERCEL_PREVIEW_TOKEN_AGENTS
+project = "ai-agents"
+framework = "nextjs"
+node = "24.x"
+root_directory = "apps/agents"
+function_timeout = 800
+domains = ["rc-ai-agents.vercel.app"]
+
+[vault]
+path = "secret/ai-tools/prod/ai-agents"
+generate = []
+bypass = "vercel_bypass"
+
+# the tick route takes the hub's cron secret, so one value drives both apps until the hub retires
+[vault.copy]
+"secret/ai-tools/prod/agent-hub" = ["cron_secret"]
+
+# the hub's database, shared until the hub retires: the agents app reads the same tables
+[[stores]]
+kind = "neon"
+name = "neon-agent-hub"
+
+[[stores]]
+kind = "edge-config"
+name = "ai-platform-flags"
+environments = ["production"]
+[stores.items]
+kill = { investigate = false }
+require_ctx = false
+jobs = { churn_report = { live = false }, churn_chat = { live = false }, churn_suggestions = { live = false }, churn_eve = { live = false } }
+
+[[stores]]
+kind = "edge-config"
+name = "ai-platform-flags-preview"
+environments = ["preview"]
+[stores.items]
+kill = { investigate = false }
+require_ctx = false
+jobs = { churn_report = { live = true }, churn_chat = { live = true }, churn_suggestions = { live = true }, churn_eve = { live = true } }
