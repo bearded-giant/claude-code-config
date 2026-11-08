@@ -31,7 +31,7 @@ Never on your own. Size, table count, diagrams, doc type do not trigger it. Defa
 
 - The file lands in the last-focused Obsidian window, whatever vault it holds, and Obsidian takes focus.
 - Each `open` replaces the active tab. For several related files, open the entry file and list the rest as paths.
-- No folder view outside a vault: open files only. Files under a repo `.giantmem/` are also browsable in the `giantmem-vault` sidebar.
+- No folder view outside a vault: open files only. Files under a repo `.giantmem/` are browsable in the giantmem GUI workspace tab.
 - Non-markdown files need a viewer plugin. json and yaml render. If the tab shows "Plugin no longer active", or nothing opens, say so and return the path.
 
 ## Mermaid diagrams

@@ -24,7 +24,7 @@ PROTECTED_ROOTS = [
 
 PROTECTED_SUBSTRINGS = ["/node_modules/"]
 
-# symlink view of repo .giantmem dirs (giantmem_vault.py); writes through it skip the .giantmem path hooks
+# retired symlink view of repo .giantmem dirs; its links outlive the hook and writes through them skip the .giantmem path hooks
 GIANTMEM_VIEW = "~/giantmem-vault"
 
 
@@ -71,7 +71,7 @@ def main():
                 target = "the repo's own .giantmem path"
             result = {
                 "decision": "block",
-                "reason": f"{GIANTMEM_VIEW} is a read-only Obsidian view of repo .giantmem dirs. "
+                "reason": f"{GIANTMEM_VIEW} is a retired symlink view of repo .giantmem dirs. "
                 f"Write {target} instead. 'The vault' means ~/Recharge-Notes.",
             }
             print(json.dumps(result))
