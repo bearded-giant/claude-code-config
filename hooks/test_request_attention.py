@@ -30,6 +30,7 @@ env = {
     "TMUX": tmux("display-message", "-p", "#{socket_path}") + ",0,0",
     "TMUX_PANE": pane,
     "PATH": f"{tmp}:{os.environ['PATH']}",
+    "CLAUDE_CODE_ENTRYPOINT": "cli",
 }
 
 
@@ -39,10 +40,10 @@ def attention(*args):
     )
 
 
-def state(arg):
+def state(arg, entrypoint="cli"):
     subprocess.run(
         ["bash", str(HERE / "claude_tmux_state.sh"), arg],
-        env=env,
+        env={**env, "CLAUDE_CODE_ENTRYPOINT": entrypoint},
         input="",
         text=True,
         check=True,
@@ -92,6 +93,10 @@ try:
     assert notified() == 3
 
     state("ask")
+    assert opt("@claude_state") == "ask"
+    # a nested `claude mcp list` from the statusline inherits TMUX_PANE; its SessionEnd must not wipe the pane
+    state("off", entrypoint="sdk-cli")
+    state("busy", entrypoint="sdk-cli")
     assert opt("@claude_state") == "ask"
     state("off")
     assert (

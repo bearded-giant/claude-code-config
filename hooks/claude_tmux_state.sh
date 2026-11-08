@@ -2,6 +2,8 @@
 # bash, not dispatch.py: PostToolUse runs this on every tool call and a python spawn costs ~40ms
 cat >/dev/null
 [[ -n "${TMUX_PANE:-}" ]] || exit 0
+# nested non-interactive claude (statusline's `claude mcp list`, claude -p) inherits TMUX_PANE; its SessionEnd would wipe the parent pane
+[[ "${CLAUDE_CODE_ENTRYPOINT:-cli}" == sdk* ]] && exit 0
 t=(-p -t "$TMUX_PANE")
 toast() {
 	# the pane on screen needs no nudge; everything off screen does
