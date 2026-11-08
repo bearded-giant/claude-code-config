@@ -6,17 +6,15 @@ from preflight_check import write_json
 
 
 def parse(output):
-    total = auth = 0
-    for line in output.splitlines():
-        if ": " not in line or " - " not in line:
-            continue
-        status = line.rsplit(" - ", 1)[1]
-        if "Disabled" in status:
-            continue
-        total += 1
-        if "Needs authentication" in status:
-            auth += 1
-    return {"total": total, "auth": auth}
+    statuses = [
+        line.rsplit(" - ", 1)[1]
+        for line in output.splitlines()
+        if ": " in line and " - " in line
+    ]
+    return {
+        "ok": sum("Connected" in s for s in statuses),
+        "auth": sum("Needs authentication" in s for s in statuses),
+    }
 
 
 def main():

@@ -3,7 +3,6 @@
   "line2": true,
   "tools": "last",
   "agents": true,
-  "thinking": true,
   "messages": false,
   "lines": true,
   "duration": true,

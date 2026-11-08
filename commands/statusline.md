@@ -17,21 +17,20 @@ Statusline config:
 2. line2: on
 3. tools: last           (last | feed | off)
 4. agents: on
-5. thinking: off
-6. messages: off
-7. lines: on
-8. duration: on
-9. gmdocs: off          (giantmem docs/day counter)
-10. models: on          (per-model usage gauge, e.g. fable)
-11. preflight: on       (red ✗gcloud/adc/glab/gh/vault when auth lapses, ~ when unreachable)
-12. mr: on              (current branch MR or PR: pipeline, conflicts, threads, approval)
-13. mcp: on             (mcp:N enabled servers, red ✗auth:K when K need login)
+5. messages: off
+6. lines: on
+7. duration: on
+8. gmdocs: off          (giantmem docs/day counter)
+9. models: on           (per-model usage gauge, e.g. fable)
+10. preflight: on       (red ✗gcloud/adc/glab/gh/vault when auth lapses, ~ when unreachable)
+11. mr: on              (current branch MR or PR: pipeline, conflicts, threads, approval)
+12. mcp: on             (mcp ✓N connected servers, yellow !auth:K when K need login)
 
 Enter number to toggle, or "q" to quit:
 ```
 
 3. When user picks a number:
-   - Boolean fields (line2, agents, thinking, messages, lines, duration, gmdocs, models, preflight, mr, mcp): flip true/false
+   - Boolean fields (line2, agents, messages, lines, duration, gmdocs, models, preflight, mr, mcp): flip true/false
    - `style`: cycle compact -> minimal -> compact
    - `tools`: cycle last -> feed -> off -> last
 

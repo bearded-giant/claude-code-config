@@ -31,7 +31,6 @@ function loadConfig() {
     line2: true,
     tools: 'last',     // last (1 active tool) | feed (last 3) | false
     agents: true,
-    thinking: true,
     messages: true,
     lines: true,
     duration: true,
@@ -607,7 +606,7 @@ function loadState(sessionId) {
   try {
     return JSON.parse(fs.readFileSync(path.join(STATE_DIR, `${sessionId}.json`), 'utf8'));
   } catch (e) {
-    return { offset: 0, tools: [], agents: [], thinkingCount: 0, messageCount: 0, skills: [] };
+    return { offset: 0, tools: [], agents: [], messageCount: 0, skills: [] };
   }
 }
 
@@ -671,7 +670,7 @@ function toolTarget(name, input) {
 }
 
 function parseTranscript(transcriptPath, sessionId) {
-  const empty = { tools: [], agents: [], thinkingCount: 0, messageCount: 0, skills: [] };
+  const empty = { tools: [], agents: [], messageCount: 0, skills: [] };
   if (!transcriptPath || !sessionId) return empty;
 
   try {
@@ -684,7 +683,7 @@ function parseTranscript(transcriptPath, sessionId) {
   try { size = fs.statSync(transcriptPath).size; } catch (e) { return state; }
   if (size < state.offset) {
     // transcript rewritten or truncated for this session id — reparse clean
-    Object.assign(state, { offset: 0, tools: [], agents: [], thinkingCount: 0, messageCount: 0, skills: [] });
+    Object.assign(state, { offset: 0, tools: [], agents: [], messageCount: 0, skills: [] });
   }
   if (size <= state.offset) return state;
 
@@ -748,8 +747,6 @@ function parseTranscript(transcriptPath, sessionId) {
             const s = block.input?.skill;
             if (s && !state.skills.includes(s)) state.skills.push(s);
           }
-        } else if (block.type === 'thinking') {
-          state.thinkingCount++;
         }
       }
     } else if (entry.type === 'user') {
@@ -952,8 +949,8 @@ function mcpStatus(dir) {
 }
 
 function fmtMcp(m) {
-  if (!m || !m.total) return '';
-  return `${DIM}mcp:${m.total}${RST}` + (m.auth ? ` ${RED}✗auth:${m.auth}${RST}` : '');
+  if (!m || !(m.ok || m.auth)) return '';
+  return `${DIM}mcp ✓${m.ok}${RST}` + (m.auth ? ` ${YELLOW}!auth:${m.auth}${RST}` : '');
 }
 
 function fmtPreflight(checks) {
@@ -1106,10 +1103,6 @@ const renderTick = () => {
 
     if (cfg.messages && transcript.messageCount) {
       parts.push(`${DIM}msgs:${transcript.messageCount}${RST}`);
-    }
-
-    if (cfg.thinking && transcript.thinkingCount) {
-      parts.push(`${DIM}think:${transcript.thinkingCount}${RST}`);
     }
 
     if (cfg.tools) {

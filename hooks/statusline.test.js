@@ -183,13 +183,14 @@ test('fmtMr: renders iid + tag, empty when no MR', () => {
   assert.ok(fmtMr({ iid: 62, tag: 'threads', level: 'wait', host: 'github' }).includes('#62 threads'));
 });
 
-test('fmtMcp: count always, red auth only when a server needs login', () => {
+test('fmtMcp: connected count always, yellow auth only when a server needs login', () => {
   assert.equal(fmtMcp(null), '');
-  assert.equal(fmtMcp({ total: 0, auth: 0 }), '');
-  assert.equal(fmtMcp({ total: 9, auth: 0 }).includes('auth'), false);
-  const out = fmtMcp({ total: 10, auth: 2 });
-  assert.equal(visLen(out), visLen('mcp:10 ✗auth:2'));
-  assert.ok(out.includes('\x1b[31m✗auth:2'));
+  assert.equal(fmtMcp({ ok: 0, auth: 0 }), '');
+  assert.equal(fmtMcp({ ok: 9, auth: 0 }).includes('auth'), false);
+  const out = fmtMcp({ ok: 8, auth: 2 });
+  assert.equal(visLen(out), visLen('mcp ✓8 !auth:2'));
+  assert.ok(out.includes('\x1b[33m!auth:2'));
+  assert.ok(fmtMcp({ ok: 0, auth: 1 }).includes('!auth:1'));
 });
 
 const ORGS = [

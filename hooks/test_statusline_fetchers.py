@@ -16,7 +16,7 @@ pf = load("preflight_check")
 mr = load("mr_status")
 mcp = load("mcp_status")
 
-# mcp parse: disabled servers drop out, needs-auth counts toward both
+# mcp parse: only connected and needs-auth count; disabled and failed drop out
 MCP_LIST = """Checking MCP server health…
 
 plugin:kai:atlassian: https://mcp.atlassian.com/v2/mcp (HTTP) - ! Needs authentication
@@ -25,11 +25,11 @@ plugin:kai:watchtower: https://w.example/mcp (HTTP) - ⊘ Disabled for this proj
 doit: node /x/server.js - ✔ Connected
 bad: node /y.js - ✗ Failed to connect
 """
-assert mcp.parse(MCP_LIST) == {"total": 4, "auth": 1}
+assert mcp.parse(MCP_LIST) == {"ok": 2, "auth": 1}
 assert mcp.parse(
     "No MCP servers configured. Use `claude mcp add` to add a server."
 ) == {
-    "total": 0,
+    "ok": 0,
     "auth": 0,
 }
 
