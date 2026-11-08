@@ -4,7 +4,7 @@ description: Write Claude-authored docs into the Obsidian vault (~/Recharge-Note
 ---
 <!-- caveman:compressed -->
 
-Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. `~/giantmem-vault` is the retired Obsidian view of repo `.giantmem` dirs (the giantmem GUI workspace tab replaced it), never a target. Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
+Vault = `~/Recharge-Notes`, the only vault Claude writes; "the vault", "write to vault", "publish" always mean it. Repo `.giantmem` docs are browsed in the giantmem GUI workspace tab and never written into the vault. Vault = source of truth, default target of "publish". Team sharing = claude.ai artifact via `claude-artifact` skill, distilled from the note, linked both ways. Desktop = never.
 
 ## Format
 

@@ -24,19 +24,6 @@ PROTECTED_ROOTS = [
 
 PROTECTED_SUBSTRINGS = ["/node_modules/"]
 
-# retired symlink view of repo .giantmem dirs; its links outlive the hook and writes through them skip the .giantmem path hooks
-GIANTMEM_VIEW = "~/giantmem-vault"
-
-
-def view_target(file_path: str, cwd: str) -> str | None:
-    path = os.path.normpath(os.path.join(cwd, os.path.expanduser(file_path)))
-    root = os.path.expanduser(GIANTMEM_VIEW)
-    if path.startswith(os.path.join(root, ".obsidian") + os.sep):
-        return None
-    if path == root or path.startswith(root + os.sep):
-        return os.path.realpath(path)
-    return None
-
 
 def is_protected(file_path: str, cwd: str) -> str | None:
     if not os.path.isabs(file_path):
@@ -63,18 +50,6 @@ def main():
 
         file_path = tool_input.get("file_path", "")
         if not file_path:
-            return
-
-        target = view_target(file_path, cwd)
-        if target:
-            if target.startswith(os.path.expanduser(GIANTMEM_VIEW)):
-                target = "the repo's own .giantmem path"
-            result = {
-                "decision": "block",
-                "reason": f"{GIANTMEM_VIEW} is a retired symlink view of repo .giantmem dirs. "
-                f"Write {target} instead. 'The vault' means ~/Recharge-Notes.",
-            }
-            print(json.dumps(result))
             return
 
         protected = is_protected(file_path, cwd)
