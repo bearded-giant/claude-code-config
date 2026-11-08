@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration,
-  fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr,
+  fitLine1, fitSolo, packLine2, charWidth, fmtPreflight, fmtMr, fmtMcp,
   matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount, slotTier,
 } = require('./statusline.js');
 
@@ -181,6 +181,15 @@ test('fmtMr: renders iid + tag, empty when no MR', () => {
   assert.ok(out.startsWith(GREEN));
   assert.ok(out.includes('!1234 GREEN'));
   assert.ok(fmtMr({ iid: 62, tag: 'threads', level: 'wait', host: 'github' }).includes('#62 threads'));
+});
+
+test('fmtMcp: count always, red auth only when a server needs login', () => {
+  assert.equal(fmtMcp(null), '');
+  assert.equal(fmtMcp({ total: 0, auth: 0 }), '');
+  assert.equal(fmtMcp({ total: 9, auth: 0 }).includes('auth'), false);
+  const out = fmtMcp({ total: 10, auth: 2 });
+  assert.equal(visLen(out), visLen('mcp:10 ✗auth:2'));
+  assert.ok(out.includes('\x1b[31m✗auth:2'));
 });
 
 const ORGS = [

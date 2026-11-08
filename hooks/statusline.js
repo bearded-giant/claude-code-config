@@ -39,6 +39,7 @@ function loadConfig() {
     models: true,
     preflight: true,
     mr: true,
+    mcp: true,
   };
   try {
     const cfgPath = path.join(__dirname, 'statusline-config.json');
@@ -894,6 +895,10 @@ const PREFLIGHT_RED_TTL_MS = 30 * 1000;
 const PREFLIGHT_MAX_AGE_MS = 30 * 60 * 1000;
 const MR_TTL_MS = 60 * 1000;
 const MR_MAX_AGE_MS = 10 * 60 * 1000;
+// `claude mcp list` spawns every stdio server to health-check it, so poll slow
+const MCP_OK_TTL_MS = 5 * 60 * 1000;
+const MCP_RED_TTL_MS = 60 * 1000;
+const MCP_MAX_AGE_MS = 30 * 60 * 1000;
 const BASE_BRANCHES = new Set(['main', 'master', 'stage']);
 const MR_COLORS = { ok: GREEN, wait: YELLOW, bad: RED };
 
@@ -933,6 +938,22 @@ function mrStatus(root, branch) {
   const { data, age } = readCache(cachePath);
   if (age > MR_TTL_MS) spawnFetcher(cachePath, [path.join(__dirname, 'mr_status.py'), root, branch, cachePath]);
   return age < MR_MAX_AGE_MS ? data : null;
+}
+
+// keyed by dir: project scope and "disabled for this project" change the list
+function mcpStatus(dir) {
+  const key = require('crypto').createHash('md5').update(dir).digest('hex').slice(0, 8);
+  const cachePath = path.join(STATE_DIR, `mcp-${key}.json`);
+  const { data, age } = readCache(cachePath);
+  if (age > (data && !data.auth ? MCP_OK_TTL_MS : MCP_RED_TTL_MS)) {
+    spawnFetcher(cachePath, [path.join(__dirname, 'mcp_status.py'), dir, cachePath]);
+  }
+  return age < MCP_MAX_AGE_MS ? data : null;
+}
+
+function fmtMcp(m) {
+  if (!m || !m.total) return '';
+  return `${DIM}mcp:${m.total}${RST}` + (m.auth ? ` ${RED}✗auth:${m.auth}${RST}` : '');
 }
 
 function fmtPreflight(checks) {
@@ -1115,6 +1136,10 @@ const renderTick = () => {
       const mrStr = fmtMr(mrStatus(git.root, git.branch));
       if (mrStr) parts.push(mrStr);
     }
+    if (cfg.mcp) {
+      const mcpStr = fmtMcp(mcpStatus(data.workspace?.project_dir || dir));
+      if (mcpStr) parts.push(mcpStr);
+    }
     if (cfg.preflight) {
       const authStr = fmtPreflight(preflightStatus());
       if (authStr) parts.push(authStr);
@@ -1166,5 +1191,5 @@ if (require.main === module) {
 module.exports = {
   visLen, clampAnsi, pie, fmtCountdown, fmtDuration, fmtDurationShort,
   buildLine1, fitLine1, fitSolo, packLine2, isStale, fmtToolFeed, charWidth,
-  fmtPreflight, fmtMr, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount, slotTier,
+  fmtPreflight, fmtMr, fmtMcp, matchOrg, pinAccount, badgeFor, DEFAULT_BADGES, pickOrgs, slotAccount, slotTier,
 };

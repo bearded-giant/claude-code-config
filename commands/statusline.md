@@ -25,12 +25,13 @@ Statusline config:
 10. models: on          (per-model usage gauge, e.g. fable)
 11. preflight: on       (red ✗gcloud/adc/glab/gh/vault when auth lapses, ~ when unreachable)
 12. mr: on              (current branch MR or PR: pipeline, conflicts, threads, approval)
+13. mcp: on             (mcp:N enabled servers, red ✗auth:K when K need login)
 
 Enter number to toggle, or "q" to quit:
 ```
 
 3. When user picks a number:
-   - Boolean fields (line2, agents, thinking, messages, lines, duration, gmdocs, models, preflight, mr): flip true/false
+   - Boolean fields (line2, agents, thinking, messages, lines, duration, gmdocs, models, preflight, mr, mcp): flip true/false
    - `style`: cycle compact -> minimal -> compact
    - `tools`: cycle last -> feed -> off -> last
 

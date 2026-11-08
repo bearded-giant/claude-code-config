@@ -14,6 +14,24 @@ def load(name):
 
 pf = load("preflight_check")
 mr = load("mr_status")
+mcp = load("mcp_status")
+
+# mcp parse: disabled servers drop out, needs-auth counts toward both
+MCP_LIST = """Checking MCP server health…
+
+plugin:kai:atlassian: https://mcp.atlassian.com/v2/mcp (HTTP) - ! Needs authentication
+plugin:slack:slack: https://mcp.slack.com/mcp (HTTP) - ✔ Connected
+plugin:kai:watchtower: https://w.example/mcp (HTTP) - ⊘ Disabled for this project (re-enable via /mcp)
+doit: node /x/server.js - ✔ Connected
+bad: node /y.js - ✗ Failed to connect
+"""
+assert mcp.parse(MCP_LIST) == {"total": 4, "auth": 1}
+assert mcp.parse(
+    "No MCP servers configured. Use `claude mcp add` to add a server."
+) == {
+    "total": 0,
+    "auth": 0,
+}
 
 # classify: exit 0 is ok, network noise is unknown, anything else is expired
 assert pf.classify(0, "") is True
@@ -85,6 +103,7 @@ assert mr.verdict(mk(merge="not_approved")) == ("approval", "wait")
 assert mr.verdict(mk(merge="requested_changes")) == ("approval", "wait")
 assert mr.verdict(mk(merge="checking")) == ("checking", "wait")
 
+
 def gh(state="CLEAN", checks=(), draft=False, review="APPROVED", mergeable="MERGEABLE"):
     return {
         "mergeStateStatus": state,
@@ -104,16 +123,29 @@ CTX_PENDING = {"__typename": "StatusContext", "state": "PENDING"}
 # github_verdict: same tags as gitlab, read from gh pr list fields
 assert mr.github_verdict(gh(checks=[RUN, CTX_OK])) == ("GREEN", "ok")
 assert mr.github_verdict(gh(state="HAS_HOOKS", checks=[RUN])) == ("GREEN", "ok")
-assert mr.github_verdict(gh(mergeable="CONFLICTING", checks=[FAIL])) == ("conflicts", "bad")
+assert mr.github_verdict(gh(mergeable="CONFLICTING", checks=[FAIL])) == (
+    "conflicts",
+    "bad",
+)
 assert mr.github_verdict(gh(state="DIRTY")) == ("conflicts", "bad")
-assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, FAIL])) == ("pipe:failed", "bad")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, FAIL])) == (
+    "pipe:failed",
+    "bad",
+)
 assert mr.github_verdict(gh(state="BEHIND", checks=[RUN])) == ("rebase", "bad")
-assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, BUSY])) == ("pipe:running", "wait")
+assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN, BUSY])) == (
+    "pipe:running",
+    "wait",
+)
 assert mr.github_verdict(gh(checks=[CTX_PENDING])) == ("pipe:running", "wait")
 assert mr.github_verdict(gh()) == ("no pipe", "wait")
 assert mr.github_verdict(gh(checks=[RUN], draft=True)) == ("draft", "wait")
-assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN], review="REVIEW_REQUIRED")) == ("approval", "wait")
-assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN], review="CHANGES_REQUESTED")) == ("approval", "wait")
+assert mr.github_verdict(
+    gh(state="BLOCKED", checks=[RUN], review="REVIEW_REQUIRED")
+) == ("approval", "wait")
+assert mr.github_verdict(
+    gh(state="BLOCKED", checks=[RUN], review="CHANGES_REQUESTED")
+) == ("approval", "wait")
 assert mr.github_verdict(gh(state="BLOCKED", checks=[RUN])) == ("threads", "wait")
 assert mr.github_verdict(gh(state="UNSTABLE", checks=[RUN])) == ("unstable", "wait")
 

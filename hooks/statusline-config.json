@@ -10,5 +10,6 @@
   "gmdocs": false,
   "models": true,
   "preflight": true,
-  "mr": true
+  "mr": true,
+  "mcp": true
 }
