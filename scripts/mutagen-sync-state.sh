@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Laptop <-> devbox mutagen sessions for the state dirs that are not git repos:
-# claude transcripts, doit lists, the Obsidian vault. Idempotent.
+# claude transcripts and the Obsidian vault. Idempotent.
 #
 # Usage:
 #   scripts/mutagen-sync-state.sh                # host $VPS_HOST, default devbox
@@ -15,12 +15,11 @@ RECREATE="${1:-}"
 # name|local|remote|comma-separated ignores
 SESSIONS=(
   "claude-projects|$HOME/.claude/projects|$REMOTE_HOME/.claude/projects|"
-  "doit|$HOME/.local/share/nvim/doit|$REMOTE_HOME/.local/share/nvim/doit|backups/,session.json,vault-export.log"
   "vault|$HOME/Recharge-Notes|$REMOTE_HOME/Recharge-Notes|.git/,.obsidian/workspace*"
 )
 
 mutagen daemon start >/dev/null 2>&1 || true
-ssh "$VPS_HOST" "mkdir -p $REMOTE_HOME/.claude/projects $REMOTE_HOME/.local/share/nvim/doit $REMOTE_HOME/Recharge-Notes"
+ssh "$VPS_HOST" "mkdir -p $REMOTE_HOME/.claude/projects $REMOTE_HOME/Recharge-Notes"
 
 for spec in "${SESSIONS[@]}"; do
   IFS='|' read -r name src dst ignores <<<"$spec"
