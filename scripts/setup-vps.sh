@@ -164,6 +164,14 @@ step "doit MCP deps"
 ( cd "$DOIT_DIR" && npm install --silent --omit=dev >/dev/null 2>&1 ) || dim "  npm install in do-it.nvim failed; node_modules may already be in place"
 green "  $DOIT_DIR"
 
+step "doit CLI + doitd (systemd user unit, state in ~/.local/state/doit)"
+ln -sfn "$DOIT_DIR/packages/cli/cli.js" "$BIN/doit"
+if "$BIN/doit" daemon install >/dev/null 2>&1; then
+  green "  doitd.service enabled; $BIN/doit"
+else
+  dim "  doit daemon install failed; run it by hand after the node shim is in place"
+fi
+
 step "Daemon state dir"
 mkdir -p "$STATE_DIR/inbox" "$STATE_DIR/approved"
 chmod 700 "$STATE_DIR"
