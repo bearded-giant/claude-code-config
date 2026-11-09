@@ -402,15 +402,6 @@
         "serve"
       ]
     },
-    "doit": {
-      "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
-      "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/packages/cli/doit-mcp.js"
-      ],
-      "env": {
-        "DOIT_ACTIVE_LIST": ""
-      }
-    },
     "snowflake": {
       "type": "http",
       "url": "https://forge-mcp.infra.rechargeapps.com/mcp"
