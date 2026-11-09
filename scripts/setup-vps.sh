@@ -161,8 +161,8 @@ chmod 600 "$HOME/.claude/settings.local.json"
 green "  stowed + settings.local.json"
 
 step "doit MCP deps"
-( cd "$DOIT_DIR/mcp" && npm install --silent --omit=dev >/dev/null 2>&1 ) || dim "  npm install in do-it.nvim/mcp failed; node_modules may already be in place"
-green "  $DOIT_DIR/mcp"
+( cd "$DOIT_DIR" && npm install --silent --omit=dev >/dev/null 2>&1 ) || dim "  npm install in do-it.nvim failed; node_modules may already be in place"
+green "  $DOIT_DIR"
 
 step "Daemon state dir"
 mkdir -p "$STATE_DIR/inbox" "$STATE_DIR/approved"

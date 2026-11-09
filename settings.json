@@ -405,7 +405,7 @@
     "doit": {
       "command": "/Users/bryan/.nvm/versions/node/v24.11.1/bin/node",
       "args": [
-        "/Users/bryan/dev/lua/do-it.nvim/mcp/server.js"
+        "/Users/bryan/dev/lua/do-it.nvim/packages/cli/doit-mcp.js"
       ],
       "env": {
         "DOIT_ACTIVE_LIST": ""
