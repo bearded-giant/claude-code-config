@@ -49,7 +49,7 @@ Copy the deploy pattern from a working repo, don't write it fresh:
 | stack | reference repo | files |
 |---|---|---|
 | Next.js / TS | `ai-tooling/agent-hub` | `.gitlab-ci.yml` jobs `vercel-env-sync`, `.vercel`, `vercel-deploy`, `vercel-preview`, `vercel-preview-main`, `db-migrate`; `ci/vercel_env_sync.sh`, `ci/vercel_alias.js`, `ci/vercel_env_get.js` |
-| Python / FastAPI | `ai-tooling/investigator-v2` | same job names; `ci/vercel_env_sync.sh` |
+| Python / FastAPI | GitHub `RechargePayments/ai-investigator` | `.github/workflows/ci.yml`, same job names; `ci/vercel_env_sync.sh` |
 
 Change: project name, `rc-vault:` refs to the new vault path, the key lists in `vercel_env_sync.sh`, the preview alias. `VERCEL_ORG_ID` is the team id; `VERCEL_PROJECT_ID` is filled by apply. Project-scoped tokens can't run `vercel link` or `vercel alias set`, hence the ids and `vercel_alias.js`.
 
