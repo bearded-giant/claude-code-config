@@ -319,6 +319,22 @@ def path_cases(tmp):
     shutil.rmtree(repo)
 
 
+def sync_cases(tmp):
+    os.makedirs(os.path.join(tmp, "state", "sync"), exist_ok=True)
+    state = os.path.join(tmp, "state", "sync", "state.json")
+    with open(state, "w", encoding="utf-8") as fh:
+        json.dump({"mode": "local", "online": None, "queue": 0, "conflicts": 0}, fh)
+    assert "doit sync:" not in run_main("{}"), "local mode shows no badge"
+    with open(state, "w", encoding="utf-8") as fh:
+        json.dump({"mode": "sync", "online": False, "queue": 2, "conflicts": 1, "error": None}, fh)
+    out = run_main("{}")
+    assert "doit sync: offline, queued 2, conflicts 1" in out, out
+    with open(state, "w", encoding="utf-8") as fh:
+        json.dump({"mode": "sync", "online": True, "queue": 0, "conflicts": 0}, fh)
+    assert "doit sync:" not in run_main("{}"), "all quiet shows no badge"
+    os.remove(state)
+
+
 def hook_cases() -> None:
     os.environ.pop("TMUX", None)
     with tempfile.TemporaryDirectory() as tmp:
@@ -326,16 +342,18 @@ def hook_cases() -> None:
         os.makedirs(os.path.join(tmp, "proj"))
         os.makedirs(os.path.join(tmp, "lists"))
         os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(tmp, "proj")
-        saved = {"LISTS_DIR": mod.LISTS_DIR, "AREAS": mod.AREAS}
+        saved = {"LISTS_DIR": mod.LISTS_DIR, "AREAS": mod.AREAS, "STATE_DIR": mod.STATE_DIR}
         vars(mod).update(
             LISTS_DIR=os.path.join(tmp, "lists"),
             AREAS=os.path.join(tmp, "vault", "areas"),
+            STATE_DIR=os.path.join(tmp, "state"),
         )
         try:
             session_cases(tmp)
             scope_cases(tmp)
             handoff_cases(tmp)
             drift_cases()
+            sync_cases(tmp)
         finally:
             vars(mod).update(saved)
 

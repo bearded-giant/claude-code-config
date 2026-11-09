@@ -11,6 +11,8 @@ import time
 
 LISTS_DIR = os.path.expanduser("~/.local/share/nvim/doit/lists")
 SESSION_FILE = os.path.expanduser("~/.local/share/nvim/doit/session.json")
+# doitd's runtime state; its sync/state.json carries the badge every surface shows
+STATE_DIR = os.environ.get("DOIT_STATE_DIR") or os.path.expanduser("~/.local/state/doit")
 # outside the repo so a worktree can be removed without stranding its handoff
 AREAS = os.path.join(
     os.path.expanduser(os.environ.get("OBSIDIAN_VAULT", "~/Recharge-Notes")),
@@ -137,6 +139,26 @@ def stamp_pane(name: str, session_id=None) -> None:
         cmd += [";", "set-option", "-pq", "-t", pane, "@claude_session_id", session_id]
     with contextlib.suppress(OSError, subprocess.SubprocessError):
         subprocess.run(cmd, capture_output=True, timeout=2, check=False)
+
+
+def sync_badge() -> str:
+    try:
+        with open(os.path.join(STATE_DIR, "sync", "state.json"), encoding="utf-8") as fh:
+            s = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    if s.get("mode") != "sync":
+        return ""
+    parts = []
+    if not s.get("online"):
+        parts.append("offline")
+    if s.get("queue"):
+        parts.append(f"queued {s['queue']}")
+    if s.get("conflicts"):
+        parts.append(f"conflicts {s['conflicts']}")
+    if s.get("error"):
+        parts.append(f"error: {s['error']}")
+    return ", ".join(parts)
 
 
 def hook_input():
@@ -504,6 +526,9 @@ def main() -> None:
         "list) is `daily` (or a DOIT_ACTIVE_LIST export), not this derivation",
         f"  add_todo params on every new item: {add_params(name, wt, feat)}",
     ]
+    badge = sync_badge()
+    if badge:
+        lines.append(f"  doit sync: {badge} (doitd writes the lists; doit sync status)")
     primary, rest = ready_handoffs(root, feat)
     if primary:
         lines.append(

@@ -5,7 +5,7 @@ description: >-
 ---
 <!-- caveman:compressed -->
 
-Worker queue. User assigns tasks by prefixing a doit todo with `claude:`. `/burn` picks them up in sequence order, then by priority, and works them down. doit data at `~/.local/share/nvim/doit/lists/` — touch only via doit MCP tools, never raw JSON.
+Worker queue. User assigns tasks by prefixing a doit todo with `claude:`. `/burn` picks them up in sequence order, then by priority, and works them down. doit data at `~/.local/share/nvim/doit/lists/` is written only by doitd (every surface, this MCP included, sends it ops); touch it via the doit MCP tools, never raw JSON.
 
 ## Marker
 

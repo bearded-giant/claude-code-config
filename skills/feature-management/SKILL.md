@@ -192,7 +192,7 @@ Skip notes capture entirely. Do NOT buffer to a scratch file, do NOT prompt user
 
 ## Feature todos → doit sync
 
-Hard link between multi-step feature work and the doit MCP. Code work blocked on the user (operator detail, or approval of a dangerous change), and decisions the user deferred (`Decide later`), get parked on the repo's doit list with `feature=<name>`. Everything else found during the work gets done this session (CLAUDE.md `### Proactive execution`). Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` — only ever touch it via the doit MCP tools, never by reading/writing JSON.
+Hard link between multi-step feature work and the doit MCP. Code work blocked on the user (operator detail, or approval of a dangerous change), and decisions the user deferred (`Decide later`), get parked on the repo's doit list with `feature=<name>`. Everything else found during the work gets done this session (CLAUDE.md `### Proactive execution`). Docs and MRs are the source of truth; the doit item is the reminder. Once code is pushed in an MR, the MR tracks it and the item is landed. doit data lives at `~/.local/share/nvim/doit/lists/` and is written only by doitd (the MCP forwards its tools to it); only ever touch it via the doit MCP tools, never by reading/writing JSON.
 
 ### Trigger — when a code item is written
 
