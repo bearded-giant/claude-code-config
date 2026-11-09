@@ -154,7 +154,8 @@ def drift_cases():
     out = run_main(json.dumps({"session_id": "abc"}))
     assert "exists: yes — 4 pending of 5 (1 claude:, 3 owed in daily)" in out, out
     # session start carries only rules no other always-loaded source holds
-    assert "start_todo an item FIRST" in out and "add_todo type=gate" in out, out
+    assert "start_todo an item FIRST" in out and "never a new gate item" in out, out
+    assert "add_todo type=gate" not in out, out
     assert "CLAUDE.md `### What I owe`" in out and "search_todos first" in out, out
     for dup in (
         "Never owe: resume",
