@@ -299,6 +299,14 @@ else
   green "  registered"
 fi
 
+step "claude mcp add doit (user scope)"
+if "$BIN/claude" mcp list 2>/dev/null | grep -q '^doit'; then
+  dim "  already registered"
+else
+  "$BIN/claude" mcp add doit "$HOME/.nvm/versions/node/v24.11.1/bin/node" --scope user "$DOIT_DIR/packages/cli/doit-mcp.js" >/dev/null 2>&1 \
+    && green "  registered doit -> $DOIT_DIR/packages/cli/doit-mcp.js" || dim "  claude mcp add doit failed; run it by hand"
+fi
+
 step "discord-daemon"
 if [ -n "$BOT_TOKEN" ] && [ -n "$CHANNEL" ]; then
   systemctl --user enable --now discord-daemon >/dev/null 2>&1
