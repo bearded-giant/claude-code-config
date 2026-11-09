@@ -251,7 +251,7 @@ Discord user DMs the bot
 | **GCP devbox** | external | Hosts the sessions and the daemon; company-provisioned, reached only over Twingate | ssh alias `devbox` in `~/.ssh/config` |
 | **Twingate** | laptop | ZTNA tunnel to the devbox; ssh and Mutagen ride it, the phone uses Discord directly | Mutagen sessions pause while it is down |
 | **OpenSSH** | devbox | Shell, file transfer, Mutagen agent | `ssh devbox`, `scp`, `rsync` |
-| **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, newest mtime wins): transcripts, doit, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
+| **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, laptop is alpha and wins every conflict): transcripts, doit, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
 | **GNU stow** | devbox (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
 | **GNU bash + bun + node** | devbox | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
 | **discord-daemon** | devbox systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
@@ -302,8 +302,8 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 | Claude session crashes | Heartbeat stops. After 90s daemon marks session dormant + archives its thread (thread mapping retained — next `dclaude` in same cwd reattaches). |
 | Claude session ended normally + resumed (`claude --resume`) | Same cwd → same `session_id` → daemon reuses existing thread. Archive auto-clears on first outbound send. |
 | devbox reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
-| Mutagen network drop | Reconnects automatically. Edits queued. No data loss. |
-| Both sides edit same file | two-way-resolved picks newest mtime. Older edit overwritten. Avoid simultaneous editing in same file from both hosts. |
+| Mutagen network drop | Reconnects automatically. Edits queued. No data loss unless both sides edited the same file meanwhile (next row). |
+| Both sides edit same file | two-way-resolved keeps the laptop's (alpha) copy whatever the mtimes; the devbox edit is overwritten. Avoid simultaneous editing in same file from both hosts, and edits on both while Twingate is down. |
 | Token rotation needed | Edit `~/.claude/channels/discord/.env`, `sudo systemctl restart discord-daemon`. |
 
 ---
