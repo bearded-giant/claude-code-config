@@ -1,0 +1,19 @@
+# DE semantic layer service; deploys into the Vercel project the investigator already calls, so CI vars point at prj_uKnoedWf5b9iDItPNAlyBxDbZY6l
+# no env_sync_job: playing the sync rewrites the live project env, so it runs by hand at cutover
+# no framework/node: the live project is preset Other on 24.x and a patch here would change the serving project
+# service_tokens is JSON ({"<consumer>": {"token", "audiences"}}), set with `vault patch ... service_tokens=@stdin`, not generated
+project = "recharge-semantic-layer"
+gitlab = "engineering/data-engineering/recharge-semantic-layer"
+release_tag = "v*"
+fluid = false
+
+[tokens]
+deploy = "vercel_token"
+preview = "vercel_preview_token"
+
+[vault]
+path = "secret/ai-tools/prod/recharge-semantic-layer"
+generate = []
+
+[vault.copy]
+"secret/ai-tools/prod/investigator-agent" = ["snowflake_pem"]
