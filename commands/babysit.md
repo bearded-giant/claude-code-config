@@ -118,7 +118,7 @@ gh api graphql -f query='{ repository(owner:"<o>", name:"<r>") { pullRequest(num
       # GitHub: the resolveReviewThread mutation in ## Hosts
       ```
       MR-level notes (`resolvable=false`; GitHub PR-level issue comments) can't be resolved via API — reply only.
-   7. **`contradicts_design` threads** — no edit, no commit, no resolve. Skip 6.1–6.4 and 6.6. Post only the decline-with-reason bullet (6.5 decline branch) and leave the thread **unresolved**, so the human can accept or contest the rationale.
+   7. **`contradicts_design` threads** — no edit, no commit, no resolve. Skip 6.1–6.4 and 6.6. Post only the decline-with-reason bullet (6.5 decline branch) and leave the thread **unresolved**, so the human can accept or contest the rationale. A declined Greptile finding MUST also get a thumbs-down on the finding note the reply goes under, same run (`greptile` skill step 6 trains on it): `glab api -X POST "projects/<project_id>/merge_requests/<iid>/notes/<first_note_id>/award_emoji" -f name=thumbsdown` (GitHub: `gh api -X POST repos/<o>/<r>/pulls/comments/<databaseId>/reactions -f content=-1`).
 
 7. **Raise or clear attention** — once, at end of every run. If anything is still left for you (NEEDS-SIGN-OFF threads still unresolved, including ones from earlier runs, `actionable_complex` ambiguous, push rejected, pipeline red, rebase conflict), raise it with the total pending count:
    ```
