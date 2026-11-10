@@ -252,7 +252,7 @@ Discord user DMs the bot
 | **Twingate** | laptop | ZTNA tunnel to the devbox; ssh and Mutagen ride it, the phone uses Discord directly | Mutagen sessions pause while it is down |
 | **OpenSSH** | devbox | Shell, file transfer, Mutagen agent | `ssh devbox`, `scp`, `rsync` |
 | **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, laptop is alpha and wins every conflict): transcripts, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
-| **doitd** | laptop (launchd) + devbox (systemd user unit) | Single writer of the doit lists on each machine; pushes edits to the hosted doit server at once and pulls on an interval (hourly on the devbox) | `doit daemon status`, `doit sync status`, `doit sync pull` |
+| **doitd** | laptop (launchd) + devbox (systemd user unit) | Single writer of the doit lists on each machine; pushes edits to the hosted doit server at once and pulls every 10 s | `doit daemon status`, `doit sync status`, `doit sync pull` |
 | **GNU stow** | devbox (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
 | **GNU bash + bun + node** | devbox | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
 | **discord-daemon** | devbox systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
