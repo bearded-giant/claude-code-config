@@ -2,8 +2,6 @@
 name: grill
 description: >-
   Adversarial pre-ship review loop for larger changes, on any remote (Greptile CLI on Recharge GitLab and RechargePayments / skio-org GitHub repos, grill's own review elsewhere): triages and scores each finding, auto-fixes high-confidence ones, flags sev-5 for human, loops up to N turns. Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR or GitHub PR URL (`/grill <mr-url>`, "grill this MR", "grill this PR", "adversarial review of <mr-url>"), runs read-only MR mode instead: verifies Greptile's MR threads and the MR description's claims against the code, prints findings. MR mode never edits, writes files, or posts.
-context: fork
-background: false
 ---
 <!-- caveman:compressed -->
 
@@ -14,7 +12,7 @@ NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 ## When to use
 
 - **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened.
-- **This skill, MR mode** (`/grill <mr-url>`): posted GitLab MR or GitHub PR, yours or someone else's. Reviewer pass, read-only. glmon review poller runs it on GitLab MRs.
+- **This skill, MR mode** (`/grill <mr-url>`): posted GitLab MR or GitHub PR, yours or someone else's. Reviewer pass, read-only. glmon review poller runs it headless (`claude -p`) on assigned MRs and PRs.
 - **kai:review-code**: kai template review of a posted GitLab MR.
 - **caveman-review**: posted PR, line-by-line feedback.
 
@@ -94,7 +92,7 @@ First arg matches `https://<host>/<ns/project>/-/merge_requests/<iid>` or `https
 
 Differs from local mode:
 
-- Read-only. Implies `--dry-run`, one turn. Skip output dir, sticky config, every file write. Chat reply is the deliverable: on GitLab MRs the glmon poller stores it as the review file.
+- Read-only. Implies `--dry-run`, one turn. Skip output dir, sticky config, every file write. Chat reply is the deliverable: the glmon poller stores it as the review file.
 - Refusal cases become findings, never refusals: new behavior with zero tests → sev 3 tests, migration without rollback → sev 4 data.
 - NEVER write to the MR: no notes, no `@greptile review` (GitHub `@greptileai review`), no approval or review submission. Posting is `review-comment`, on request.
 
@@ -313,7 +311,7 @@ Diff touches a script that emits data artifacts (converters, generators, mutatio
    - `--base` arg if passed
    - Else project CLAUDE.md `mr_base_branch: <branch>`
    - Else review remote's default: `git symbolic-ref --short refs/remotes/<remote>/HEAD` minus the `<remote>/` prefix; unset → GitHub `gh repo view --json defaultBranchRef -q .defaultBranchRef.name`, GitLab `glab repo view -F json` → `default_branch`
-   - Else ask (main / master / stage / develop)
+   - Else AskUserQuestion (main / master / stage / develop)
 5. **Refusal check** (see Refusal cases). Bail out terse if tripped. Then **Scope check** (see Scope): in scope → **Greptile preflight** (see Greptile review), fails → stop and report; out of scope → self-review, no Greptile.
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
