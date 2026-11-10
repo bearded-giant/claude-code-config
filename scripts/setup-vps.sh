@@ -272,7 +272,7 @@ TMUX
 else
   dim "  ~/.tmux.conf exists, untouched"
 fi
-# chip only, no doit.tmux: its relink hooks write session.json, which mutagen keeps per-machine
+# chip only, no doit.tmux: its relink hooks write session.json, which stays per-machine
 if [ -d "$HOME/dev/lua/do-it.nvim/tmux" ] && ! grep -q 'todo-exec.sh' "$HOME/.tmux.conf"; then
   cat >> "$HOME/.tmux.conf" <<'TMUX'
 set -g status-right "#(~/dev/lua/do-it.nvim/tmux/scripts/todo-exec.sh #{window_id}) %H:%M "

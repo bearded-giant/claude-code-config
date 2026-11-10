@@ -1,6 +1,6 @@
 # Cloud Claude — Architecture
 
-Multi-session Claude Code on a GCP devbox, controllable from a phone via Discord. Repos are git clones on both machines and push from either side; transcripts, doit lists, the vault, and per-repo `.giantmem` dirs move both ways through Mutagen `two-way-resolved`.
+Multi-session Claude Code on a GCP devbox, controllable from a phone via Discord. Repos are git clones on both machines and push from either side; transcripts, the vault, and per-repo `.giantmem` dirs move both ways through Mutagen `two-way-resolved`; doit lists sync through doitd and the hosted doit server.
 
 ## Doc index (start here)
 
@@ -251,7 +251,8 @@ Discord user DMs the bot
 | **GCP devbox** | external | Hosts the sessions and the daemon; company-provisioned, reached only over Twingate | ssh alias `devbox` in `~/.ssh/config` |
 | **Twingate** | laptop | ZTNA tunnel to the devbox; ssh and Mutagen ride it, the phone uses Discord directly | Mutagen sessions pause while it is down |
 | **OpenSSH** | devbox | Shell, file transfer, Mutagen agent | `ssh devbox`, `scp`, `rsync` |
-| **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, laptop is alpha and wins every conflict): transcripts, doit, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
+| **Mutagen** | laptop daemon + devbox agent | Continuous bi-directional sync of state dirs (`two-way-resolved`, laptop is alpha and wins every conflict): transcripts, vault, per-repo `.giantmem`. Repos never sync; they are git clones on both machines. | `scripts/mutagen-sync-state.sh`, `scripts/mutagen-sync-giantmem.sh` |
+| **doitd** | laptop (launchd) + devbox (systemd user unit) | Single writer of the doit lists on each machine; pushes edits to the hosted doit server at once and pulls on an interval (hourly on the devbox) | `doit daemon status`, `doit sync status`, `doit sync pull` |
 | **GNU stow** | devbox (and laptop) | Symlink-tree manager — turns `~/dev/claude-code-config` into `~/.claude` | `install.sh` runs it |
 | **GNU bash + bun + node** | devbox | Runtimes for daemon (bun), hooks (node) | systemd + bunshell |
 | **discord-daemon** | devbox systemd | Single Discord gateway, multi-session routing | This repo's `discord-daemon/` |
@@ -301,9 +302,10 @@ Distinct prefixes mean keys for the outer tmux don't accidentally fire on the in
 | Discord gateway drops | discord.js auto-reconnects. SessionsMC keep heartbeating. |
 | Claude session crashes | Heartbeat stops. After 90s daemon marks session dormant + archives its thread (thread mapping retained — next `dclaude` in same cwd reattaches). |
 | Claude session ended normally + resumed (`claude --resume`) | Same cwd → same `session_id` → daemon reuses existing thread. Archive auto-clears on first outbound send. |
-| devbox reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. |
+| devbox reboots | systemd starts daemon. Sessions need manual restart in tmux. Mutagen reconnects. doitd comes back with its unit. |
 | Mutagen network drop | Reconnects automatically. Edits queued. No data loss unless both sides edited the same file meanwhile (next row). |
 | Both sides edit same file | two-way-resolved keeps the laptop's (alpha) copy whatever the mtimes; the devbox edit is overwritten. Avoid simultaneous editing in same file from both hosts, and edits on both while Twingate is down. |
+| doit server unreachable | doitd queues edits and replays them once it answers; `doit sync status` shows the queue. |
 | Token rotation needed | Edit `~/.claude/channels/discord/.env`, `sudo systemctl restart discord-daemon`. |
 
 ---
@@ -358,7 +360,7 @@ All live under `~/.claude/channels/discord/` on the host running the daemon.
       access.json
   .claude-team/ .claude-ent/      credentials slots (.credentials.json each)
   .claude-devbox.sh               PATH, tokens, aliases; sourced by .profile and .bashrc
-  .local/share/nvim/doit/         doit lists, mutagen session doit
+  .local/share/nvim/doit/         doit lists, replica of the doit server (doitd)
   .local/bin/{claude,giantmem,dclaude,gh,glab}
   .config/systemd/user/           discord-daemon, giantmemd, giantmem-ingest.{service,timer}
 ```

@@ -11,7 +11,8 @@ Claude Code sessions that run on a GCP devbox, each one with its own Discord thr
 | `dclaude` | devbox, `~/.local/bin` | `claude` with the Discord channel, bypass permissions, a credentials slot, and the rule that Discord messages get answered in Discord |
 | tmux | devbox | one session per repo directory; the daemon spawns into it, `cvps` attaches to it |
 | giantmemd + ingest timer | devbox, user units | same memory stack as the laptop, rebuilt from synced files |
-| mutagen | laptop daemon, agent on the devbox | carries transcripts, doit lists, the vault, and per-repo `.giantmem` dirs both ways |
+| mutagen | laptop daemon, agent on the devbox | carries transcripts, the vault, and per-repo `.giantmem` dirs both ways |
+| doitd | both machines (launchd agent on the laptop, user unit `doitd` on the devbox) | single writer of the doit lists; syncs them with the hosted doit server, so Mutagen never touches them |
 | repos | git clones on both machines | push from either side; nothing syncs `.git` |
 
 The devbox is reachable only over Twingate. The laptop's `~/.ssh/config` has `Host devbox` with the hostname, user, and `ForwardAgent yes`, and every script here uses that alias.
@@ -31,7 +32,8 @@ Hooks, `config/repos.csv`, transcript slugs under `~/.claude/projects`, and gian
 5. Bot token: regenerate it in the Discord developer portal, put it in `~/.claude/channels/discord/.env` as `DISCORD_BOT_TOKEN` on both machines, `systemctl --user restart discord-daemon`, and look for `gateway connected as <bot>` in `journalctl --user -u discord-daemon`. `DISCORD_SESSIONS_CHANNEL_ID` is the channel that holds the threads; a private channel needs the bot added as a member.
 6. Allowlist your Discord user id in `access.json` (`allowFrom`).
 7. Git from unattended sessions: add the devbox's `~/.ssh/id_ed25519.pub` (setup prints it) to GitHub, then `gh auth login --git-protocol ssh` and `glab auth login --hostname <gitlab host> --token "$GITLAB_TOKEN"` on the box.
-8. State sync from the laptop: `scripts/mutagen-sync-state.sh` creates the `claude-projects`, `doit`, and `vault` sessions; `scripts/mutagen-sync-giantmem.sh <alias|path>` adds a repo's `.giantmem` dirs. Sessions pause while Twingate is down and resume on their own.
+8. State sync from the laptop: `scripts/mutagen-sync-state.sh` creates the `claude-projects` and `vault` sessions; `scripts/mutagen-sync-giantmem.sh <alias|path>` adds a repo's `.giantmem` dirs. Sessions pause while Twingate is down and resume on their own.
+9. doit lists come from the doit server, not from Mutagen. Mint a token for the box (`doit-server-token add devbox`, run where the server's `DATABASE_URL` is at hand) and store it on the box as `~/.local/state/doit/token`, mode 0600. On the box, with `~/.local/share/nvim/doit/lists` empty: `doit sync clone --server <server-url>`, then `DOIT_SERVER_URL=<server-url> DOIT_SYNC_INTERVAL_MS=3600000 doit daemon install`. The hourly pull lets the server's database sleep between pulls; edits made on the box push at once, and `doit sync pull` fetches the laptop's edits on demand. `doit daemon status` shows the server and the interval. Setup reruns `doit daemon install`, which keeps both settings. The do-it.nvim README section "Daemon and Hosted Sync" has the rest.
 
 ## Starting a session
 
@@ -88,7 +90,7 @@ When mutagen is off, `lift` (`scripts/lift-to-vps.sh [session-id]`) copies one t
 | `$BRIDGE/sandbox/` | throwaway sessions not tied to a repo: `start` with no path lands here. The SessionStart hooks drop a `.giantmem/` in it; harmless |
 | `$BRIDGE/dev/...` | repos, same layout as the laptop, cloned by `devbox-clone-repos.sh` |
 | `$BRIDGE/.claude/projects` | transcripts, synced |
-| `$BRIDGE/.local/share/nvim/doit` | doit lists, synced (`session.json` stays per machine) |
+| `$BRIDGE/.local/share/nvim/doit` | doit lists, a replica that doitd keeps in step with the doit server (`session.json` stays per machine) |
 | `$BRIDGE/Recharge-Notes` | the vault, synced |
 | `<repo>/.giantmem` | synced only for repos you added with `mutagen-sync-giantmem.sh`; everything else about giantmem (the `.db` files) is rebuilt per machine by the ingest timer |
 
