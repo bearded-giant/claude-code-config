@@ -12,6 +12,7 @@ This skill exists because the chain was previously a one-line rule in CLAUDE.md 
 
 ## Preconditions (check before step 1)
 
+0. Personal repo (`origin` on GitHub, owner `bearded-giant`): no PR, ever. Commit as in step 1; on a branch, fast-forward it into the default branch and delete it local and remote after the push; push the default branch. Print the pushed sha and STOP; skip every step below.
 1. Current branch MUST NOT be `main`, `master`, or `stage`. If it is, STOP and tell user to switch to a feature branch first.
 2. Determine state:
    - `git status --porcelain` non-empty → there are local changes to commit
