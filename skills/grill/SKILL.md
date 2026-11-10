@@ -3,7 +3,6 @@ name: grill
 description: >-
   Adversarial pre-ship review loop for larger changes, on any remote (Greptile CLI on Recharge GitLab and RechargePayments / skio-org GitHub repos, grill's own review elsewhere): triages and scores each finding, auto-fixes high-confidence ones, flags sev-5 for human, loops up to N turns. Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR or GitHub PR URL (`/grill <mr-url>`, "grill this MR", "grill this PR", "adversarial review of <mr-url>"), runs read-only MR mode instead: verifies Greptile's MR threads and the MR description's claims against the code, prints findings. MR mode never edits, writes files, or posts.
 context: fork
-model: sonnet
 background: false
 ---
 <!-- caveman:compressed -->
