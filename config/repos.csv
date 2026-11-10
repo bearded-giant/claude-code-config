@@ -26,7 +26,7 @@ merchant-mcp,/Users/bryan/dev/ai/recharge-merchant-mcp-wt,
 mcp-template,/Users/bryan/dev/ai/recharge-mcp-template,
 monitor,/Users/bryan/dev/ai/monitor,ai-tooling/monitor; greptile auto-approves here
 engine|investigator-v2|inv-v2|inv2|inv|investigator,/Users/bryan/dev/ai/ai-platform-wt,"the investigator (data backplane for the agents; Vercel project investigator-v2) lives in the ai-platform monorepo as apps/engine since the 2026-11-10 cutover (first tag engine-v0.111.0): origin = GitHub RechargePayments/ai-platform (PRs, Greptile, rulesets, Actions deploys); worktree layout (helper aiwt); merge: github; babysit-merge; engine tags engine-vX.Y.Z; golden runs store stays at /Users/bryan/dev/ai/investigator-v2-wt/golden-runs (each worktree's apps/engine/golden-runs links to it)"
-ai-investigator|inv2-old|investigator-old,/Users/bryan/dev/ai/investigator-v2-wt,"frozen since the 2026-11-10 cutover: GitHub RechargePayments/ai-investigator, workflows disabled, no merges or deploys from it; read-only reference and the home of the golden-runs store; new engine work goes to ai-platform apps/engine"
+ai-investigator|inv2-old|investigator-old,/Users/bryan/dev/ai/investigator-v2-wt,"archived on GitHub since 2026-11-10 (RechargePayments/ai-investigator, read-only; the engine moved in the 2026-11-10 cutover); local reference only and the home of the golden-runs store; new engine work goes to ai-platform apps/engine"
 auth-session-sync|session-sync,/Users/bryan/dev/python/dapr/auth-session-sync,
 zendesk-mcp|zendesk,/Users/bryan/dev/ai/zendesk-mcp,
 gcp_project|gcp-project,/Users/bryan/dev/infra/gcp_project,reusable gcp project module only; IAM bindings + ingress live in infra/terraform and infra/helm-core
