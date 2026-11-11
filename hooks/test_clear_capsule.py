@@ -145,6 +145,11 @@ def check_writer(d, tp):
     assert "never copy a secret" in seen["prompt"]
     assert "<session>\nCOMPACTED EARLIER PART" in seen["prompt"]
     assert not list(out.parent.glob("*.tmp"))
+    assert note.endswith(
+        f"## Paste prompt\n```\nResume from {out}. Read it first, "
+        "verify repo and MR state against git, then act on its "
+        "`## Start here`.\n```\n"
+    )
 
     vars(mod).update(summarize=lambda _prompt: "")
     fallback = out.with_name("f.md")
@@ -152,6 +157,11 @@ def check_writer(d, tp):
     note = fallback.read_text()
     assert "Summarizer failed" in note
     assert "USER: now add a test" in note
+    assert note.rstrip().endswith(
+        f"Resume from {fallback}. Read it first, verify repo "
+        "and MR state against git, then act on its "
+        "`## Start here`.\n```"
+    )
 
 
 def check_main(d, tp):

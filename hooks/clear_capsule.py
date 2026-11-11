@@ -235,6 +235,14 @@ def write_handoff(sid: str, transcript_path: str, out: Path) -> None:
             "",
             note,
             "",
+            "## Paste prompt",
+            "```",
+            (
+                f"Resume from {out}. Read it first, verify repo and MR state against git, "
+                "then act on its `## Start here`."
+            ),
+            "```",
+            "",
         ]
     )
     out.parent.mkdir(parents=True, exist_ok=True)

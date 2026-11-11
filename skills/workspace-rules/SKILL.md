@@ -79,7 +79,7 @@ Written by `/wrap`, or when the user asks for a handoff. It is a doc for the use
 
 Frontmatter: `type: handoff`, `status: ready`, `feature:` or `repo:`, `lifecycle: durable`, `created`, `updated`.
 
-Sections in fixed order; omit empty ones:
+Sections in fixed order; omit empty ones, except `## Paste prompt`: every handoff ends with it, and nothing follows it. Its fenced block is the complete prompt the user pastes into the new session: the handoff's absolute path, the goal, and `Start here` step 1. `/clear` handoffs get a fixed one from `hooks/clear_capsule.py`.
 
 ```markdown
 ## Open Questions for User   only when there are any
