@@ -84,7 +84,7 @@ Title: use the most recent commit subject (or the branch's primary commit subjec
 
 `merge: github` twin: open only the GitHub PR below; no GitLab MR, no `kai:open-mr`.
 
-Paired MRs: open the one that deploys later as Draft (`glab mr create --draft`, `gh pr create --draft`), so it cannot merge before its partner ships. A customcheckout MR in a pair opens as Draft. The user marks it ready.
+Paired MRs that must deploy in sequence (one breaks or degrades if it ships before its partner): open the one that deploys later as Draft (`glab mr create --draft`, `gh pr create --draft`), so it cannot merge before its partner ships. The user marks it ready. A pair that can deploy in either order opens ready, customcheckout included: Draft buys nothing there, and babysit stops its loop on a Draft MR.
 
 If the MR/PR already exists for this branch: skip creation, capture the existing URL.
 
