@@ -8,6 +8,7 @@
     "GLAB_NO_PROMPT": "1",
     "SLASH_COMMAND_TOOL_CHAR_BUDGET": "23200",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "CLAUDE_CODE_MODEL_CAPABILITIES": "-org_locked_thinking",
     "TZ": "America/New_York"
   },
   "permissions": {
