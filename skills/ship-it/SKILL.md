@@ -18,12 +18,6 @@ This skill exists because the chain was previously a one-line rule in CLAUDE.md 
    - `git status --porcelain` non-empty → there are local changes to commit
    - `git log @{u}..HEAD` non-empty (or no upstream) → there are unpushed commits
    - Both empty AND upstream exists AND remote MR already open → STOP, report "branch already shipped, MR: <url>"
-3. **Grill gate** (skip if invocation contains `--no-grill`):
-   - Check `git diff --stat <base>...HEAD`. Gate triggers when ANY: ≥300 changed lines, ≥10 files, or diff touches migrations / data-emitting scripts (converters, generators, mutation builders, exporters) / prod-batch tooling.
-   - Triggered → look for grill `final.md` for this branch (feature grill dir per `grill` skill routing) newer than HEAD commit.
-   - Found + rating SHIP IT → proceed, note `grill: SHIP IT (runs N)` in chat.
-   - Found + rating BLOCK/NEEDS WORK → STOP, report rating + final.md path. User decides.
-   - Not found / stale → AskUserQuestion ONCE: run `/grill` first (recommended) or ship without. Autonomous mode (`commands/auto.md`) → run `/grill` without asking. Small/simple diffs never trigger — no gate friction on routine ships.
 
 ## Chain (execute in order, no breaks)
 
@@ -37,6 +31,26 @@ Otherwise:
 - Stage explicit files (not `git add -A`) when safe to enumerate; otherwise stage tracked modifications with `git add -u` plus the specific untracked files you intend to include.
 - Use HEREDOC for the message body.
 - If pre-commit hook fails: fix the underlying issue, re-stage, create a NEW commit. NEVER `--amend`. NEVER `--no-verify`.
+
+### Step 1b — Grill gate
+
+Skip if invocation contains `--no-grill`. Runs after the commit: grill reviews committed state and refuses a dirty tree.
+
+Pipeline Greptile reviews every MR on open and babysit works its threads, so local grill runs only where that pipeline is blind. Gate triggers when the `<base>...HEAD` diff hits ANY row:
+
+| Trigger | Diff touches | Pipeline gap |
+|---|---|---|
+| execution | script that emits data: converter, generator, mutation builder, exporter, SQL/template renderer | Greptile reads code, never runs it; grill's Generated-output rule runs it on a sample |
+| one-way door | schema or data migration, backfill, prod-batch or one-off prod tooling, bulk delete/rewrite path | a bad merge is not undone by a revert |
+| cross-repo contract | breaking change to something another repo consumes: API route or response shape, event/pubsub payload, MCP tool schema, shared package export (removed/renamed field, type change, new required field, status/error code change); or a paired MR (see Paired MRs) | Greptile sees one repo; grill's Cross-repo contract rule reads the consumers |
+| no pipeline reviewer | review remote outside grill's Greptile scope (`grill` skill Scope table) | nothing reviews it after push |
+
+Never triggers on size, file count, refactors, renames, additive API changes, tests, docs, or config alone; pipeline Greptile + babysit own those.
+
+- Not triggered → continue, no mention.
+- Triggered → grill `final.md` for this branch (feature grill dir per `grill` skill routing) newer than HEAD with rating SHIP IT → continue. Otherwise run `/grill` without asking, chat line `grill gate: <trigger>`.
+- Rating SHIP IT → grill's auto-fix edits (if any) become their own commit per step 1 (`fix: grill findings`), note `grill: SHIP IT (runs N)` in chat, continue.
+- Rating NEEDS WORK / BLOCK, or grill refused → STOP, report rating or refusal + `final.md` path. User decides (re-run after fixes, or `ship it --no-grill`).
 
 ### Step 2 — Push
 
@@ -72,7 +86,7 @@ Either branch ends with a description file on disk and its path printed.
 
 **Paired MRs (any format):** when the change spans repos (frontend + customcheckout, remi + monolith) or depends on another open MR, the description opens with an H1 naming every partner and the deploy order, then one line on what breaks or degrades between the two deploys: `# Pairs with frontend!17058 + frontend!17062: frontend ships first, this deploys after`. The pairing never lives only in `## Related Issues` or `## Post Deploy Action`. A partner opened later gets the same H1 on every MR in the set (update the earlier ones). Ask the user for the deploy order when it is not obvious; never assume backend first.
 
-Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — this and the grill gate are the only acceptable interruptions in the chain. Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
+Base-branch resolution: read `mr_base_branch:` from project CLAUDE.md. If absent, ask the user ONCE — the only acceptable interruption in the chain (the grill gate stops, never asks). Persist their answer back into project CLAUDE.md as `mr_base_branch: <branch>` so this never asks again.
 
 ### Step 4 — Open MR
 
@@ -141,5 +155,5 @@ Do NOT skip a failed step and continue. Do NOT take destructive recovery actions
 ## Quick reference
 
 ```
-ship it  →  grill gate (big/data-heavy diffs only; --no-grill skips) → commit (caveman) → push -u (+ `github` twin; `merge: github`: `github` only) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github` and no `babysit-merge`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
+ship it  →  commit (caveman) → grill gate (execution / one-way door / cross-repo contract / no pipeline reviewer only; runs without asking; --no-grill skips) → push -u (+ `github` twin; `merge: github`: `github` only) → MR desc (GitLab→concise-kai / skio-org+RechargePayments GitHub or twin→skio / other GitHub→bullets; `brief`=bullets, `full`=verbose kai) → kai:open-mr (or gh pr create; github twin: both, `--auto --squash` only with `merge: github` and no `babysit-merge`) → GitLab + glmon-jirad enabled: `glmon-jirad --mr` (Jira ticket) → greptile repos: `@greptile review` (GitHub `@greptileai review`) if MR existed; every GitLab MR and skio-org/RechargePayments PR: `/loop 5m /babysit <worktree>` → print desc + URL
 ```

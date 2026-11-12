@@ -1,7 +1,7 @@
 ---
 name: grill
 description: >-
-  Adversarial pre-ship review loop for larger changes, on any remote (Greptile CLI on Recharge GitLab and RechargePayments / skio-org GitHub repos, grill's own review elsewhere): triages and scores each finding, auto-fixes high-confidence ones, flags sev-5 for human, loops up to N turns. Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR or GitHub PR URL (`/grill <mr-url>`, "grill this MR", "grill this PR", "adversarial review of <mr-url>"), runs read-only MR mode instead: verifies Greptile's MR threads and the MR description's claims against the code, prints findings. MR mode never edits, writes files, or posts.
+  Adversarial pre-ship review loop for changes pipeline Greptile cannot judge alone (ship-it grill gate: data-emitting scripts, one-way doors, cross-repo contracts, repos with no pipeline reviewer), on any remote (Greptile CLI on Recharge GitLab and RechargePayments / skio-org GitHub repos, grill's own review elsewhere): triages and scores each finding, auto-fixes high-confidence ones, flags sev-5 for human, loops up to N turns. Supports --loops, --threshold, --sev2-threshold, --dry-run, --base, --max-fixes-per-turn. Auto-fires when user says "grill me", "grill this", "tear it apart", "don't let me ship until", "adversarial review", "be skeptical", or invokes /grill. Given a GitLab MR or GitHub PR URL (`/grill <mr-url>`, "grill this MR", "grill this PR", "adversarial review of <mr-url>"), runs read-only MR mode instead: verifies Greptile's MR threads and the MR description's claims against the code, prints findings. MR mode never edits, writes files, or posts.
 ---
 <!-- caveman:compressed -->
 
@@ -12,6 +12,7 @@ NEVER commits. NEVER pushes. NEVER stages. Edits files only.
 ## When to use
 
 - **This skill**: local branch, pre-push. Catch + auto-tighten before MR opened.
+- **Unprompted use**: only via ship-it's grill gate (step 1b triggers), which runs it without asking. Every other MR → pipeline Greptile + babysit. Never offer or ask "grill first?" outside the gate.
 - **This skill, MR mode** (`/grill <mr-url>`): posted GitLab MR or GitHub PR, yours or someone else's. Reviewer pass, read-only. glmon review poller runs it headless (`claude -p`) on assigned MRs and PRs.
 - **kai:review-code**: kai template review of a posted GitLab MR.
 - **caveman-review**: posted PR, line-by-line feedback.
@@ -300,6 +301,10 @@ Greptile `category` carries no signal; assign one from this table during triage.
 
 Diff touches a script that emits data artifacts (converters, generators, mutation builders, exporters): reviewing the code is NOT sufficient — these bugs produce valid-looking output. Run the script against a sample/fixture input (its own `--dry-run` / sample mode if present) and inspect output shape: column count + order, null/NaN density, list lengths (empty delete list = sev-5 candidate), required-field presence. No sample input available → `flag-user` with what's needed to verify. Never score a generated-output finding above 0.84 without having looked at actual output.
 
+### Cross-repo contract rule
+
+Diff makes a breaking change to something another repo consumes (API route or response shape, event/pubsub payload, MCP tool schema, shared package export): Greptile sees one repo, so read the consumers. Find them by grep across checked-out repos (`~/.claude/config/repos.csv` paths), else `local-cerebro`. Each consumer the change breaks = finding, category API contracts, seed sev 4. No consumer reachable → `flag-user` naming contract + likely consumer repo. Never score a contract finding above 0.84 without having read a consumer.
+
 ---
 
 ## Steps
@@ -316,7 +321,7 @@ Diff touches a script that emits data artifacts (converters, generators, mutatio
 6. **Write sticky config** back to `<dir>/.config.yaml` (unless `--no-sticky`).
 7. **Loop turn N = 1**:
    a. N=1, in scope: run `greptile review -b <base> --json` (see Greptile review); read `git diff <base>...HEAD` for context. N=1, out of scope: self-review `git diff <base>...HEAD` (see Scope). N>1: `git diff` (uncommitted auto-fix edits from turn N-1) plus surrounding lines; review only those hunks for regressions and status prior findings against the working tree. Do not re-review the committed diff.
-   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then map every Greptile comment to a candidate finding (see Greptile review), or collect self-review candidates when out of scope; N>1: self-review the fix hunks as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output).
+   b. `prior` non-empty → status each prior finding first, with evidence: RESOLVED (head no longer exhibits it, cite file:line), STILL OPEN, or REGRESSED (fixed in the earlier grill, back in this diff). STILL OPEN and REGRESSED re-enter as findings and score normally. Then map every Greptile comment to a candidate finding (see Greptile review), or collect self-review candidates when out of scope; N>1: self-review the fix hunks as skeptical staff engineer. Diff includes data-emitting scripts → apply Generated-output rule (run on sample, inspect output). Diff breaks a cross-repo contract → apply Cross-repo contract rule (read consumers).
    c. Candidate findings sev ≥ 3 → Verification pass (refute before score). Record evidence or refutation.
    d. For each surviving finding: assign category, severity, confidence, evidence, file:line, problem, fix.
    e. Determine disposition via matrix (respect `T_main`, `T_sev2`, `--dry-run`)
