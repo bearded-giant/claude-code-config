@@ -210,7 +210,9 @@ def drift_cases():
 def write_handoff(path, status):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(f"---\ntype: handoff\nstatus: {status}\nupdated: 2026-10-17\n---\n")
+        fh.write(
+            f"---\ntype: handoff\nstatus: {status}\nupdated: 2026-10-17T09:30:00-04:00\n---\n"
+        )
 
 
 def handoff_cases(tmp):
@@ -222,7 +224,9 @@ def handoff_cases(tmp):
     write_handoff(paused, "ready")
     write_handoff(os.path.join(base, "features", "closed.md"), "done")
     out = run_main("")
-    assert f"  other ready handoff: {paused} (updated 2026-10-17)" in out, out
+    assert (
+        f"  other ready handoff: {paused} (updated 2026-10-17T09:30:00-04:00)" in out
+    ), out
     assert "handoff ready:" not in out and "closed" not in out, out
     # a branch whose worktree is gone still surfaces, newest first
     gone = os.path.join(base, "old-branch.md")
@@ -326,7 +330,16 @@ def sync_cases(tmp):
         json.dump({"mode": "local", "online": None, "queue": 0, "conflicts": 0}, fh)
     assert "doit sync:" not in run_main("{}"), "local mode shows no badge"
     with open(state, "w", encoding="utf-8") as fh:
-        json.dump({"mode": "sync", "online": False, "queue": 2, "conflicts": 1, "error": None}, fh)
+        json.dump(
+            {
+                "mode": "sync",
+                "online": False,
+                "queue": 2,
+                "conflicts": 1,
+                "error": None,
+            },
+            fh,
+        )
     out = run_main("{}")
     assert "doit sync: offline, queued 2, conflicts 1" in out, out
     with open(state, "w", encoding="utf-8") as fh:
@@ -342,7 +355,11 @@ def hook_cases() -> None:
         os.makedirs(os.path.join(tmp, "proj"))
         os.makedirs(os.path.join(tmp, "lists"))
         os.environ["CLAUDE_PROJECT_DIR"] = os.path.join(tmp, "proj")
-        saved = {"LISTS_DIR": mod.LISTS_DIR, "AREAS": mod.AREAS, "STATE_DIR": mod.STATE_DIR}
+        saved = {
+            "LISTS_DIR": mod.LISTS_DIR,
+            "AREAS": mod.AREAS,
+            "STATE_DIR": mod.STATE_DIR,
+        }
         vars(mod).update(
             LISTS_DIR=os.path.join(tmp, "lists"),
             AREAS=os.path.join(tmp, "vault", "areas"),

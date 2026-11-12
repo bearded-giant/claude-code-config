@@ -218,6 +218,7 @@ def write_handoff(sid: str, transcript_path: str, out: Path) -> None:
     )
     if not note:
         note = f"Summarizer failed. Tail of the transcript extract:\n\n{body[-FALLBACK_TAIL:]}"
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
     text = "\n".join(
         [
             "---",
@@ -226,7 +227,8 @@ def write_handoff(sid: str, transcript_path: str, out: Path) -> None:
             f"repo: {out.parents[2].name}",
             "lifecycle: candidate",
             f"session: {sid}",
-            f"created: {datetime.now().astimezone().isoformat(timespec='seconds')}",
+            f"created: {now}",
+            f"updated: {now}",
             "---",
             "",
             f"# /clear handoff: {sid[:8]}",

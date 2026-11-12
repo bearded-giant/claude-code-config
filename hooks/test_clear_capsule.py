@@ -2,11 +2,12 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
@@ -112,7 +113,7 @@ def check_extract(tp):
 
 
 def check_paths(d):
-    now = datetime(2026, 10, 24, 9, 30, 5, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 24, 9, 30, 5, tzinfo=UTC)
     repo = Path(d) / "repo"
     (repo / "sub").mkdir(parents=True)
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
@@ -140,6 +141,7 @@ def check_writer(d, tp):
     note = out.read_text()
     assert note.startswith("---\ntype: handoff\nstatus: ready\nrepo: repo\n")
     assert "lifecycle: candidate\nsession: abcdef123456\n" in note
+    assert re.search(r"\ncreated: (\S+T\S+)\nupdated: \1\n", note), note
     assert "`claude --resume abcdef123456`" in note and "## Start here\nship it" in note
     assert "Drop tool output that was read once" in seen["prompt"]
     assert "never copy a secret" in seen["prompt"]
