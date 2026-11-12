@@ -11,7 +11,7 @@ One loop for the lone engineer: run, pull, grade, diff, report. The repo side is
 - `<questions.csv>`: `question, store_id, question_id` (the sets ship in the repo's `eval/golden_sets/`: `goldens_dated.csv`, `goldens_ask.csv` (run with `--ask-period`), `r3_31.csv`; the store mirrors them in `golden-runs/_questions/`).
 - or `<batch_id>`: skip the run, pull and grade an existing batch (`--no-run` is the same thing with a CSV present).
 - `--against <batch_id>`: the earlier batch to diff against (pull it too when its directory is missing).
-- `--base-url`: default production `https://investigator-v2.vercel.app`; preview needs `VERCEL_AUTOMATION_BYPASS_SECRET` in `.env.resolved`.
+- `--base-url`: default production `https://engine.recharge-ai.app`; preview needs `VERCEL_AUTOMATION_BYPASS_SECRET` in `.env.resolved`.
 - Reference answers: `R3_NNN` rows use that case in `eval/golden.yaml`; `GoldenNNN` rows use `eval/golden_expected_answers.csv` (by `question_id`) plus the notes of the mapped yaml case (Golden001-005 = Q001-Q005, Golden006 = Q008, Golden007 = Q006, Golden008 = Q007, Golden009 = Q010, Golden010 = Q009); anything else matches a case by question text, else none (grade on the run alone).
 - A plan instead of a CSV: in an investigator-v2 worktree `make golden-plan [PLAN=<yaml>] [SETS=goldens|r3] [TARGET=local|preview|stage|prod|<url>]` (default plan `eval/golden_plan.yaml`) runs, pulls, diffs and repeats every arm against its control and writes `golden-runs/_plans/<plan>/report.md` ending in one `/golden-run <batch> --against <control>` line per arm; run this skill with `--no-run` semantics on each line (grade, diff, report).
 
