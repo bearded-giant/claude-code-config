@@ -250,7 +250,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge daily_note",
+            "command": "python3 ~/.claude/hooks/dispatch.py --event PostToolUse live_index caveman_artifact_nudge code_comment_nudge handoff_stamp daily_note",
             "timeout": 10
           }
         ]

@@ -77,7 +77,7 @@ The vault syncs to GitHub: no secrets, tokens, or credentialed URLs in a handoff
 
 Written by `/wrap`, or when the user asks for a handoff. It is a doc for the user alone, so absolute paths, branch names, and IDs belong in it; the shared-docs rule does not apply. It holds what a cold session needs that the feature docs don't already say. Link to feature docs instead of copying them.
 
-Frontmatter: `type: handoff`, `status: ready`, `feature:` or `repo:`, `lifecycle: durable`, `created`, `updated`. `created` and `updated` are local timestamps with offset from `date -Iseconds` (`2026-11-12T17:27:07-05:00`), never a bare date. Overwriting a handoff keeps `created` and sets `updated` to now.
+Frontmatter: `type: handoff`, `status: ready`, `feature:` or `repo:`, `lifecycle: durable`, `created`, `updated`. `created` and `updated` are ET timestamps with offset (`2026-11-12T17:27:07-05:00`), never a bare date. `hooks/handoff_stamp.py` sets both after every Write/Edit of a vault handoff: `updated` to now, `created` to now on a new file, else the earlier version's timestamp. Re-read the handoff before a second Edit.
 
 Sections in fixed order; omit empty ones, except `## Paste prompt`: every handoff ends with it, and nothing follows it. Its fenced block is the complete prompt the user pastes into the new session: the handoff's absolute path, the goal, and `Start here` step 1. `/clear` handoffs get a fixed one from `hooks/clear_capsule.py`.
 
