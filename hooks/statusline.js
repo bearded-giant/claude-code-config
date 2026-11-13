@@ -866,7 +866,7 @@ function giantmemStatus(dir) {
       const bin = path.join(os.homedir(), '.local/bin/giantmem');
       const escDir = dir.replace(/'/g, "'\\''");
       const escCache = cachePath.replace(/'/g, "'\\''");
-      const cmd = `(${bin} status --root '${escDir}' --stale-days 30 --write-cache '${escCache}' </dev/null >/dev/null 2>&1 & disown) 2>/dev/null`;
+      const cmd = `(${bin} status --root '${escDir}' --write-cache '${escCache}' </dev/null >/dev/null 2>&1 & disown) 2>/dev/null`;
       const child = require('child_process').spawn('/bin/bash', ['-c', cmd], {
         detached: true,
         stdio: 'ignore',
