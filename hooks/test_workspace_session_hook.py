@@ -11,6 +11,13 @@ assert spec and spec.loader
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
+end_spec = importlib.util.spec_from_file_location(
+    "workspace_session_end", Path(__file__).with_name("workspace_session_end.py")
+)
+assert end_spec and end_spec.loader
+end = importlib.util.module_from_spec(end_spec)
+end_spec.loader.exec_module(end)
+
 
 def main():
     now = time.time()
@@ -50,6 +57,11 @@ def main():
         out = mod.format_context_output(mod.read_workspace_context(d), d, False)
     assert "<!--" not in out and "## Purpose" not in out and "## Notes" not in out, out
     assert "## Features\n\n| a | b |" in out and "# Workspace: p" in out, out
+
+    for m in (mod, end):
+        assert m.workspace_root("/r/.giantmem/features/x") == "/r"
+        assert m.workspace_root("/r/.giantmem") == "/r"
+        assert m.workspace_root("/r/src") == "/r/src"
 
     start = mod.claude_process_start()
     assert start is None or start <= time.time()

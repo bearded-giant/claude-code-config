@@ -576,6 +576,14 @@ def update_workspace_md(workspace_dir: Path):
     workspace_file.write_text(new_content)
 
 
+def workspace_root(cwd: str) -> str:
+    # a session that cd'd into .giantmem belongs to the repo above it, not a nested workspace
+    parts = Path(cwd).parts
+    if ".giantmem" in parts:
+        return str(Path(*parts[: parts.index(".giantmem")]))
+    return cwd
+
+
 def workspace_init(cwd: Path) -> Path:
     workspace_dir = cwd / ".giantmem"
     name = cwd.name
@@ -639,7 +647,7 @@ def main():
         input_data = json.load(sys.stdin)
 
         session_id = input_data.get("session_id", "unknown")
-        cwd = input_data.get("cwd", os.getcwd())
+        cwd = workspace_root(input_data.get("cwd", os.getcwd()))
         transcript_path = input_data.get("transcript_path", "")
 
         cwd_path = Path(cwd)

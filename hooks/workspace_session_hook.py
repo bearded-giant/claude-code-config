@@ -99,6 +99,14 @@ def restart_notice(source: str) -> str:
     )
 
 
+def workspace_root(cwd: str) -> str:
+    # a session that cd'd into .giantmem belongs to the repo above it, not a nested workspace
+    parts = Path(cwd).parts
+    if ".giantmem" in parts:
+        return str(Path(*parts[: parts.index(".giantmem")]))
+    return cwd
+
+
 def bootstrap_workspace(cwd: str) -> bool:
     """
     Bootstrap workspace structure using workspace-lib.sh.
@@ -206,7 +214,7 @@ def main():
     try:
         input_data = json.load(sys.stdin)
 
-        cwd = input_data.get("cwd", os.getcwd())
+        cwd = workspace_root(input_data.get("cwd", os.getcwd()))
         source = input_data.get("source", "startup")
 
         # Only bootstrap on fresh startup, not resume
