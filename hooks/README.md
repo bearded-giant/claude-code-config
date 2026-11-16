@@ -141,20 +141,34 @@ It does not fire every prompt. UserPromptSubmit context accumulates in the trans
 
 Edit the md file to change the injected rules, keeping it in sync with the matching CLAUDE.md sections. Keep it under about 7,000 characters: Claude Code saves any hook stdout over 10,000 characters to a file and shows the model only a 2,000-character preview, and dispatch prints these rules in the same stdout as the giantmem recall hits. Override path via `CLAUDE_STANDING_CONSTRAINTS`. Best-effort: missing file prints nothing. Tests: `python3 hooks/test_standing_constraints.py`.
 
+## session_label.py
+
+**Hook:** `SessionStart`, `UserPromptSubmit` (via dispatch)
+
+Names and colors each session so a glance at the prompt box tells which worktree is doing what. The name goes out as `hookSpecificOutput.sessionTitle`, which Claude Code applies like `/rename` (prompt box, `/resume` picker, terminal title). Pick order:
+
+1. A `/new-feature`, `/start-feature`, or `/reopen-feature` prompt with a name names the session after that feature right away, even when it lands `pending`.
+2. The worktree's `in_progress` feature (`.giantmem/features/features.json` under `CLAUDE_PROJECT_DIR`) names the session at startup and `/clear`, and again on the next prompt whenever that feature changes.
+3. With no feature, the session takes Claude Code's own `ai-title` (Haiku's summary of the first prompt) as its name. That row appears after the first turn starts, so the name lands on the second prompt.
+
+A name already in the transcript (`/rename`, `--name`) is kept, and a resumed session keeps whatever name it had.
+
+Color has no hook output field. On the first prompt of a tmux session (`TMUX_PANE` set) the hook types `/color <c>` into its own pane 0.4s after the submit. `/color` is an immediate command: it runs mid-turn and never reaches the model. The color comes from `red blue green yellow purple orange pink cyan`, seeded by `CLAUDE_PID`, so a `/clear` in the same process re-sends the same color. A transcript that already holds an `agent-color` row (a resumed session) is left alone. Sessions outside tmux get a name but no color. Skips `claude -p` children. Per-session state lives in `$TMPDIR/claude-session-label/`. Tests: `python3 hooks/test_session_label.py`.
+
 ## giantmem_recall.py
 
 UserPromptSubmit hook. Two arms run concurrently: a keyword OR-query through `giantmem find -s memory --json` (FTS5 bm25 over live workspace docs plus archived memory docs) and the full prompt through `giantmem artifact search --repo all --json` (chunked bge vectors; only real `vector_score > 0` hits kept, so a cold daemon degrades to FTS). Repo-first: current-repo hits fill first, at most `GIANTMEM_RECALL_CROSS_MAX` (default 1) lines come from other repos, worktree siblings of one doc collapse to one line. Output is packed into `GIANTMEM_RECALL_BUDGET` tokens (default 600, `ceil(len/4)`), with `GIANTMEM_RECALL_LIMIT` lines (default 8) as a ceiling and `GIANTMEM_RECALL_SNIPPET_CHARS` (default 400) per passage. Best-effort: prints nothing on miss/timeout so the prompt is never blocked. Query terms present in more than `GIANTMEM_RECALL_MAX_DF` of `live_docs` (default 0.2; `session`, `giantmem`, `config` in this corpus) are dropped before the FTS arm runs, so the overlap floor counts only discriminative terms. Other tunables: `GIANTMEM_RECALL_SINCE`, `GIANTMEM_RECALL_MIN_OVERLAP`, `GIANTMEM_RECALL_SEMANTIC`. Every injected line is also appended to `live.db.recall_log` (session, rank, signal, slot, path); `giantmem recall report --since 30d` joins that against the session transcript and `live_docs` writes to report precision per signal, slot, and rank, so ranker changes are compared on numbers. Regression checks: `python3 hooks/giantmem_recall_check.py`. Replaced the dead RLabs `:8765` hooks (`memory_inject`, `memory_session_start`, `memory_curate`).
 
 ## Hook Wiring Summary
 
-Most events run through `dispatch.py`, which loads several modules in one process so an event pays one interpreter start instead of N. It calls each module's `main()` with the same stdin, merges every `additionalContext` into one object, joins any `systemMessage` notices into that object, and lets a control object (a block or permission decision) win alone. It catches everything a module raises, including `SystemExit`, and logs the traceback to `~/.cache/giantmem/hook.log` — without that log a crashing hook is indistinguishable from a quiet one.
+Most events run through `dispatch.py`, which loads several modules in one process so an event pays one interpreter start instead of N. It calls each module's `main()` with the same stdin, merges every `additionalContext` into one object, joins any `systemMessage` notices and a `sessionTitle` into that object, and lets a control object (a block or permission decision) win alone. It catches everything a module raises, including `SystemExit`, and logs the traceback to `~/.cache/giantmem/hook.log` — without that log a crashing hook is indistinguishable from a quiet one.
 
 The caveman plugin registers its own SessionStart and UserPromptSubmit hooks through its `plugin.json`, so `settings.json` is not the whole picture.
 
 | Event | Scripts | Context injection? |
 |-------|---------|-------------------|
-| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `doit_session_prime`, `daily_note`, `memory_ingest` | Yes (one-time, ~4KB; `clear_capsule` adds up to ~1KB after `/clear` only, plus a `systemMessage` naming the handoff file) |
-| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on) |
+| SessionStart | `giantmem daemon start`, then dispatch: `sync_settings`, `workspace_session_hook`, `clear_capsule`, `ensure_personal_claude`, `session_prime`, `session_label`, `doit_session_prime`, `daily_note`, `memory_ingest` | Yes (one-time, ~4KB; `clear_capsule` adds up to ~1KB after `/clear` only, plus a `systemMessage` naming the handoff file; `session_label` adds only a `sessionTitle`) |
+| UserPromptSubmit | dispatch: `standing_constraints`, `giantmem_recall`, `auto_mode`, `session_label`; plus `caveman-mode-tracker.js` | Yes (recall every prompt, constraints on the cadence above, one auto mode line while it is on; `session_label` adds only a `sessionTitle`) |
 | PreCompact | timestamp file, then `precompact_capture.py`, then `cat ~/.claude/config/compact-instructions.md` | Yes: PreCompact stdout becomes the compaction's custom instructions (merged with `/compact <args>`), so the summary keeps files, findings, commits, decisions, and open state for the next task. Every other PreCompact hook must keep stdout empty. The window stays at each model's default (`docs/autocompact.md`) |
 | SessionEnd | dispatch: `workspace_session_end`, `session_end_ingest` | No (stderr + file writes) |
 | PreToolUse | `guard_protected_paths.py` (Write/Edit/MultiEdit) | No (JSON decision only) |

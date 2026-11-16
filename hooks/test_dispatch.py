@@ -29,6 +29,11 @@ HOOKS = {
         "    print(json.dumps({'decision': 'block', 'reason': 'no'}))\n"
     ),
     "silent": "def main():\n    pass\n",
+    "title": (
+        "import json\ndef main():\n"
+        "    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart',"
+        " 'sessionTitle': 'feat-x'}}))\n"
+    ),
 }
 
 
@@ -74,6 +79,26 @@ def main():
             "decision": "block",
             "reason": "no",
         }
+
+        # a title must not drop the other hooks' context the way a control object does
+        assert json.loads(run(["plain", "title"], start)) == {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": "plain text",
+                "sessionTitle": "feat-x",
+            }
+        }
+        assert json.loads(run(["title"], start)) == {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "sessionTitle": "feat-x",
+            }
+        }
+        out = json.loads(run(["title", "notice"], start))
+        assert out["systemMessage"] == "see /x.md"
+        assert out["hookSpecificOutput"]["sessionTitle"] == "feat-x"
+        assert out["hookSpecificOutput"]["additionalContext"] == "notice ctx"
+        assert "sessionTitle" not in run(["title", "block"], start)
     print("ok")
 
 

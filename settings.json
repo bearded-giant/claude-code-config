@@ -90,7 +90,7 @@
           },
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook clear_capsule ensure_personal_claude session_prime doit_session_prime daily_note memory_ingest",
+            "command": "python3 ~/.claude/hooks/dispatch.py sync_settings workspace_session_hook clear_capsule ensure_personal_claude session_prime session_label doit_session_prime daily_note memory_ingest",
             "timeout": 20
           },
           {
@@ -290,7 +290,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall auto_mode",
+            "command": "python3 ~/.claude/hooks/dispatch.py standing_constraints giantmem_recall auto_mode session_label",
             "timeout": 10
           },
           {

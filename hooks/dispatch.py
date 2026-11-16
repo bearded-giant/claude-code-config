@@ -9,6 +9,8 @@ Output modes:
                is not parseable
   notice       a hook's {"systemMessage", additionalContext} JSON joins the merge;
                any notice turns the output into one JSON object for the event
+  title        a hookSpecificOutput.sessionTitle (with or without context) joins
+               the merge the same way instead of winning alone as control
 
 A control object (decision / permissionDecision / continue) wins outright and is
 printed alone: a block reason is the whole payload or it is nothing. Several
@@ -88,9 +90,12 @@ def classify(chunk):
             )
     if isinstance(block, dict) and set(obj) == {"hookSpecificOutput"}:
         context = block.get("additionalContext")
+        context = context.strip() if isinstance(context, str) else ""
         steering = set(block) - {"hookEventName", "additionalContext"}
-        if isinstance(context, str) and context.strip() and not steering:
-            return "context", context.strip()
+        if steering == {"sessionTitle"} and isinstance(block["sessionTitle"], str):
+            return "title", (block["sessionTitle"], context)
+        if context and not steering:
+            return "context", context
     return "control", obj
 
 
@@ -113,7 +118,7 @@ def main():
     headless = event == "Stop" and os.environ.get(
         "CLAUDE_CODE_ENTRYPOINT", "cli"
     ).startswith("sdk")
-    texts, notices, control = [], [], None
+    texts, notices, control, title = [], [], None, None
     for name in argv:
         chunk = run(name, raw)
         if not chunk:
@@ -139,6 +144,10 @@ def main():
                     "reason": f"{control.get('reason', '')}\n\n{value.get('reason', '')}",
                 }
             continue
+        if kind == "title":
+            title, value = value
+            if not value:
+                continue
         if kind == "notice":
             message, value = value
             notices.append(message)
@@ -149,17 +158,17 @@ def main():
     if control is not None:
         print(json.dumps(control))
         return
-    if not texts and not notices:
+    if not texts and not notices and not title:
         return
     merged = "\n\n".join(texts)
     name = event or _event_name(raw)
-    if notices and name:
-        out = {"systemMessage": "\n".join(notices)}
-        if merged:
-            out["hookSpecificOutput"] = {
-                "hookEventName": name,
-                "additionalContext": merged,
-            }
+    if (notices or title) and name:
+        out: dict = {"systemMessage": "\n".join(notices)} if notices else {}
+        block = {"additionalContext": merged} if merged else {}
+        if title:
+            block["sessionTitle"] = title
+        if block:
+            out["hookSpecificOutput"] = {"hookEventName": name, **block}
         print(json.dumps(out))
         return
     if not merged:
