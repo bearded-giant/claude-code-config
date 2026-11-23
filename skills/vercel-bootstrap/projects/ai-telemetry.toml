@@ -1,0 +1,14 @@
+# ai-platform telemetry collector (apps/telemetry in RechargePayments/ai-platform); GitHub Actions deploys, so no gitlab key:
+# the deploy tokens are minted with `vbs.py token ai-telemetry --vault secret/ai-tools/prod/ai-telemetry:vercel_token`
+# (and :vercel_preview_token) and copied into the GitHub secrets VERCEL_TOKEN_TELEMETRY / VERCEL_PREVIEW_TOKEN_TELEMETRY
+project = "ai-telemetry"
+framework = "hono"
+node = "24.x"
+root_directory = "apps/telemetry"
+function_timeout = 60
+domains = ["rc-ai-telemetry.vercel.app"]
+
+[vault]
+path = "secret/ai-tools/prod/ai-telemetry"
+generate = ["cron_secret"]
+bypass = "vercel_bypass"
