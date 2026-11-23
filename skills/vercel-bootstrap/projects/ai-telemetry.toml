@@ -10,5 +10,5 @@ domains = ["rc-ai-telemetry.vercel.app"]
 
 [vault]
 path = "secret/ai-tools/prod/ai-telemetry"
-generate = ["cron_secret"]
+generate = ["cron_secret", "drain_secret"]
 bypass = "vercel_bypass"
