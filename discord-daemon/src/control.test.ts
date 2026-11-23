@@ -58,3 +58,27 @@ describe('list', () => {
     registry.delete('s1')
   })
 })
+
+describe('send', () => {
+  test('posts into the thread and hands the text to the session', async () => {
+    registry.register({ sessionId: 's2', label: 'kai', cwd: '/x/kai', pid: 1, threadId: 't2' })
+    const posted: string[] = []
+    const bot = { sendToThread: async (_t: string, text: string) => { posted.push(text); return { ids: ['m1'] } } }
+    expect(await handleControlDM('send kai run the\ntests', 'u1', bot as never, 'bryan')).toBe('→ `kai`')
+    expect(posted).toEqual(['run the\ntests'])
+    expect(registry.recent('s2', 5)).toEqual([
+      expect.objectContaining({ kind: 'message', message_id: 'm1', chat_id: 't2', user: 'bryan', user_id: 'u1', content: 'run the\ntests' }),
+    ])
+    registry.markDormant('s2')
+    expect(await handleControlDM('send kai hello', 'u1', bot as never, 'bryan')).toContain('dormant')
+    registry.delete('s2')
+  })
+  test('no text is a usage error, nothing posted', async () => {
+    registry.register({ sessionId: 's3', label: 'kai', cwd: '/x/kai', pid: 1, threadId: 't3' })
+    const posted: string[] = []
+    const bot = { sendToThread: async (_t: string, text: string) => { posted.push(text); return { ids: ['m1'] } } }
+    expect(await handleControlDM('send kai', 'u1', bot as never)).toContain('usage:')
+    expect(posted).toEqual([])
+    registry.delete('s3')
+  })
+})

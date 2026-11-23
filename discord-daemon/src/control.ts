@@ -19,7 +19,7 @@ const START_FLAGS: Record<string, readonly string[]> = {
 
 // DM commands from allowlisted users. Returns text to send back, or null to ignore.
 // Sessions never receive DMs — DMs are control-only.
-export async function handleControlDM(input: string, _userId: string, bot: DiscordBot): Promise<string | null> {
+export async function handleControlDM(input: string, userId: string, bot: DiscordBot, userName = 'dm'): Promise<string | null> {
   const parts = input.split(/\s+/).filter(Boolean)
   const cmd = (parts[0] ?? '').toLowerCase()
   switch (cmd) {
@@ -50,13 +50,15 @@ export async function handleControlDM(input: string, _userId: string, bot: Disco
     }
     case 'send': {
       const label = parts[1]
-      const text = input.replace(/^\S+\s+\S+\s+/, '')
-      if (!label || !text) return 'usage: `send <label> <message...>` — post into a session\'s thread without opening it'
+      const text = input.match(/^\S+\s+\S+\s+([\s\S]+)$/)?.[1] ?? ''
+      if (!label || !text) return 'usage: `send <label> <message...>` — message a session without opening its thread'
       const s = resolveSession(label)
       if (!s) return `no session matching \`${label}\``
       try {
-        await bot.sendToThread(s.threadId, text)
-        return `→ \`${s.label}\``
+        const { ids } = await bot.sendToThread(s.threadId, text)
+        // the gateway drops the bot's own posts, so the thread copy never reaches the session
+        registry.deliver(s.sessionId, { kind: 'message', message_id: ids[0] ?? '', chat_id: s.threadId, user: userName, user_id: userId, ts: new Date().toISOString(), content: text })
+        return s.state === 'dormant' ? `→ \`${s.label}\` (dormant: no session is reading)` : `→ \`${s.label}\``
       } catch (err) {
         return `send failed: ${(err as Error).message}`
       }
@@ -96,7 +98,7 @@ function helpText(): string {
     '**daemon commands:**',
     '`list` — show active sessions',
     '`status <label>` — details for one session',
-    '`send <label> <text>` — post into a session\'s thread',
+    '`send <label> <text>` — message a session; the text also shows in its thread',
     '`tail <label> [n]` — last N inbox events',
     '`kill <label>` — unregister + archive thread',
     `\`projects\` — repos and worktrees under \`${relFromRoot(PROJECTS_ROOT)}\``,

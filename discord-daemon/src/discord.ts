@@ -415,7 +415,7 @@ export class DiscordBot {
 
     if (access.allowFrom.includes(senderId)) {
       // Allowlisted user → control command
-      const reply = await handleControlDM(msg.content.trim(), senderId, this)
+      const reply = await handleControlDM(msg.content.trim(), senderId, this, msg.author.username)
       if (reply) {
         try { await msg.reply(reply) } catch (err) { process.stderr.write(`daemon: control reply failed: ${err}\n`) }
       }

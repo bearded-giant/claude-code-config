@@ -66,7 +66,7 @@ DM the bot. Sessions never read DMs; DMs are control only.
 | `projects` | repos and worktrees under `dev/` on the box, to depth 3; paste one back into `start` |
 | `list` | sessions, cwd, heartbeat age |
 | `status <label>` | one session in detail |
-| `send <label> <text>` | post into that session's thread without opening it |
+| `send <label> <text>` | message that session without opening its thread; the text also shows in the thread |
 | `tail <label> [n]` | last n inbox events |
 | `kill <label>` | hard-remove the registry entry and archive the thread |
 | `restart <label>\|all [--force] [--dry-run]` | relaunch claude in its tmux pane on the same transcript, `--acct`/`--effort`/`--model` and Discord thread; a pane mid-turn, waiting on a question, or running a background shell restarts once idle unless `--force`. `remote-control` is skipped: it asks to enable and pick a spawn mode on every start, so restart it by hand; a relaunch that fails leaves a shell with the error in the pane |
