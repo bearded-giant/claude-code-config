@@ -248,8 +248,8 @@ ln -sfn "$CONFIG_DIR/scripts/dclaude" "$BIN/dclaude"
 for rc in "$HOME/.profile" "$HOME/.bashrc"; do
   grep -q 'claude-devbox.sh' "$rc" 2>/dev/null || printf '\n[ -f "$HOME/.claude-devbox.sh" ] && . "$HOME/.claude-devbox.sh"\n' >> "$rc"
 done
-# GitLab over https with the token from .creds.secret: no agent needed in daemon-started sessions
-git config --file "$HOME/.gitconfig" credential."https://gitlab.rechargeapps.net".helper '!f() { [ -n "$GITLAB_TOKEN" ] || . "$HOME/dotfiles/.creds.secret"; echo username=oauth2; echo "password=$GITLAB_TOKEN"; }; f'
+# GitLab over https, no agent needed in daemon-started sessions: token from the env or .creds.secret, else the box's glab login
+git config --file "$HOME/.gitconfig" credential."https://gitlab.rechargeapps.net".helper '!f() { [ -n "$GITLAB_TOKEN" ] || { [ -f "$HOME/dotfiles/.creds.secret" ] && . "$HOME/dotfiles/.creds.secret"; }; [ -n "$GITLAB_TOKEN" ] || exec "$HOME/.local/bin/glab" auth git-credential "$@"; echo username=oauth2; echo "password=$GITLAB_TOKEN"; }; f'
 green "  ~/.claude-devbox.sh sourced from .profile and .bashrc; gitlab https credential helper set"
 
 step "tmux.conf"
