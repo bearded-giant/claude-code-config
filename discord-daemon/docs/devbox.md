@@ -117,7 +117,7 @@ A feature branch you want on both machines: push it from where it exists, `cwta 
 
 ## Managing sessions and the daemon
 
-A registry entry is `active` while its session-mcp heartbeats and `dormant` after the claude process exits or the heartbeat lapses. Dormant entries keep their thread id (for `CLAUDE_SESSION_ID` reattach), archive their thread, and stay in `list` tagged `(dormant)`. Only the `kill` DM removes an entry for good. Every `claude` run on the box, `claude auth login` included, registers and leaves a dormant entry behind; expected.
+A registry entry is `active` while its session-mcp heartbeats and `dormant` after the claude process exits or the heartbeat lapses. Dormant entries keep their thread id (for `CLAUDE_SESSION_ID` reattach), archive their thread, and stay in `list` tagged `(dormant)`. Only the `kill` DM removes an entry for good. Every `claude` run on the box, `claude auth login` included, registers and leaves a dormant entry behind; expected. The exception is a health check: the statusline's MCP chip and setup run `claude mcp list` with `DISCORD_SESSION_PROBE=1`, which makes session-mcp skip registration. Set it on any other `claude mcp list` you script on the box.
 
 Shipping a change to the box after a push to `claude-code-config`:
 

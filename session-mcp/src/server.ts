@@ -280,9 +280,12 @@ mcp.setNotificationHandler(
   },
 )
 
-void registerAndStream().catch(err => {
-  process.stderr.write(`session-mcp: register failed: ${err}\n`)
-})
+// `claude mcp list` boots this server only to health-check it; a probe that registered would open a thread per check
+if (process.env.DISCORD_SESSION_PROBE !== '1') {
+  void registerAndStream().catch(err => {
+    process.stderr.write(`session-mcp: register failed: ${err}\n`)
+  })
+}
 
 // === Shutdown ===
 

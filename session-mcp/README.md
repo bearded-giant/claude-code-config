@@ -18,6 +18,7 @@ Claude-side MCP server that proxies Discord tool calls to a remote `discord-daem
 | `DISCORD_DAEMON_TOKEN` | ✓ | matches daemon's `DAEMON_TOKEN` |
 | `CLAUDE_SESSION_ID` | optional | persist across restarts to re-use thread |
 | `CLAUDE_SESSION_LABEL` | optional | default = `basename(cwd)` |
+| `DISCORD_SESSION_PROBE` | optional | `1` skips daemon registration, so no thread opens; for callers that boot the server only to health-check it (`claude mcp list` from the statusline or setup) |
 
 ## settings.json
 

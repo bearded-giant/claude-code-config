@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import subprocess
 import sys
 
@@ -27,6 +28,8 @@ def main():
             capture_output=True,
             text=True,
             timeout=60,
+            # the list boots every stdio server; session-mcp would open a discord thread per poll
+            env=dict(os.environ, DISCORD_SESSION_PROBE="1"),
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         # keep the last good read; the statusline ages it out

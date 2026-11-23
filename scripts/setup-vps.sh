@@ -290,7 +290,7 @@ done
 green "  $(cat "$HOME/.ssh/id_ed25519.pub")"
 
 step "claude mcp add discord (user scope)"
-if "$BIN/claude" mcp list 2>/dev/null | grep -q '^discord'; then
+if DISCORD_SESSION_PROBE=1 "$BIN/claude" mcp list 2>/dev/null | grep -q '^discord'; then
   dim "  already registered"
 else
   "$BIN/claude" mcp add discord "$HOME/.bun/bin/bun" --scope user \
@@ -300,7 +300,7 @@ else
 fi
 
 step "claude mcp add doit (user scope)"
-if "$BIN/claude" mcp list 2>/dev/null | grep -q '^doit'; then
+if DISCORD_SESSION_PROBE=1 "$BIN/claude" mcp list 2>/dev/null | grep -q '^doit'; then
   dim "  already registered"
 else
   "$BIN/claude" mcp add doit "$HOME/.nvm/versions/node/v24.11.1/bin/node" --scope user "$DOIT_DIR/packages/cli/doit-mcp.js" >/dev/null 2>&1 \

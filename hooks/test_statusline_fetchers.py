@@ -33,6 +33,18 @@ assert mcp.parse(
     "auth": 0,
 }
 
+# mcp main: the health check boots session-mcp; it must flag itself as a probe
+_run, _argv, _calls = mcp.subprocess.run, mcp.sys.argv, []
+mcp.subprocess.run = (
+    lambda *a, **kw: _calls.append(kw)
+    or type("R", (), {"returncode": 1, "stdout": ""})()
+)
+mcp.sys.argv = ["mcp_status.py", "/tmp", "/dev/null"]
+mcp.main()
+mcp.subprocess.run, mcp.sys.argv = _run, _argv
+assert _calls[0]["env"]["DISCORD_SESSION_PROBE"] == "1"
+assert _calls[0]["env"]["PATH"]
+
 # classify: exit 0 is ok, network noise is unknown, anything else is expired
 assert pf.classify(0, "") is True
 assert (
