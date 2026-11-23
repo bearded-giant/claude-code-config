@@ -113,7 +113,7 @@ A feature branch you want on both machines: push it from where it exists, `cwta 
 
 `git worktree list` on the box prints physical home paths for worktrees the clone script made and bridged paths for ones the prefix functions made. Both resolve to the same files; the cwd you start sessions from is what matters, and that stays `$BRIDGE/...`.
 
-`scripts/pull-from-vps.sh <path-under-dev>` commits and pushes box-side edits and pulls them on the laptop in one go, for when a phone session left work uncommitted.
+`scripts/pull-from-vps.sh <path-under-dev>` commits and pushes box-side edits and pulls them on the laptop in one go, for when a phone session left work uncommitted. It asks before committing on the box, and the laptop checkout must be clean for the pull.
 
 ## Managing sessions and the daemon
 
