@@ -230,6 +230,8 @@ export GIANT_TOOLING_DIR="$TOOLING_DIR"
 export GIANTMEM_EMBED_PYTHON="$VENV/bin/python3"
 export DISCORD_DAEMON_URL=http://127.0.0.1:7777
 export DISCORD_DAEMON_TOKEN=$TOKEN
+# ~/.claude/projects here mirrors the laptop's: a prune on worktree removal would sync the delete back
+export WT_KEEP_CLAUDE_SESSIONS=1
 [ -f "$DOTFILES/.creds.secret" ] && source "$DOTFILES/.creds.secret"
 [ -f "$DOTFILES/shell/.bash_aliases" ] && source "$DOTFILES/shell/.bash_aliases"
 # worktree prefix functions (ccw, few, ...) so sessions open repo worktrees the same way as on the laptop
