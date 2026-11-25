@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push the laptop git config to the devbox. Idempotent. Run any time your
+# Push the laptop git config and global ignore file to the devbox. Idempotent. Run any time your
 # local gitconfig changes (new alias, identity tweak, signing key swap).
 #
 # Reads from XDG path (~/.config/git/config) with fallback to ~/.gitconfig.
@@ -37,4 +37,9 @@ fi
 ssh "$REMOTE" 'mkdir -p ~/.config/git'
 scp -q "$TMP" "$REMOTE:~/.config/git/config"
 echo "synced $SRC → $REMOTE:~/.config/git/config (KEEP_GPG=${KEEP_GPG:-0})"
+# without the global ignore the box sees .giantmem, scratch and local claude settings as untracked in every repo
+if [ -f "$HOME/.config/git/ignore" ]; then
+  scp -q "$HOME/.config/git/ignore" "$REMOTE:~/.config/git/ignore"
+  echo "synced $HOME/.config/git/ignore → $REMOTE:~/.config/git/ignore"
+fi
 ssh "$REMOTE" 'git config --global user.name; git config --global user.email' || true
