@@ -132,6 +132,8 @@ Daemon ops on the box: `systemctl --user status discord-daemon`, `journalctl --u
 
 State sync: `mutagen sync list` for everything, `mutagen sync list | grep -E '^Name|^Status' | paste - -` for one line per session, `mutagen sync monitor <name>` to watch one. `[Paused]` means Twingate is down on the laptop; it resumes by itself.
 
+The `claude-projects` session carries every transcript under `~/.claude/projects`, so whatever the laptop deletes the box loses too. Three things keep it small: Claude Code drops sessions idle longer than `cleanupPeriodDays` (30 in `settings.json`), removing a worktree with its prefix function (`<prefix>r <branch>`) deletes that worktree's session directories, and `giantmem session prune-orphans --delete` clears every directory whose working directory is gone. The text of pruned sessions stays searchable in giantmem; only `--resume` for them is lost.
+
 After a devbox reboot, `scripts/restore-vps-tmux.sh` recreates sessions from `~/.claude/vps-sessions.yml` (one `cwd:` entry per session, optional `label:`), or DM `start` for each one you want back.
 
 ## Troubleshooting
